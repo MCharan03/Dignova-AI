@@ -1,0 +1,317 @@
+{
+  "name": "02 — Dignova Zero-Touch Prescription (Voice + Text AI)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram: Bot Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        160,
+        256
+      ],
+      "id": "tg-trigger",
+      "webhookId": "ebcdabc1-f4e6-42e1-9ef2-820082984990",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.message.voice}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Is Voice Note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        384,
+        256
+      ],
+      "id": "check-voice"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{$credentials.token}}/getFile",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{$json.message.voice.file_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get Voice File URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        608,
+        160
+      ],
+      "id": "get-file-url"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot{{$credentials.token}}/{{$json.result.file_path}}",
+        "options": {}
+      },
+      "name": "Download Voice File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        832,
+        160
+      ],
+      "id": "download-voice"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/n8n/webhook/voice",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telegram_chat_id",
+              "value": "={{$('Telegram: Bot Trigger').item.json.message.chat.id}}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "audio"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Backend: Voice Triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1056,
+        160
+      ],
+      "id": "voice-triage"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/n8n/webhook/triage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session_id",
+              "value": "={{$json.message.chat.id}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.message.text}}"
+            },
+            {
+              "name": "source",
+              "value": "Telegram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Backend: Text Triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1056,
+        352
+      ],
+      "id": "text-triage"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.auto_prescription_triggered}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Auto-Prescription?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        256
+      ],
+      "id": "check-auto-rx"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Telegram: Bot Trigger').item.json.message.chat.id}}",
+        "text": "⚡ *AI Diagnosis Complete!*\n\n✅ {{$json.response}}\n\n📄 Your prescription PDF is being generated and will be sent in a moment...",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Auto-Rx Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        160
+      ],
+      "id": "tg-auto-rx",
+      "webhookId": "ad202aa0-04ab-44f9-8d35-4c197225d8b3",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Telegram: Bot Trigger').item.json.message.chat.id}}",
+        "text": "={{$json.response}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Reply to Patient",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        352
+      ],
+      "id": "tg-reply",
+      "webhookId": "4bd5fee7-d6b3-4077-bd1e-71a4670474f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram: Bot Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Voice Note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Voice Note?": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Backend: Text Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File URL": {
+      "main": [
+        [
+          {
+            "node": "Download Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice File": {
+      "main": [
+        [
+          {
+            "node": "Backend: Voice Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backend: Voice Triage": {
+      "main": [
+        [
+          {
+            "node": "Auto-Prescription?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backend: Text Triage": {
+      "main": [
+        [
+          {
+            "node": "Auto-Prescription?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-Prescription?": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Auto-Rx Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram: Reply to Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7f107922-2508-40df-a0b7-a078cecf334f",
+  "meta": {
+    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
+  },
+  "id": "1vu0b3Vz86L77TRf",
+  "tags": []
+}

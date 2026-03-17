@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+aiosqlite
+pydantic
+python-dotenv
+google-generativeai
+google-genai
+fpdf
+python-multipart
+itsdangerous
+fastapi-mail
+websockets
+pydub
+Pillow

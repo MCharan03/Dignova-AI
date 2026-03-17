@@ -1,0 +1,141 @@
+{
+  "name": "01 — Dignova Onboarding (Welcome Email + Telegram)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-onboarding",
+        "options": {}
+      },
+      "name": "Webhook: Onboarding Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "onboard-webhook",
+      "webhookId": "6a45704a-45a8-450a-8db4-03347c675740"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.telegram_chat_id}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Has Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        304
+      ],
+      "id": "check-telegram"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.telegram_chat_id}}",
+        "text": "👋 Welcome to *Dignova AI*, {{$json.body.name}}!\n\n🏥 You now have access to:\n• 24/7 AI medical triage\n• Instant prescriptions for minor issues\n• Doctor escalation for complex cases\n• Appointment booking\n• Proactive health reminders\n\nType your symptoms anytime to begin. I'm here to help! 💙\n\n_Dignova AI — Autonomous Healthcare Intelligence_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Welcome Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        720,
+        208
+      ],
+      "id": "tg-welcome",
+      "webhookId": "85fe0f6c-957a-49e3-8c4c-2bb983e78016",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "cherrycostech@gmail.com",
+        "toEmail": "={{$json.body.email}}",
+        "subject": "Welcome to Dignova AI — Please Verify Your Email",
+        "options": {}
+      },
+      "name": "Email: Welcome",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        720,
+        400
+      ],
+      "id": "email-welcome",
+      "credentials": {
+        "smtp": {
+          "id": "Qiqh2Vgtaueeka34",
+          "name": "Dignova Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Onboarding Trigger": {
+      "main": [
+        [
+          {
+            "node": "Has Telegram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email: Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Welcome Message": {
+      "main": [
+        [
+          {
+            "node": "Email: Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "35269153-fdf6-457b-bdd4-a435f9be743a",
+  "meta": {
+    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
+  },
+  "id": "VbBj14TBC0ZmxvDX",
+  "tags": []
+}

@@ -1,0 +1,233 @@
+{
+  "name": "04 — Dignova Proactive Aftercare (Day-3 Follow-up)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron: Daily 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        304
+      ],
+      "id": "cron-daily"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/n8n/webhook/preventive-check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "aftercare"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Backend: Get Due Aftercare Pings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        432,
+        304
+      ],
+      "id": "get-pings"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "patients",
+        "options": {}
+      },
+      "name": "Split Into Patients",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        656,
+        304
+      ],
+      "id": "split-patients"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.telegram_chat_id}}",
+        "text": "💊 *Day 3 Check-in — Dignova AI*\n\nHi {{$json.name}}! How are you feeling after starting your medication?\n\n*Is your condition improving?*",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Send Aftercare Ping",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        880,
+        304
+      ],
+      "id": "tg-aftercare",
+      "webhookId": "eba733d7-097a-4975-a601-2dc701b93755",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram: Aftercare Response",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        528
+      ],
+      "id": "tg-aftercare-callback",
+      "webhookId": "84e26922-755d-43f9-a9f2-ca260ed4e657",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/n8n/webhook/aftercare-response",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prescription_id",
+              "value": "={{$json.callback_query.data.replace('aftercare_yes_','').replace('aftercare_no_','')}}"
+            },
+            {
+              "name": "patient_telegram_chat_id",
+              "value": "={{$json.callback_query.from.id}}"
+            },
+            {
+              "name": "response",
+              "value": "={{$json.callback_query.data.startsWith('aftercare_yes_') ? 'yes_better' : 'no_still_sick'}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Backend: Log Aftercare Response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        432,
+        528
+      ],
+      "id": "log-aftercare"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Telegram: Aftercare Response').item.json.callback_query.from.id}}",
+        "text": "={{$json.message}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Confirm Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        656,
+        528
+      ],
+      "id": "tg-confirm",
+      "webhookId": "17b04f2f-d9af-49fe-b90a-c7a07e4010e5",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron: Daily 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Backend: Get Due Aftercare Pings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backend: Get Due Aftercare Pings": {
+      "main": [
+        [
+          {
+            "node": "Split Into Patients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Into Patients": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Aftercare Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Aftercare Response": {
+      "main": [
+        [
+          {
+            "node": "Backend: Log Aftercare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backend: Log Aftercare Response": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f9f2fd2b-a822-4013-9640-51504b255fe1",
+  "meta": {
+    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
+  },
+  "id": "uGIzwiMzBhV59iLo",
+  "tags": []
+}

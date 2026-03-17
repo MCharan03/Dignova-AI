@@ -1,0 +1,214 @@
+{
+  "name": "06 — Dignova Geofenced Queue Bypass (Live Location Check-in)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram: Bot Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        224
+      ],
+      "id": "tg-trigger",
+      "webhookId": "07bf352c-95f6-4ea1-a47e-a3a59ebaabed",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.message.location}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Is Location Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        432,
+        224
+      ],
+      "id": "check-location"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/n8n/webhook/geofence-checkin",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telegram_chat_id",
+              "value": "={{$json.message.chat.id}}"
+            },
+            {
+              "name": "latitude",
+              "value": "={{$json.message.location.latitude}}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{$json.message.location.longitude}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Backend: Geofence Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        656,
+        224
+      ],
+      "id": "geofence-check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "checked_in"
+            }
+          ]
+        }
+      },
+      "name": "Within 500m?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        880,
+        224
+      ],
+      "id": "check-radius"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Telegram: Bot Trigger').item.json.message.chat.id}}",
+        "text": "🏥 *Automatic Check-In Successful!*\n\n{{$json.message}}\n\nNo waiting room needed — your doctor has been alerted and is ready for you.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Check-in Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        128
+      ],
+      "id": "tg-checkin-ok",
+      "webhookId": "b409fdf8-dbe7-4f63-876a-fca2fe1dfdcb",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Telegram: Bot Trigger').item.json.message.chat.id}}",
+        "text": "📍 You're {{$json.distance}}m from the hospital.\n\nCheck-in activates automatically when you're within 500m. Keep sharing your live location as you approach! 🚶",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Too Far Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        320
+      ],
+      "id": "tg-too-far",
+      "webhookId": "15b1abc3-144e-4843-adbc-923ba3d746ca",
+      "credentials": {
+        "telegramApi": {
+          "id": "iv5NZHCR5wjspGfE",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram: Bot Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Location Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Location Message?": {
+      "main": [
+        [
+          {
+            "node": "Backend: Geofence Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Backend: Geofence Check": {
+      "main": [
+        [
+          {
+            "node": "Within 500m?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Within 500m?": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Check-in Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram: Too Far Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "efd16e55-132b-4a71-8231-f9339e7bb4eb",
+  "meta": {
+    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
+  },
+  "id": "kyQ8Tnt0KJCYmsXy",
+  "tags": []
+}
