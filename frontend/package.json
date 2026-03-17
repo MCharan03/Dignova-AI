@@ -11,7 +11,7 @@
   "dependencies": {
     "@react-spring/three": "^10.0.3",
     "@react-three/drei": "^9.122.0",
-    "@react-three/fiber": "^8.18.0",
+    "@react-three/fiber": "^9.0.0",
     "@react-three/postprocessing": "^3.0.4",
     "framer-motion": "^12.35.1",
     "lucide-react": "^0.575.0",
