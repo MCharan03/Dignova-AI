@@ -57,36 +57,118 @@ Controlled Revelation Rules:
 
     def __init__(self, persona: str = "TRIAGE"):
         self.persona = persona
-        self.model_id = "gemini-1.5-flash"
+        self.model_id = "gemini-2.0-flash"
         self.system_instruction = self.PERSONA_PROMPTS.get(persona, self.PERSONA_PROMPTS["TRIAGE"])
         
     def process_message_stream(self, transcript: str, new_user_message: str):
         """
         Generates a streaming response based on the active persona and conversation history.
-        Yields text chunks as they are generated.
+        Yields text chunks as they are generated. Retries on rate limits.
         """
         if not LLM_AVAILABLE or not client:
-            yield "AI services are currently unavailable."
+            yield "AI services are currently unavailable. Please try again later."
             return
 
         prompt = f"Previous conversation history:\n{transcript}\n\nPatient's latest message: {new_user_message}"
         
+        import time
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                response_stream = client.models.generate_content_stream(
+                    model=self.model_id,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_instruction
+                    )
+                )
+                
+                for chunk in response_stream:
+                    if chunk.text:
+                        yield chunk.text
+                return  # Success — exit the retry loop
+                
+            except Exception as e:
+                error_str = str(e)
+                print(f"Gemini Streaming Error (attempt {attempt+1}/{max_retries}): {error_str}")
+                
+                # Retry on rate limit (429) errors
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
+                        print(f"Rate limited. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        yield "The AI service is experiencing high traffic. Please wait a moment and try again."
+                        return
+                else:
+                    yield "I'm having trouble processing your request right now. Please try again in a moment."
+                    return
+
+    def summarize_report(self, report_text: str) -> Dict[str, Any]:
+        """
+        Analyzes a medical report and provides a structured summary.
+        """
+        if not LLM_AVAILABLE or not client:
+            return {"error": "LLM Offline"}
+
+        prompt = f"""
+        You are a Medical Report Analyst. Summarize the following medical report text for both a doctor and a patient.
+        Identify key findings, abnormal values, and suggested next steps.
+
+        Report Text:
+        {report_text}
+
+        Output a STRICT JSON object:
+        {{
+            "doctor_summary": "string",
+            "patient_summary": "string",
+            "key_findings": ["list", "of", "findings"],
+            "abnormal_values": ["list", "of", "values"],
+            "suggested_steps": ["list", "of", "steps"],
+            "urgency": "NORMAL/ELEVATED/CRITICAL"
+        }}
+        """
         try:
-            # Use streaming generation
-            response_stream = client.models.generate_content_stream(
+            response = client.models.generate_content(
                 model=self.model_id,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    system_instruction=self.system_instruction
+                    response_mime_type="application/json",
                 )
             )
-            
-            for chunk in response_stream:
-                if chunk.text:
-                    yield chunk.text
+            return json.loads(response.text)
         except Exception as e:
-            print(f"Gemini Streaming Error: {e}")
-            yield f"Error in stream: {str(e)}"
+            print(f"Summarization Error: {e}")
+            return {"error": "Summarization failed"}
+
+    def generate_health_tips(self, user_profile: Dict[str, Any]) -> List[str]:
+        """
+        Generates personalized health tips based on user profile and history.
+        """
+        if not LLM_AVAILABLE or not client:
+            return ["AI services are currently offline."]
+
+        prompt = f"""
+        You are the Dignova Health Advisor. Based on the user's profile, generate 3-5 personalized, actionable health tips.
+        User Profile: {json.dumps(user_profile)}
+
+        Output a STRICT JSON array of strings.
+        """
+        try:
+            response = client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Health Tips Error: {e}")
+            return ["Stay hydrated and maintain a balanced diet."]
 
     def evaluate_performance(self, transcript: str, is_training: bool = False) -> Dict[str, Any]:
         """

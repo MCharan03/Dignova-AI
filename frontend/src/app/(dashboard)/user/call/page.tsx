@@ -172,6 +172,11 @@ export default function UserCallPage() {
                 body: JSON.stringify({ message: userMsg })
             });
             
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || `Server error (${response.status})`);
+            }
+
             if (!response.body) throw new Error("No response body");
 
             const reader = response.body.getReader();
@@ -196,8 +201,7 @@ export default function UserCallPage() {
                 });
             }
 
-            // After stream finishes, check for triggers (though triggers are handled backend now, 
-            // we might want UI feedback like closing the modal if [DIAGNOSIS_READY] was detected)
+            // After stream finishes, check for triggers
             if (fullText.includes("DIAGNOSIS_READY") || fullText.includes("EMERGENCY_DETECTED")) {
                 setTimeout(() => {
                     setIsTriageActive(false);
@@ -206,9 +210,19 @@ export default function UserCallPage() {
                 }, 3000);
             }
 
-        } catch (err) {
-            console.error(err);
-            setMessages(prev => [...prev, { role: 'assistant', text: 'Error connecting to network.' }]);
+        } catch (err: any) {
+            console.error('Chat error:', err);
+            // Update the placeholder message instead of adding a new one
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant' && !newMessages[lastIndex].text) {
+                    newMessages[lastIndex] = { role: 'assistant', text: `[SYSTEM]: ${err.message || 'Connection interrupted. Please try again.'}` };
+                } else {
+                    newMessages.push({ role: 'assistant', text: `[SYSTEM]: ${err.message || 'Connection interrupted. Please try again.'}` });
+                }
+                return newMessages;
+            });
         } finally {
             setChatLoading(false);
         }
@@ -243,62 +257,46 @@ export default function UserCallPage() {
         }
     };
 
-    const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
-
-    // ... existing pollStatus and other logic ...
-
     return (
         <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 h-full relative">
-            {/* Left Column: Instructions & Action */}
+            {/* Left Column: Agent Connection */}
             <div className="lg:col-span-7 flex flex-col justify-center space-y-8">
                 <GlassCard className="p-8 text-center space-y-8 relative overflow-hidden">
                     {/* Status Indicator */}
                     <div className="flex justify-center">
                         <div className="relative">
-                            <div className={`w-4 h-4 rounded-full animate-ping absolute -right-1 -top-1 ${isVoiceCallActive || isTriageActive ? 'bg-accent-magenta' : 'bg-success'}`}></div>
-                            <div className="p-6 rounded-full bg-white/5 border border-white/10">
-                                <PhoneCall size={48} className={isVoiceCallActive ? "text-accent-magenta animate-pulse" : "text-accent-cyan"} />
+                            <div className={`w-4 h-4 rounded-full animate-ping absolute -right-1 -top-1 ${isTriageActive ? 'bg-accent-magenta' : 'bg-success'}`}></div>
+                            <div className={`p-6 rounded-full border transition-all duration-500 ${isTriageActive ? 'bg-accent-magenta/10 border-accent-magenta/50 shadow-[0_0_40px_rgba(236,72,153,0.2)]' : 'bg-white/5 border-white/10'}`}>
+                                <Activity size={48} className={isTriageActive ? "text-accent-magenta animate-pulse" : "text-accent-cyan"} />
                             </div>
                         </div>
                     </div>
 
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight mb-4">
-                            {isVoiceCallActive ? "Voice Uplink Established" : "Request Emergency Assistance"}
+                            {isTriageActive ? "Agent Session Active" : "Dignova AI Agent"}
                         </h2>
                         <p className="text-gray-400 text-lg">
-                            {isVoiceCallActive 
-                                ? "The Dignova Sentient Layer is listening. Your biometric data is being analyzed in real-time."
-                                : "The Dignova AI Triage Assistant is standing by. Call the number below, or use the Web Triage to connect immediately."}
+                            {isTriageActive 
+                                ? "You are connected to the Dignova Sentient Layer. Describe your condition and the AI will triage in real-time."
+                                : "Connect directly to the Dignova AI Triage Agent. It will assess your condition, generate a preliminary diagnosis, and auto-reserve hospital resources."}
                         </p>
                     </div>
 
-                    {/* The Phone Number Display */}
-                    <div className={`py-6 px-8 rounded-2xl bg-black/50 border transition-all duration-500 ${isVoiceCallActive ? 'border-accent-magenta shadow-[0_0_30px_rgba(236,72,153,0.2)]' : 'border-accent-cyan/30 shadow-[0_0_30px_rgba(0,255,255,0.1)]'}`}>
-                        <span className={`text-4xl md:text-5xl font-mono font-bold tracking-wider ${isVoiceCallActive ? 'text-accent-magenta' : 'text-white'}`}>
-                            +1 (555) 019-9999
-                        </span>
-                    </div>
-
-                    <div className="flex justify-center gap-4">
+                    {/* Direct Agent Call Button */}
+                    <div className="flex justify-center">
                         <button 
                             onClick={startTriage}
-                            disabled={isTriageActive || isVoiceCallActive || (activeCall && activeCall.state === 'active')}
-                            className="flex items-center gap-2 bg-accent-cyan/20 hover:bg-accent-cyan/30 text-accent-cyan border border-accent-cyan/50 px-8 py-4 rounded-xl font-bold tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase hover:shadow-[0_0_20px_rgba(0,255,255,0.3)]"
+                            disabled={isTriageActive || (activeCall && activeCall.state === 'active')}
+                            className={`flex items-center gap-3 px-10 py-5 rounded-2xl font-bold tracking-widest transition-all duration-500 uppercase text-lg ${
+                                isTriageActive 
+                                    ? 'bg-accent-magenta/20 border-accent-magenta/50 text-accent-magenta cursor-not-allowed opacity-60'
+                                    : 'bg-gradient-to-r from-accent-cyan/20 to-accent-magenta/20 hover:from-accent-cyan/30 hover:to-accent-magenta/30 text-white border border-accent-cyan/40 hover:border-accent-cyan/70 hover:shadow-[0_0_40px_rgba(0,255,255,0.25)] active:scale-95'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                            <MessageSquare size={20} />
-                            Start Web Triage
+                            <PhoneCall size={24} />
+                            {isTriageActive ? 'Session In Progress...' : 'Call Agent'}
                         </button>
-                        
-                        {!isVoiceCallActive && (
-                            <button 
-                                onClick={() => setIsVoiceCallActive(true)}
-                                className="flex items-center gap-2 bg-accent-magenta/20 hover:bg-accent-magenta/30 text-accent-magenta border border-accent-magenta/50 px-8 py-4 rounded-xl font-bold tracking-widest transition-all uppercase hover:shadow-[0_0_20px_rgba(236,72,153,0.3)]"
-                            >
-                                <Activity size={20} />
-                                Simulate Voice Call
-                            </button>
-                        )}
                     </div>
 
                     <div className="text-left bg-white/5 border border-white/10 p-6 rounded-xl space-y-4">
@@ -307,9 +305,10 @@ export default function UserCallPage() {
                             How it works
                         </h3>
                         <ul className="text-gray-300 space-y-2 list-disc list-inside pl-4 text-sm">
-                            <li>Dial the number or click &quot;Start Web Triage&quot;.</li>
-                            <li>The AI will assess your condition through natural interaction.</li>
-                            <li>A hospital resource will be automatically reserved based on telemetry.</li>
+                            <li>Click &quot;Call Agent&quot; to connect to the AI triage system.</li>
+                            <li>Describe your symptoms — the agent will ask follow-up questions.</li>
+                            <li>The AI generates a diagnosis and auto-reserves hospital resources.</li>
+                            <li>You can attach images for visual analysis during the session.</li>
                         </ul>
                     </div>
                 </GlassCard>
@@ -333,7 +332,7 @@ export default function UserCallPage() {
                         <div className="space-y-4">
                             <div>
                                 <h4 className="text-2xl font-bold text-white">
-                                    {activeCall.state === 'active' ? 'Call in Progress...' : 'Processing Evaluation'}
+                                    {activeCall.state === 'active' ? 'Agent Session Active' : 'Processing Evaluation'}
                                 </h4>
                                 <p className="text-accent-magenta text-sm font-mono uppercase">AI IS ANALYZING TELEMETRY.</p>
                             </div>
@@ -347,7 +346,7 @@ export default function UserCallPage() {
                     ) : (
                         <div className="space-y-2">
                             <h4 className="text-2xl font-bold text-gray-500 italic">No Active Session</h4>
-                            <p className="text-gray-600 text-sm">Initiate a connection to begin triage.</p>
+                            <p className="text-gray-600 text-sm">Click &quot;Call Agent&quot; to begin.</p>
                         </div>
                     )}
                 </GlassCard>

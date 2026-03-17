@@ -81,42 +81,9 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(ws_router)
 app.include_router(stats_router)
 
-# --- Static File Serving (Consolidated Architecture) ---
-import os
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-# Path to the built frontend
-FRONTEND_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "out")
-
 @app.get("/")
 def read_root():
-    # Serve the index.html from the built frontend
-    index_file = os.path.join(FRONTEND_PATH, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    return {"message": "Welcome to Dignova AI Hospital Management API (Frontend not built)"}
-
-# Mount static files (JS, CSS, images)
-if os.path.exists(FRONTEND_PATH):
-    app.mount("/_next", StaticFiles(directory=os.path.join(FRONTEND_PATH, "_next")), name="next-static")
-    # Mount other static assets if they exist
-    for item in os.listdir(FRONTEND_PATH):
-        item_path = os.path.join(FRONTEND_PATH, item)
-        if os.path.isdir(item_path) and item != "_next":
-             app.mount(f"/{item}", StaticFiles(directory=item_path), name=f"{item}-static")
-        elif os.path.isfile(item_path) and item != "index.html":
-             @app.get(f"/{item}")
-             async def serve_file(name=item):
-                 return FileResponse(os.path.join(FRONTEND_PATH, name))
-
-# Catch-all route for SPA client-side routing
-@app.exception_handler(404)
-async def not_found_exception_handler(request, exc):
-    index_file = os.path.join(FRONTEND_PATH, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    return FileResponse(index_file) # Fallback to index if it exists, FastAPI will handle if not
+    return {"status": "active", "message": "Welcome to Dignova AI Hospital Management API", "system": "Dignova Core"}
 
 if __name__ == "__main__":
     import uvicorn

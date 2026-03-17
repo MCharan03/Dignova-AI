@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from typing import List
+from typing import List, Optional
 import shutil
 import os
 from datetime import datetime
@@ -439,3 +439,145 @@ async def finalize_prescription(
     background_tasks.add_task(N8nService.send_prescription_alert, patient_data, pdf_url)
 
     return {"status": "success", "prescription_id": prescription.id, "pdf_url": pdf_url}
+
+# --- NEW: AI Diagnostics & Report Summarization ---
+
+class ReportSummarizeRequest(BaseModel):
+    text: str
+
+@router.post("/reports/summarize")
+async def summarize_medical_report(
+    request: ReportSummarizeRequest, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Summarizes complex medical documents using AI."""
+    agent = AITriageAgent()
+    summary = agent.summarize_report(request.text)
+    return summary
+
+@router.get("/user/health-tips")
+async def get_health_tips(
+    db: AsyncSession = Depends(get_db), 
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Generates personalized health tips based on the user's profile."""
+    agent = AITriageAgent()
+    user_profile = {
+        "age": current_user.age,
+        "blood_group": current_user.blood_group,
+        "allergies": current_user.allergies,
+        "chronic_conditions": current_user.chronic_conditions,
+        "last_checkup": current_user.last_checkup_date.isoformat() if current_user.last_checkup_date else None
+    }
+    tips = agent.generate_health_tips(user_profile)
+    return {"tips": tips}
+
+# --- NEW: Appointment Scheduling ---
+
+class AppointmentBookingRequest(BaseModel):
+    doctor_id: int
+    slot_time: datetime
+    notes: Optional[str] = None
+
+@router.post("/appointments/book")
+async def book_appointment(
+    request: AppointmentBookingRequest, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Books an appointment with a doctor."""
+    # 1. Verify doctor exists
+    doc_stmt = select(domain.User).where(domain.User.id == request.doctor_id, domain.User.role == domain.UserRole.doctor)
+    doctor = await db.scalar(doc_stmt)
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    # 2. Check for slot conflict (simple check)
+    conflict_stmt = select(domain.AppointmentSlot).where(
+        domain.AppointmentSlot.doctor_id == request.doctor_id,
+        domain.AppointmentSlot.slot_time == request.slot_time,
+        domain.AppointmentSlot.status == "confirmed"
+    )
+    conflict = await db.scalar(conflict_stmt)
+    if conflict:
+        raise HTTPException(status_code=400, detail="This slot is already booked")
+
+    # 3. Create appointment
+    new_appointment = domain.AppointmentSlot(
+        patient_id=current_user.id,
+        doctor_id=request.doctor_id,
+        slot_time=request.slot_time,
+        notes=request.notes,
+        status="confirmed"
+    )
+    db.add(new_appointment)
+    await db.commit()
+    await db.refresh(new_appointment)
+
+    # Note: In a real scenario, we'd trigger n8n here to sync with Google Calendar
+    return {"status": "success", "appointment_id": new_appointment.id}
+
+@router.get("/appointments/me")
+async def get_my_appointments(
+    db: AsyncSession = Depends(get_db), 
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Fetch appointments for the current user (doctor or patient)."""
+    if current_user.role == domain.UserRole.doctor:
+        stmt = select(domain.AppointmentSlot).where(domain.AppointmentSlot.doctor_id == current_user.id)
+    else:
+        stmt = select(domain.AppointmentSlot).where(domain.AppointmentSlot.patient_id == current_user.id)
+    
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+# --- NEW: Medical Timeline (EHR) ---
+
+@router.get("/user/timeline")
+async def get_medical_timeline(
+    db: AsyncSession = Depends(get_db), 
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Returns a chronological timeline of all medical events for the user."""
+    events = []
+    
+    # 1. Fetch Calls
+    calls_stmt = select(domain.Call).where(domain.Call.user_id == current_user.id).order_by(domain.Call.start_time.desc())
+    calls = (await db.execute(calls_stmt)).scalars().all()
+    for c in calls:
+        events.append({
+            "type": "call",
+            "date": c.start_time,
+            "title": f"Triage Call: {c.diagnosis_given or 'Preliminary Assessment'}",
+            "details": f"Severity: {c.severity}",
+            "id": c.call_id
+        })
+
+    # 2. Fetch Prescriptions
+    presc_stmt = select(domain.Prescription).where(domain.Prescription.patient_id == current_user.id).order_by(domain.Prescription.created_at.desc())
+    prescs = (await db.execute(presc_stmt)).scalars().all()
+    for p in prescs:
+        events.append({
+            "type": "prescription",
+            "date": p.created_at,
+            "title": f"Prescription issued: {p.diagnosis}",
+            "details": f"Medications: {len(p.medications or [])} items",
+            "id": p.id
+        })
+
+    # 3. Fetch Appointments
+    appt_stmt = select(domain.AppointmentSlot).where(domain.AppointmentSlot.patient_id == current_user.id).order_by(domain.AppointmentSlot.slot_time.desc())
+    appts = (await db.execute(appt_stmt)).scalars().all()
+    for a in appts:
+        events.append({
+            "type": "appointment",
+            "date": a.slot_time,
+            "title": "Doctor Consultation",
+            "details": f"Status: {a.status}",
+            "id": a.id
+        })
+
+    # Sort all events by date
+    events.sort(key=lambda x: x["date"], reverse=True)
+    return events

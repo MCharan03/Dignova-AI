@@ -19,7 +19,7 @@ interface CallDetails {
     state: string;
 }
 
-export default function InterventionTerminal() {
+export default function InterventionClient() {
     const params = useParams();
     const router = useRouter();
     const callId = params.call_id;
@@ -37,7 +37,6 @@ export default function InterventionTerminal() {
     };
 
     useEffect(() => {
-        if (!callId) { setLoading(false); return; }
         const fetchCallDetails = async () => {
             const token = localStorage.getItem('access_token');
             try {
@@ -65,28 +64,18 @@ export default function InterventionTerminal() {
         scrollToBottom();
     }, [callId]);
 
-    useEffect(() => { scrollToBottom(); }, [messages]);
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const handleBack = () => router.push('/doctor');
 
-    if (!callId) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <div className="text-center space-y-4">
-                    <Activity className="text-accent-blue mx-auto" size={48} />
-                    <p className="text-gray-400 font-mono text-sm">No call ID specified.</p>
-                    <button onClick={handleBack} className="px-6 py-2 bg-accent-blue text-white rounded-xl text-xs font-bold uppercase">Return to Dashboard</button>
-                </div>
-            </div>
-        );
-    }
-
     if (loading || !call) {
-        return <div className="flex h-screen w-full items-center justify-center"><Activity className="animate-spin text-accent-blue" /></div>;
+        return <div className="flex h-screen w-full items-center justify-center bg-black"><Activity className="animate-spin text-accent-blue" /></div>;
     }
 
     return (
-        <div className="min-h-screen text-white flex flex-col gap-6">
+        <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 flex flex-col gap-6 font-sans">
             <header className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-xl">
                 <div className="flex items-center gap-4">
                     <button onClick={handleBack} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
@@ -121,21 +110,21 @@ export default function InterventionTerminal() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-danger/10 text-danger"><Heart size={18} className="animate-pulse" /></div>
-                                    <span className="text-sm text-gray-400">Heart Rate</span>
+                                    <span className="text-sm text-gray-400 font-medium">Heart Rate</span>
                                 </div>
                                 <div className="text-2xl font-black font-mono">112 <span className="text-[10px] text-gray-500">BPM</span></div>
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-accent-blue/10 text-accent-blue"><Droplets size={18} /></div>
-                                    <span className="text-sm text-gray-400">Blood Pressure</span>
+                                    <span className="text-sm text-gray-400 font-medium">Blood Pressure</span>
                                 </div>
                                 <div className="text-2xl font-black font-mono">145/95 <span className="text-[10px] text-gray-500">mmHg</span></div>
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-warning/10 text-warning"><Thermometer size={18} /></div>
-                                    <span className="text-sm text-gray-400">Core Temp</span>
+                                    <span className="text-sm text-gray-400 font-medium">Core Temp</span>
                                 </div>
                                 <div className="text-2xl font-black font-mono">101.4 <span className="text-[10px] text-gray-500">°F</span></div>
                             </div>
@@ -150,8 +139,8 @@ export default function InterventionTerminal() {
                                 <p className="text-lg font-bold">{call.user_name || "Unknown Patient"}</p>
                             </div>
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-mono">Severity</label>
-                                <p className={`text-sm font-bold uppercase ${call.severity === 'CRITICAL' ? 'text-danger' : call.severity === 'ELEVATED' ? 'text-warning' : 'text-accent-blue'}`}>{call.severity}</p>
+                                <label className="text-[10px] text-gray-500 uppercase font-mono">Initial AI Diagnosis</label>
+                                <p className="text-sm text-accent-blue italic">&quot;AI-generated preliminary diagnosis.&quot;</p>
                             </div>
                         </div>
                     </GlassCard>
@@ -170,7 +159,7 @@ export default function InterventionTerminal() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 z-10 min-h-[300px]">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 z-10">
                             {messages.map((msg, idx) => (
                                 <motion.div 
                                     key={idx}
