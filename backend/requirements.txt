@@ -20,5 +20,5 @@ bcrypt
 PyJWT
 httpx
 reportlab
-pyaudioop
+audioop-lts
 legacy-cgi
