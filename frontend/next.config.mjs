@@ -11,13 +11,17 @@ const nextConfig = {
     },
     transpilePackages: ['three'],
     async rewrites() {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         return [
             {
                 source: '/api/:path*',
-                destination: process.env.NEXT_PUBLIC_API_URL 
-                    ? `${process.env.NEXT_PUBLIC_API_URL}/api/:path*` 
-                    : 'http://localhost:8000/api/:path*',
+                destination: `${backendUrl}/api/:path*`,
             },
+            // Fallback for auth routes if they don't have /api prefix in some cases
+            {
+                source: '/auth/:path*',
+                destination: `${backendUrl}/auth/:path*`,
+            }
         ];
     },
 };
