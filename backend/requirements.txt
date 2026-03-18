@@ -21,3 +21,4 @@ PyJWT
 httpx
 reportlab
 pyaudioop
+legacy-cgi
