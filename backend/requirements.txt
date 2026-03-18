@@ -1,7 +1,9 @@
 fastapi
 uvicorn
+gunicorn
 sqlalchemy
 aiosqlite
+asyncpg
 pydantic
 python-dotenv
 google-generativeai

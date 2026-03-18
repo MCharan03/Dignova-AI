@@ -74,12 +74,19 @@ from .hospital.bot_webhooks import router as bot_webhooks_router
 from .auth.routes import router as auth_router
 from .ws.routes import router as ws_router
 from .stats.routes import router as stats_router
+from fastapi.staticfiles import StaticFiles
 
 app.include_router(hospital_router)
 app.include_router(bot_webhooks_router)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(ws_router)
 app.include_router(stats_router)
+
+# --- Static Files (Prescriptions & Uploads) ---
+os.makedirs("app/static/prescriptions", exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
+app.mount("/static/prescriptions", StaticFiles(directory="app/static/prescriptions"), name="prescriptions")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
 def read_root():
