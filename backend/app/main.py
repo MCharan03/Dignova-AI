@@ -76,11 +76,11 @@ from .ws.routes import router as ws_router
 from .stats.routes import router as stats_router
 from fastapi.staticfiles import StaticFiles
 
-app.include_router(hospital_router)
-app.include_router(bot_webhooks_router)
-app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(ws_router)
-app.include_router(stats_router)
+app.include_router(hospital_router) # This ALREADY has /api prefix in its file
+app.include_router(bot_webhooks_router) 
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"]) # Removing /api here
+app.include_router(ws_router) # Check if this has /api
+app.include_router(stats_router) # Check if this has /api
 
 # --- Static Files (Prescriptions & Uploads) ---
 os.makedirs("app/static/prescriptions", exist_ok=True)
