@@ -15,3 +15,6 @@ fastapi-mail
 websockets
 pydub
 Pillow
+passlib[bcrypt]
+bcrypt
+python-jose[cryptography]
