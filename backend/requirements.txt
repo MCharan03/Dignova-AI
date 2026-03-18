@@ -17,4 +17,4 @@ pydub
 Pillow
 passlib[bcrypt]
 bcrypt
-python-jose[cryptography]
+PyJWT
