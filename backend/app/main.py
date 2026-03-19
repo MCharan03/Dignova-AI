@@ -9,51 +9,55 @@ from sqlalchemy import select
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create the database tables asynchronously
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            
+        # Self-Healing: Terminate any hung active sessions on restart
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import update
+            from datetime import datetime
+            stmt = (
+                update(domain.Call)
+                .where(domain.Call.state.in_(["active", "evaluation"]))
+                .values(state="completed", end_time=datetime.utcnow())
+            )
+            await session.execute(stmt)
+            await session.commit()
         
-    # Self-Healing: Terminate any hung active sessions on restart
-    async with AsyncSessionLocal() as session:
-        from sqlalchemy import update
-        from datetime import datetime
-        stmt = (
-            update(domain.Call)
-            .where(domain.Call.state.in_(["active", "evaluation"]))
-            .values(state="completed", end_time=datetime.utcnow())
-        )
-        await session.execute(stmt)
-        await session.commit()
-    
-    # Seed default system settings
-    async with AsyncSessionLocal() as session:
-        default_settings = {
-            "ai_auto_triage": "true",
-            "confidence_threshold": "medium",
-            "prompt_override": "",
-            "logging_level": "verbose",
-            "mfa_enabled": "false",
-            "session_timeout": "1h",
-            "encryption_algorithm": "aes-256",
-            "audit_logging": "true",
-            "max_nodes": "50",
-            "dynamic_scaling": "false",
-            "allocation_strategy": "latency",
-            "primary_region": "Global",
-            "theme_preference": "sentient",
-            "holographic_effects": "true",
-            "animation_speed": "standard",
-            "font_override": "",
-            "webhook_url": "",
-            "webhook_retry": "3",
-            "sandbox_mode": "true",
-            "api_verbosity": "standard"
-        }
-        for key, value in default_settings.items():
-            result = await session.execute(select(domain.SystemSetting).where(domain.SystemSetting.key == key))
-            existing = result.scalars().first()
-            if not existing:
-                session.add(domain.SystemSetting(key=key, value=value))
-        await session.commit()
+        # Seed default system settings
+        async with AsyncSessionLocal() as session:
+            default_settings = {
+                "ai_auto_triage": "true",
+                "confidence_threshold": "medium",
+                "prompt_override": "",
+                "logging_level": "verbose",
+                "mfa_enabled": "false",
+                "session_timeout": "1h",
+                "encryption_algorithm": "aes-256",
+                "audit_logging": "true",
+                "max_nodes": "50",
+                "dynamic_scaling": "false",
+                "allocation_strategy": "latency",
+                "primary_region": "Global",
+                "theme_preference": "sentient",
+                "holographic_effects": "true",
+                "animation_speed": "standard",
+                "font_override": "",
+                "webhook_url": "",
+                "webhook_retry": "3",
+                "sandbox_mode": "true",
+                "api_verbosity": "standard"
+            }
+            for key, value in default_settings.items():
+                result = await session.execute(select(domain.SystemSetting).where(domain.SystemSetting.key == key))
+                existing = result.scalars().first()
+                if not existing:
+                    session.add(domain.SystemSetting(key=key, value=value))
+            await session.commit()
+    except Exception as e:
+        print(f"⚠️ Startup DB Error: {e}")
+        
     yield
 
 app = FastAPI(title="Dignova AI Backend API", lifespan=lifespan)

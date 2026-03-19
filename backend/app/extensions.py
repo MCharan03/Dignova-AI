@@ -14,9 +14,14 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{os.pa
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite:///"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
 
+# Professional Engine Config: check_same_thread is ONLY for SQLite
+engine_args = {}
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    engine_args["connect_args"] = {"check_same_thread": False}
+
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    **engine_args
 )
 
 AsyncSessionLocal = async_sessionmaker(
