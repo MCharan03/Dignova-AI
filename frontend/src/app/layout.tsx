@@ -27,11 +27,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-black`}>
-        {/* Global Sentient Canvas Layer - Now handles synchronized scrolling */}
-        <GlobalCanvas>
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-black overflow-x-hidden`}>
+        {/* Global Sentient Canvas Layer - Now background-only */}
+        <GlobalCanvas />
+        
+        {/* Main Content Layer - Stable and standard for Next.js Router */}
+        <main className="relative z-10 w-full">
           {children}
-        </GlobalCanvas>
+        </main>
       </body>
     </html>
   );

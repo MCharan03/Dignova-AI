@@ -2,24 +2,20 @@
 
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useScroll, MeshTransmissionMaterial } from '@react-three/drei';
+import { MeshTransmissionMaterial } from '@react-three/drei';
 import * as THREE from 'three';
+import { useGlobalScroll } from '@/hooks/useGlobalScroll';
 
 // ─── GLASS CORE ORB ───────────────────────────────────────────────────────────
 function GlassCoreOrb() {
   const orbRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Mesh>(null);
-  let scroll: any;
-  try {
-    scroll = useScroll();
-  } catch (e) {
-    scroll = { offset: 0 };
-  }
+  const { offset: scrollOffset } = useGlobalScroll();
 
   useFrame((state) => {
     if (!orbRef.current || !innerRef.current) return;
     const t = state.clock.elapsedTime;
-    const s = scroll.offset || 0;
+    const s = scrollOffset;
 
     // Mouse-based tilt
     const mx = state.pointer.x;
@@ -35,6 +31,7 @@ function GlassCoreOrb() {
     const pulse = 0.3 + Math.abs(Math.sin(t * 1.4)) * 0.15;
     innerRef.current.scale.setScalar(pulse);
   });
+// ... rest of the component
 
   return (
     <group ref={orbRef} position={[0, -1.2, -0.5]}>
@@ -87,12 +84,7 @@ function GlassCoreOrb() {
 // ─── GLASS ARCH RINGS (iertqa-inspired sweep arcs) ───────────────────────────
 function GlassArcs() {
   const groupRef = useRef<THREE.Group>(null);
-  let scroll: any;
-  try {
-    scroll = useScroll();
-  } catch (e) {
-    scroll = { offset: 0 };
-  }
+  const { offset: scrollOffset } = useGlobalScroll();
 
   const arcGeos = useMemo(() => {
     return [0, 1, 2].map(i => {
@@ -107,7 +99,7 @@ function GlassArcs() {
 
   useFrame((state) => {
     if (!groupRef.current) return;
-    const s = scroll.offset;
+    const s = scrollOffset;
     const t = state.clock.elapsedTime;
     // Rise upward with scroll
     groupRef.current.position.y = -1 + s * 4;
