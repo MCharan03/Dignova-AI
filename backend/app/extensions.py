@@ -20,7 +20,8 @@ if "sqlite" in SQLALCHEMY_DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
 elif "pooler.supabase.com" in SQLALCHEMY_DATABASE_URL:
     # REQUIRED for Supabase Transaction Pooler (pgbouncer)
-    engine_args["prepared_statement_cache_size"] = 0
+    # Must be inside connect_args for the asyncpg driver
+    engine_args["connect_args"] = {"prepared_statement_cache_size": 0}
 
 # Create Engine
 engine = create_async_engine(
