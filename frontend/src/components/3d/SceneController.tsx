@@ -37,12 +37,14 @@ export function SceneController() {
   });
 
   // Render components based on route
+  const isDashboard = pathname.startsWith('/admin') || pathname.startsWith('/doctor') || pathname.startsWith('/user');
+  const isAuthMisc = pathname === '/forgot-password' || pathname === '/reset-password' || pathname === '/verify';
+
   return (
     <>
       {pathname === '/' && <AntiGravityNodes />}
       {pathname === '/login' && <LoginScene isRegistering={false} isTransitioning={false} role="user" />}
-      {/* For Dashboard routes, we can show the monolith */}
-      {(pathname.startsWith('/admin') || pathname.startsWith('/doctor') || pathname.startsWith('/user')) && (
+      {(isDashboard || isAuthMisc) && (
         <BackgroundScene /> 
       )}
     </>
