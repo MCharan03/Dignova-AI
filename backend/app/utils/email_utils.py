@@ -181,29 +181,39 @@ def build_appointment_reminder_email(
 
 # ─── Email Sender ──────────────────────────────────────────────────────────── #
 
-def _send_async(message: MessageSchema):
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+async def send_email_async(msg: MessageSchema):
+    """Cleanly sends an email using the global FastMail instance."""
     try:
-        loop.run_until_complete(fm.send_message(message))
-        print(f"✅ Email sent to {message.recipients}")
+        await fm.send_message(msg)
+        print(f"✅ Email sent to {msg.recipients}")
     except Exception as e:
         print(f"❌ Email failed: {e}")
-    finally:
-        loop.close()
 
 
 def send_email(to: str, subject: str, body: str, html: str = None, category: str = "default"):
+    """
+    Synchronous wrapper that launches the async sender.
+    In FastAPI routes, it's better to use BackgroundTasks for this.
+    """
     msg = MessageSchema(
         subject=subject,
         recipients=[to],
         body=html or body,
         subtype=MessageType.html if html else MessageType.plain
     )
-    thr = Thread(target=_send_async, args=[msg])
-    thr.start()
-    return thr
+    
+    # Simple background task for low-volume mail
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(send_email_async(msg))
+        else:
+            asyncio.run(send_email_async(msg))
+    except Exception as e:
+        print(f"⚠️ Email dispatch error: {e}")
+    
+    return True
 
 
 def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):
