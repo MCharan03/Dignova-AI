@@ -79,7 +79,7 @@ class PreventiveCheckRequest(BaseModel):
 
 # ─── Helpers ───────────────────────────────────────────────────────────────── #
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://dignova-ai-1.onrender.com")
 
 def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Distance in meters between two GPS coordinates."""

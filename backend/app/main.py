@@ -53,11 +53,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Dignova AI Sentient API", lifespan=lifespan)
 
-# --- CORS Configuration (Production Ready) ---
+# --- CORS Configuration (Production Optimized) ---
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:3000"],
+    allow_origins=[FRONTEND_URL], # Removed localhost for security in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,8 +70,8 @@ from .auth.routes import router as auth_router
 from .ws.routes import router as ws_router
 from .stats.routes import router as stats_router
 
-# Core API Routes (Standardized /api prefix)
-app.include_router(hospital_router) # Already has /api
+# Core API Routes
+app.include_router(hospital_router) 
 app.include_router(bot_webhooks_router) 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(ws_router) 
@@ -90,7 +90,7 @@ def health_check():
         "status": "active", 
         "system": "Dignova Sentient Core",
         "version": "1.0.0-PROD",
-        "environment": os.getenv("NODE_ENV", "production")
+        "environment": "cloud"
     }
 
 if __name__ == "__main__":

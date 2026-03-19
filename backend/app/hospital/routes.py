@@ -427,7 +427,7 @@ async def finalize_prescription(
     await db.commit()
 
     # 4. Trigger n8n (The Nervous System)
-    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+    BACKEND_URL = os.getenv("BACKEND_URL", "https://dignova-ai-1.onrender.com")
     pdf_url = f"{BACKEND_URL}/static/prescriptions/{pdf_filename}"
 
     patient_data = {
