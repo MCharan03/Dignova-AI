@@ -141,17 +141,8 @@ function LoginContent() {
     };
 
     return (
-        <div className="relative w-full min-h-screen overflow-y-auto bg-black scrollbar-hide">
-            {/* 3D Premium WebGL Background */}
-            <div className="fixed inset-0 z-0">
-                <Canvas camera={{ position: [0, 0, 15], fov: 50 }}>
-                    <LoginScene 
-                        isRegistering={!isLogin} 
-                        isTransitioning={isTransitioning} 
-                        role={registerRole} 
-                    />
-                </Canvas>
-            </div>
+        <div className="relative w-full min-h-screen overflow-y-auto bg-transparent scrollbar-hide">
+            {/* 3D Scene now provided by GlobalCanvas */}
 
             {/* Doctor Triage Exam Overlay */}
             <AnimatePresence>

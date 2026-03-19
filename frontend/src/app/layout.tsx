@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "AI Emergency Call Simulation & Hospital Admin Platform",
 };
 
+import { GlobalCanvas } from "@/components/3d/GlobalCanvas";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,13 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {/* Sentient Morphing Background */}
-        <div className="blob-container">
-          <div className="blob blob-1"></div>
-          <div className="blob blob-2"></div>
-          <div className="blob blob-3"></div>
-        </div>
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-black`}>
+        {/* Global Sentient Canvas Layer */}
+        <GlobalCanvas />
         
         {children}
       </body>

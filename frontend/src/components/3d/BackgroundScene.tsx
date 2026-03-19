@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, MeshTransmissionMaterial, Environment, Stars, Sparkles } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { Float, MeshTransmissionMaterial, Stars, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 
-function DashboardMonolith() {
+export function DashboardMonolith() {
     const monolithRef = useRef<THREE.Mesh>(null!);
     const ringGroupRef = useRef<THREE.Group>(null!);
     const cameraRef = useRef(new THREE.Vector3());
@@ -47,15 +47,6 @@ function DashboardMonolith() {
             ringGroupRef.current.rotation.z -= delta * 0.02;
             ringGroupRef.current.rotation.x += delta * 0.01;
         }
-
-        // 3. Subtle Parallax Camera Tracking
-        const mouseX = (state.pointer.x * state.viewport.width) / 10;
-        const mouseY = (state.pointer.y * state.viewport.height) / 10;
-        
-        // Push the monolith further back and to the right in the dashboard so it doesn't block UI
-        cameraRef.current.set(-mouseX * 0.5 - 5, mouseY * 0.5, 20);
-        state.camera.position.lerp(cameraRef.current, delta * 2);
-        state.camera.lookAt(0, 0, 0);
     });
 
     // Geometry memorization
@@ -71,7 +62,6 @@ function DashboardMonolith() {
             {/* Ambient core glow */}
             <pointLight position={[0, 0, -2]} intensity={8} distance={30} color={glowColor} />
 
-            <Environment preset="city" />
             <Stars radius={100} depth={100} count={10000} factor={7} saturation={0} fade speed={2} />
             <Sparkles count={500} scale={120} size={6} speed={0.4} opacity={1} color="#fff" />
 
@@ -112,13 +102,7 @@ function DashboardMonolith() {
     );
 }
 
+// Keep the export for backward compatibility, but it will be unused soon
 export function BackgroundScene() {
-    return (
-        <div className="absolute inset-0 z-[-1] overflow-hidden pointer-events-none w-full h-full bg-[#020205]">
-            <Canvas camera={{ position: [0, 0, 20], fov: 45 }}>
-                <DashboardMonolith />
-            </Canvas>
-        </div>
-    );
+    return <DashboardMonolith />;
 }
-

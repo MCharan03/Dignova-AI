@@ -68,26 +68,9 @@ export default function LandingPage() {
   ];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#020207', overflow: 'hidden', position: 'relative' }}>
-      {/* Organic atmospheric blobs — iertqa-style */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%)', filter: 'blur(60px)', animation: 'blobMove1 18s ease-in-out infinite alternate' }} />
-        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)', filter: 'blur(80px)', animation: 'blobMove2 22s ease-in-out infinite alternate' }} />
-        <div style={{ position: 'absolute', top: '40%', left: '30%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 70%)', filter: 'blur(70px)', animation: 'blobMove3 26s ease-in-out infinite alternate' }} />
-      </div>
+    <div style={{ width: '100vw', height: '100vh', background: 'transparent', overflowY: 'auto', position: 'relative' }}>
+      <main style={{ position: 'relative', color: '#e2e8f0', zIndex: 10 }}>
 
-      {/* 3D Canvas fills everything via ScrollControls */}
-      <Canvas camera={{ position: [0, 0, 10], fov: 50 }} dpr={[1, 1.5]}
-        style={{ position: 'fixed', inset: 0, zIndex: 2 }}>
-        <ScrollControls pages={6} damping={0.15}>
-          {/* 3D world — reacts to scroll offset */}
-          <Scroll>
-            <AntiGravityNodes />
-          </Scroll>
-
-          {/* HTML layer — native scroll inside ScrollControls */}
-          <Scroll html style={{ width: '100%' }}>
-            <main style={{ position: 'relative', color: '#e2e8f0', zIndex: 10 }}>
 
               {/* ── NAV ────────────────────────────────────────────────── */}
               <nav style={{ position: 'fixed', top: 20, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', padding: '0 16px', pointerEvents: 'none' }}>
