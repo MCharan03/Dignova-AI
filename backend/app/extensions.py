@@ -15,9 +15,13 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite:///"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
 
 # Professional Engine Config: check_same_thread is ONLY for SQLite
+# statement_cache_size=0 is REQUIRED for Supabase Transaction Pooling
 engine_args = {}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
     engine_args["connect_args"] = {"check_same_thread": False}
+else:
+    # This is for PostgreSQL / Supabase Pooler
+    engine_args["statement_cache_size"] = 0
 
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
