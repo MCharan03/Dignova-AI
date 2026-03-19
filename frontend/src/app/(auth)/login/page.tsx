@@ -48,7 +48,7 @@ function LoginContent() {
     const [showExam, setShowExam] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false); // Triggers 3D Hyperspace
 
-    const apiBaseURL = "";
+    const apiBaseURL = ""; // Use relative paths to trigger next.config.mjs rewrites
 
     const triggerHyperspaceAndRoute = (targetUrl: string) => {
         setIsTransitioning(true); // Engages the 3D portal
