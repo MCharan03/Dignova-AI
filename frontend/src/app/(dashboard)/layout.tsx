@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BackgroundScene } from '@/components/3d/BackgroundScene';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Activity, ShieldCheck, LogOut, Menu, X, LayoutDashboard, History, Settings, Users, UserCircle, GraduationCap, Stethoscope, HeartPulse } from 'lucide-react';
 import './dashboard.css';
@@ -119,7 +118,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="fixed inset-0 pointer-events-none bg-[url('/noise.png')] opacity-5 z-50"></div>
                 <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,255,255,0.02)_50%)] bg-[length:100%_4px] scanlines"></div>
-                <BackgroundScene />
             </div>
 
             <div className="flex-container relative z-10">

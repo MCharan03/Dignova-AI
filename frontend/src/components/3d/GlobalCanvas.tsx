@@ -1,12 +1,20 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { SceneController } from './SceneController';
 import { ShaderBackground } from './ShaderBackground';
 import { Environment, ScrollControls } from '@react-three/drei';
 
 export function GlobalCanvas() {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
     <div className="fixed inset-0 z-[-1] pointer-events-none">
       <Canvas

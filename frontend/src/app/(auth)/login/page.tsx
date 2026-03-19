@@ -6,8 +6,6 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassInput } from '@/components/ui/GlassInput';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { User, Lock, ArrowRight, Shield, Mail, Edit3, AlertCircle, Phone, Calendar, HeartPulse, MapPin, Contact2, Stethoscope, Eye, EyeOff } from 'lucide-react';
-import { Canvas } from '@react-three/fiber';
-import { LoginScene } from '@/components/3d/LoginScene';
 import { DoctorTriageExam } from '@/components/auth/DoctorTriageExam';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import './login.css';
