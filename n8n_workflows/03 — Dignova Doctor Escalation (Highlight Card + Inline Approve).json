@@ -90,7 +90,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/n8n/webhook/doctor-approval",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/doctor-approval",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

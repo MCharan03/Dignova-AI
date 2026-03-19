@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/n8n/webhook/geofence-checkin",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/geofence-checkin",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

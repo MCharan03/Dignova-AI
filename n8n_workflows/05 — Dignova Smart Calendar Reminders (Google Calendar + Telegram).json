@@ -74,7 +74,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/appointments/by-google-event/={{$json.id}}",
+        "url": "https://dignova-ai.onrender.com/api/appointments/by-google-event/={{$json.id}}",
         "options": {}
       },
       "name": "Backend: Get Appointment Details",
@@ -135,7 +135,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/n8n/webhook/calendar-action",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/calendar-action",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

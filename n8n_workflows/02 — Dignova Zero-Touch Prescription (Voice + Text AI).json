@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/n8n/webhook/voice",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/voice",
         "sendBody": true,
         "contentType": "multipart-form-data",
         "bodyParameters": {
@@ -111,7 +111,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/n8n/webhook/triage",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/triage",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
