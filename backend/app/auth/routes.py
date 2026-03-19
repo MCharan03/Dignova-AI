@@ -158,14 +158,16 @@ async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: A
 
     # Send verification email
     try:
-        FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
         token = generate_verification_token(user.email)
         verify_url = f"{FRONTEND_URL}/verify?token={token}" 
-        send_email(
+        
+        # Using the branded Sentient HTML email
+        send_welcome_email(
             to=user.email,
-            subject="Verify Your Email — Dignova AI",
-            body=f"Hello {user.name},\n\nWelcome to Dignova AI! Please verify your email by clicking the link below:\n\n{verify_url}\n\nThis link expires in 1 hour.",
-            category='general'
+            user_name=user.name,
+            verify_url=verify_url,
+            role=user.role.value
         )
     except Exception as e:
         print(f"Error sending verification email: {e}")
@@ -205,14 +207,15 @@ async def resend_verification(email: EmailStr, db: AsyncSession = Depends(get_db
     user = await db.scalar(stmt)
     if user and not user.is_verified:
         try:
-            FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
             token = generate_verification_token(user.email)
             verify_url = f"{FRONTEND_URL}/verify?token={token}"
-            send_email(
+            
+            send_welcome_email(
                 to=user.email,
-                subject="Verify Your Email — Dignova AI",
-                body=f"Hello {user.name},\n\nPlease verify your email by clicking the link below:\n\n{verify_url}\n\nThis link expires in 1 hour.",
-                category='general'
+                user_name=user.name,
+                verify_url=verify_url,
+                role=user.role.value
             )
         except Exception as e:
             print(f"Error resending verification: {e}")
@@ -255,9 +258,11 @@ async def forgot_password(request: ForgotPasswordRequest, db: AsyncSession = Dep
     user = await db.scalar(stmt)
     if user:
         try:
-            FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
             token = generate_reset_token(user.email)
             reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+            
+            # Using basic send_email for password reset
             send_email(
                 to=user.email,
                 subject="Password Reset — Dignova AI",
