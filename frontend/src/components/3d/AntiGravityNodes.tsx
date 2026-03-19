@@ -9,12 +9,17 @@ import * as THREE from 'three';
 function GlassCoreOrb() {
   const orbRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Mesh>(null);
-  const scroll = useScroll();
+  let scroll: any;
+  try {
+    scroll = useScroll();
+  } catch (e) {
+    scroll = { offset: 0 };
+  }
 
   useFrame((state) => {
     if (!orbRef.current || !innerRef.current) return;
     const t = state.clock.elapsedTime;
-    const s = scroll.offset;
+    const s = scroll.offset || 0;
 
     // Mouse-based tilt
     const mx = state.pointer.x;
@@ -82,7 +87,12 @@ function GlassCoreOrb() {
 // ─── GLASS ARCH RINGS (iertqa-inspired sweep arcs) ───────────────────────────
 function GlassArcs() {
   const groupRef = useRef<THREE.Group>(null);
-  const scroll = useScroll();
+  let scroll: any;
+  try {
+    scroll = useScroll();
+  } catch (e) {
+    scroll = { offset: 0 };
+  }
 
   const arcGeos = useMemo(() => {
     return [0, 1, 2].map(i => {

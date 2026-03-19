@@ -33,18 +33,14 @@ export function LoginScene({ isRegistering, isTransitioning, role }: Props) {
       ringGroupRef.current.rotation.x += delta * 0.02;
     }
 
-    // 3. Smooth Camera Positioning based on Registering State vs Transition State
-    if (isTransitioning) {
-      const tCamera = state.camera as THREE.PerspectiveCamera;
-      
-      // THE PORTAL DIVE
-      // Rapidly zoom through the center of the monolith
-      tCamera.position.z = THREE.MathUtils.lerp(tCamera.position.z, -20, delta * 3);
-      tCamera.fov = THREE.MathUtils.lerp(tCamera.fov, 120, delta * 4);
-      tCamera.updateProjectionMatrix();
-    } else {
-      const tCamera = state.camera as THREE.PerspectiveCamera;
+    // 3. Smooth Camera Positioning
+    const tCamera = state.camera as THREE.PerspectiveCamera;
+    if (!tCamera) return;
 
+    if (isTransitioning) {
+      // THE PORTAL DIVE
+      tCamera.position.z = THREE.MathUtils.lerp(tCamera.position.z, -20, delta * 3);
+    } else {
       // Normal state transitions (Login vs Register)
       const targetX = isRegistering ? -4 : 4;
       const targetZ = isRegistering ? 12 : 14;
@@ -55,8 +51,6 @@ export function LoginScene({ isRegistering, isTransitioning, role }: Props) {
       
       cameraRef.current.set(targetX + mouseX * 0.2, mouseY * 0.2, targetZ);
       tCamera.position.lerp(cameraRef.current, delta * 2);
-      tCamera.fov = THREE.MathUtils.lerp(tCamera.fov, 50, delta * 2);
-      tCamera.updateProjectionMatrix();
 
       // Look roughly at center
       tCamera.lookAt(0, 0, 0);
