@@ -4,20 +4,18 @@ import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { SceneController } from './SceneController';
 import { ShaderBackground } from './ShaderBackground';
-import { Environment } from '@react-three/drei';
+import { Environment, ScrollControls } from '@react-three/drei';
 
 export function GlobalCanvas() {
   return (
     <div className="fixed inset-0 z-[-1] pointer-events-none">
       <Canvas
         camera={{ position: [0, 0, 15], fov: 50 }}
-        dpr={[1, 1.5]} // Performance: limit DPR on high-res screens
+        dpr={[1, 1.5]}
         gl={{ 
           antialias: true, 
           alpha: false, 
-          powerPreference: "high-performance",
-          stencil: false,
-          depth: true
+          powerPreference: "high-performance"
         }}
       >
         <color attach="background" args={['#020205']} />
@@ -25,7 +23,10 @@ export function GlobalCanvas() {
         <Suspense fallback={null}>
           <ShaderBackground />
           <Environment preset="city" />
-          <SceneController />
+          {/* ScrollControls with high damping for that Apple-smooth feel */}
+          <ScrollControls pages={6} damping={0.2} infinite={false}>
+            <SceneController />
+          </ScrollControls>
         </Suspense>
       </Canvas>
     </div>
