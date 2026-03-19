@@ -1,10 +1,7 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Canvas } from '@react-three/fiber';
-import { ScrollControls, Scroll } from '@react-three/drei';
 import { motion, useInView } from 'framer-motion';
-import { AntiGravityNodes } from '../components/3d/AntiGravityNodes';
 import { TiltCard } from '../components/ui/TiltCard';
 import {
   HeartPulse, Cpu, ExternalLink, Brain, Lock,
@@ -32,8 +29,6 @@ function AnimatedValue({ target, suffix = '' }: { target: number; suffix?: strin
 
   return <div ref={ref} className="tabular-nums">{val.toLocaleString()}{suffix}</div>;
 }
-
-// Removed TypewriterLog due to intermittent mounting crashes in strict mode and changing aesthetic goals.
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
@@ -68,243 +63,298 @@ export default function LandingPage() {
   ];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: 'transparent', overflowY: 'auto', position: 'relative' }}>
-      <main style={{ position: 'relative', color: '#e2e8f0', zIndex: 10 }}>
+    <div className="w-screen min-h-screen bg-transparent relative overflow-x-hidden scroll-smooth">
+      <main className="relative text-slate-200 z-10">
 
+        {/* ── NAV ────────────────────────────────────────────────── */}
+        <nav className="fixed top-5 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8 }}
+            className="flex items-center justify-between gap-8 px-6 py-3 rounded-full border border-white/10 bg-black/50 backdrop-blur-xl shadow-2xl w-full max-w-[900px] pointer-events-auto"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center">
+                <HeartPulse color="white" size={14} className="opacity-80" />
+              </div>
+              <span className="font-normal text-lg tracking-wide text-white">
+                Dignova <span className="text-white/40 font-mono">AI</span>
+              </span>
+            </div>
+            <div className="hidden md:flex gap-7 text-[11px] font-semibold text-white/40 uppercase tracking-widest">
+              {['Features', 'Telemetry', 'System'].map(item => (
+                <span key={item} className="cursor-pointer hover:text-white transition-colors">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <button 
+              onClick={() => router.push('/login')}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 text-white font-semibold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all"
+            >
+              Terminal <ExternalLink size={12} />
+            </button>
+          </motion.div>
+        </nav>
 
-              {/* ── NAV ────────────────────────────────────────────────── */}
-              <nav style={{ position: 'fixed', top: 20, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', padding: '0 16px', pointerEvents: 'none' }}>
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32, padding: '12px 24px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.09)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', width: '100%', maxWidth: 900, pointerEvents: 'auto' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <HeartPulse color="white" size={14} style={{ opacity: 0.8 }} />
-                    </div>
-                    <span style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.04em', color: 'white' }}>
-                      Dignova <span style={{ color: 'rgba(255,255,255,0.4)' }}>AI</span>
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 28, fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    {['Features', 'Telemetry', 'System'].map(item => (
-                      <span key={item} style={{ cursor: 'pointer', transition: 'color 0.3s ease' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'white')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}>
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                  <button onClick={() => router.push('/login')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 9999, background: 'rgba(255,255,255,0.05)', color: 'white', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.3s ease' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'black'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'white'; }}>
-                    Terminal <ExternalLink size={12} />
-                  </button>
-                </motion.div>
-              </nav>
+        {/* ── SECTION 1: HERO ─────────────────────────────────────── */}
+        <section className="min-h-screen flex flex-col justify-center items-center text-center px-4 pt-28 pb-20 relative">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8 }}
+            className="inline-flex items-center gap-3 px-5 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-10"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
+            <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.2em]">Diagnostic Matrix Online</span>
+          </motion.div>
 
-              {/* ── SECTION 1: HERO ─────────────────────────────────────── */}
-              <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '112px 16px 80px', position: 'relative' }}>
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '8px 20px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)', marginBottom: 40 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.8)' }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Diagnostic Matrix Online</span>
-                </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 1, delay: 0.2 }}
+            className="text-[clamp(3rem,10vw,7.5rem)] font-light tracking-tighter leading-none mb-6 uppercase"
+          >
+            <span className="text-white block opacity-90">AUTONOMOUS</span>
+            <span className="text-white/30 block">TRIAGE CORE</span>
+          </motion.h1>
 
-                <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.2 }}
-                  style={{ fontSize: 'clamp(3rem, 10vw, 7.5rem)', fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 24, textTransform: 'uppercase' }}>
-                  <span style={{ color: 'white', display: 'block', opacity: 0.9 }}>AUTONOMOUS</span>
-                  <span style={{ color: 'rgba(255,255,255,0.4)', display: 'block' }}>
-                    TRIAGE CORE
-                  </span>
-                </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={{ duration: 1, delay: 0.5 }}
+            className="max-w-[520px] text-lg text-slate-400 leading-relaxed mb-10"
+          >
+            A sentient operating layer for emergency medicine. Biometric telemetry meets agentic workflow intelligence.
+          </motion.p>
 
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}
-                  style={{ maxWidth: 520, fontSize: 18, color: 'rgba(148,163,184,1)', lineHeight: 1.7, marginBottom: 40 }}>
-                  A sentient operating layer for emergency medicine. Biometric telemetry meets agentic workflow intelligence.
-                </motion.p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, delay: 0.7 }}
+            className="flex gap-4 flex-wrap justify-center"
+          >
+            <button 
+              onClick={() => router.push('/login')}
+              className="px-8 py-4 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-bold text-sm uppercase tracking-widest shadow-[0_0_40px_rgba(6,182,212,0.35)] hover:scale-105 transition-transform"
+            >
+              Enter System <Lock size={14} className="inline ml-1.5 mb-0.5" />
+            </button>
+            <button 
+              onClick={() => router.push('/login?role=admin')}
+              className="px-8 py-4 rounded-full bg-transparent text-white font-bold text-sm border border-white/15 uppercase tracking-widest hover:bg-white/5 transition-colors"
+            >
+              Admin Override
+            </button>
+          </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.7 }}
-                  style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <button onClick={() => router.push('/login')}
-                    style={{ padding: '14px 32px', borderRadius: 9999, background: 'linear-gradient(135deg,#06b6d4,#3b82f6)', color: 'white', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.1em', boxShadow: '0 0 40px rgba(6,182,212,0.35)', transition: 'all 0.3s' }}>
-                    Enter System <Lock size={14} style={{ display: 'inline', marginLeft: 6 }} />
-                  </button>
-                  <button onClick={() => router.push('/login?role=admin')}
-                    style={{ padding: '14px 28px', borderRadius: 9999, background: 'transparent', color: 'white', fontWeight: 700, fontSize: 14, border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.1em', transition: 'all 0.3s' }}>
-                    Admin Override
-                  </button>
-                </motion.div>
+          {/* Scroll cue */}
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={{ delay: 1.5 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          >
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest">Scroll to explore</span>
+            <ArrowRight size={14} className="text-slate-500/60 rotate-90 animate-bounce" />
+          </motion.div>
+        </section>
 
-                {/* Scroll cue */}
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
-                  style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, color: 'rgba(100,116,139,1)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Scroll to explore</span>
-                  <ArrowRight size={14} color="rgba(100,116,139,0.6)" style={{ transform: 'rotate(90deg)', animation: 'bounce 2s infinite' }} />
-                </motion.div>
-              </section>
+        {/* ── SECTION 2: FEATURES ─────────────────────────────────── */}
+        <section className="min-h-screen flex flex-col justify-center px-6 md:px-12 max-w-[1100px] mx-auto w-full py-20">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            whileInView={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.7 }} 
+            viewport={{ once: true, margin: '-80px' }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-[11px] font-bold uppercase tracking-widest mb-4">
+              <Zap size={10} /> Sentient OS Capabilities
+            </div>
+            <h2 className="text-[clamp(2.5rem,6vw,4rem)] font-normal tracking-tight text-white leading-[1.1] uppercase">
+              Not an app.<br />
+              <span className="text-white/30">A foundation layer.</span>
+            </h2>
+          </motion.div>
 
-              {/* ── SECTION 2: FEATURES ─────────────────────────────────── */}
-              <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 48px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-                <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} viewport={{ once: true, margin: '-80px' }}
-                  style={{ textAlign: 'center', marginBottom: 60 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 9999, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.05)', color: '#06b6d4', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 16 }}>
-                    <Zap size={10} /> Sentient OS Capabilities
-                  </div>
-                  <h2 style={{ fontSize: 'clamp(2.5rem,6vw,4rem)', fontWeight: 400, letterSpacing: '-0.02em', color: 'white', lineHeight: 1.1, textTransform: 'uppercase' }}>
-                    Not an app.<br />
-                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>A foundation layer.</span>
-                  </h2>
-                </motion.div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {features.map((feat, i) => {
-                    const c = colors[feat.color];
-                    return (
-                      <motion.div key={i} initial={{ opacity: 0, x: i % 2 === 0 ? -60 : 60 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: i * 0.1 }} viewport={{ once: true, margin: '-40px' }}>
-                        <TiltCard intensity={8}>
-                          <div style={{ borderRadius: 20, border: `1px solid ${c.border}`, background: 'rgba(5,5,20,0.7)', backdropFilter: 'blur(20px)', boxShadow: c.glow, padding: '28px 32px', display: 'flex', alignItems: 'center', gap: 24 }}>
-                            <div style={{ width: 60, height: 60, borderRadius: 16, background: c.bg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <feat.icon color={c.text} size={28} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <h3 style={{ fontSize: 22, fontWeight: 900, color: 'white', marginBottom: 8, letterSpacing: '-0.03em', whiteSpace: 'pre-line' }}>{feat.title}</h3>
-                              <p style={{ fontSize: 14, color: 'rgba(148,163,184,0.9)', lineHeight: 1.7 }}>{feat.desc}</p>
-                            </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <div style={{ fontSize: 28, fontWeight: 900, color: c.text, fontFamily: 'monospace' }}>{feat.stat}</div>
-                              <div style={{ fontSize: 11, color: 'rgba(100,116,139,1)', marginTop: 2 }}>{feat.statLabel}</div>
-                            </div>
-                          </div>
-                        </TiltCard>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* ── SECTION 3: LIVE TELEMETRY ────────────────────────────── */}
-              <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 48px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-                <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} viewport={{ once: true, margin: '-80px' }}
-                  style={{ textAlign: 'center', marginBottom: 50 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 9999, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.05)', color: '#06b6d4', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 16 }}>
-                    <Radio size={10} style={{ animation: 'pulse 2s infinite' }} /> Live Global Telemetry
-                  </div>
-                  <h2 style={{ fontSize: 'clamp(2.5rem,6vw,4rem)', fontWeight: 400, letterSpacing: '-0.02em', color: 'white', lineHeight: 1.1, textTransform: 'uppercase' }}>
-                    Real-time<br />
-                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Intelligence Feed</span>
-                  </h2>
-                </motion.div>
-
-                {/* Ticker */}
-                <div style={{ overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '10px 0', marginBottom: 40 }}>
-                  <div className="ticker-track" style={{ display: 'flex', gap: 64, whiteSpace: 'nowrap', width: 'max-content' }}>
-                    {Array(3).fill(['CORE_LATENCY: 12ms','NODE_COUNT: 2,048','AI_ACCURACY: 99.9%','UPTIME: 99.97%','TRIAGE_QUEUE: 0','EHR_SYNC: ACTIVE','MEMORY_USAGE: 42%','PREDICTIONS: 18,204']).flat().map((item, i) => (
-                      <span key={i} style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.2)' }}>/</span> {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stat cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-                  {telemetry.map((stat, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, y: 40, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6, delay: i * 0.1, type: 'spring', stiffness: 60 }} viewport={{ once: true, margin: '-40px' }}>
-                      <TiltCard intensity={12}>
-                        <div style={{ borderRadius: 20, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)', padding: '32px 20px', textAlign: 'center' }}>
-                          <stat.icon color="rgba(255,255,255,0.6)" size={20} style={{ margin: '0 auto 20px' }} />
-                          <div style={{ fontSize: 36, fontWeight: 400, color: 'white', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>
-                            <AnimatedValue target={stat.value} suffix={stat.suffix} />
-                          </div>
-                          <div style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '8px 0 4px' }}>{stat.label}</div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{stat.sub}</div>
-                        </div>
-                      </TiltCard>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Health monitor */}
-                <div style={{ borderRadius: 20, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)', padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
-                  <div className="scan-sweep" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(100,116,139,0.7)' }}>SYSTEM_HEALTH_MONITOR</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#10b981' }}>
-                      <CheckCircle2 size={11} /> All systems nominal
-                    </span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-                    {[{ label: 'Neural Core', pct: 78 }, { label: 'Sync Bus', pct: 91 }, { label: 'Triage AI', pct: 64 }].map((bar, i) => (
-                      <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: 'monospace', color: 'rgba(100,116,139,0.8)', marginBottom: 6 }}>
-                          <span>{bar.label}</span><span>{bar.pct}%</span>
-                        </div>
-                        <div style={{ height: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 9999, overflow: 'hidden' }}>
-                          <motion.div initial={{ width: 0 }} whileInView={{ width: `${bar.pct}%` }} transition={{ duration: 1.2, delay: i * 0.2 }} viewport={{ once: true }}
-                            style={{ height: '100%', background: 'rgba(255,255,255,0.6)', borderRadius: 9999 }} />
-                        </div>
+          <div className="flex flex-col gap-4">
+            {features.map((feat, i) => {
+              const c = colors[feat.color];
+              return (
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, x: i % 2 === 0 ? -60 : 60 }} 
+                  whileInView={{ opacity: 1, x: 0 }} 
+                  transition={{ duration: 0.8, delay: i * 0.1 }} 
+                  viewport={{ once: true, margin: '-40px' }}
+                >
+                  <TiltCard intensity={8}>
+                    <div className="rounded-[20px] border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl p-7 md:p-8 flex items-center gap-6">
+                      <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <feat.icon color={c.text} size={28} />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              {/* ── SECTION 4: TERMINAL CTA ──────────────────────────────── */}
-              <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '80px 16px' }}>
-                <motion.div initial={{ opacity: 0, y: 80 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, type: 'spring', bounce: 0.25 }} viewport={{ once: true }}
-                  style={{ width: '100%', maxWidth: 680 }}>
-                  <TiltCard intensity={5}>
-                    <div style={{ borderRadius: 28, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(24px)', boxShadow: '0 0 120px rgba(6,182,212,0.08)', overflow: 'hidden' }}>
-                      {/* Terminal bar */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
-                        {['#ef4444','#f59e0b','#10b981'].map((c, i) => <div key={i} style={{ width: 11, height: 11, borderRadius: '50%', background: c, opacity: 0.7 }} />)}
-                        <span style={{ marginLeft: 10, fontSize: 11, fontFamily: 'monospace', color: 'rgba(100,116,139,0.6)' }}>dignova-ai — system_boot.sh</span>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight whitespace-pre-line">{feat.title}</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">{feat.desc}</p>
                       </div>
-
-                      <div style={{ padding: '48px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 32 }}>
-                        <div>
-                          <Brain size={48} color="#a855f7" style={{ margin: '0 auto 20px', filter: 'drop-shadow(0 0 20px rgba(168,85,247,0.5))' }} />
-                          <h3 style={{ fontSize: 'clamp(2rem,5vw,3rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.04em', marginBottom: 12 }}>Initialize Triage System</h3>
-                          <p style={{ color: 'rgba(148,163,184,0.8)', fontSize: 16, lineHeight: 1.7, maxWidth: 440 }}>
-                            The core is online and awaiting authorization. Connect securely to access the full sentient layer.
-                          </p>
-                        </div>
-
-                        <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', width: '100%', textAlign: 'left', fontFamily: 'monospace', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
-                          {bootLines.map((line, i) => (
-                            <div key={i} style={{ display: 'flex', gap: 12, opacity: i === 0 ? 1 : 0.7 }}>
-                              <span style={{ color: 'rgba(255,255,255,0.3)' }}>{`0${i + 1}`}</span>
-                              <span>{line}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 340 }}>
-                          <button onClick={() => router.push('/login')}
-                            style={{ padding: '16px 32px', borderRadius: 9999, background: 'white', color: 'black', fontWeight: 500, fontSize: 12, border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.15em', transition: 'opacity 0.2s' }}>
-                            Secure Login <Lock size={12} style={{ display: 'inline', marginLeft: 6, opacity: 0.6 }} />
-                          </button>
-                          <button onClick={() => router.push('/login?role=admin')}
-                            style={{ padding: '15px 28px', borderRadius: 9999, background: 'transparent', color: 'rgba(255,255,255,0.6)', fontWeight: 500, fontSize: 11, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                            Admin Override
-                          </button>
-                        </div>
+                      <div className="text-right shrink-0 hidden sm:block">
+                        <div className="text-2xl font-black text-white/90 font-mono tracking-tighter">{feat.stat}</div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">{feat.statLabel}</div>
                       </div>
                     </div>
                   </TiltCard>
                 </motion.div>
-              </section>
+              );
+            })}
+          </div>
+        </section>
 
-              {/* Footer */}
-              <div style={{ textAlign: 'center', padding: '24px', fontSize: 10, fontFamily: 'monospace', color: 'rgba(100,116,139,0.4)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                DIGNOVA AI LAYER v4.2.0 — © 2026 — ZERO-GRAVITY TRIAGE MATRIX
+        {/* ── SECTION 3: LIVE TELEMETRY ────────────────────────────── */}
+        <section className="min-h-screen flex flex-col justify-center px-6 md:px-12 max-w-[1100px] mx-auto w-full py-20">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            whileInView={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.7 }} 
+            viewport={{ once: true, margin: '-80px' }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-[11px] font-bold uppercase tracking-widest mb-4">
+              <Radio size={10} className="animate-pulse" /> Live Global Telemetry
+            </div>
+            <h2 className="text-[clamp(2.5rem,6vw,4rem)] font-normal tracking-tight text-white leading-[1.1] uppercase">
+              Real-time<br />
+              <span className="text-white/30">Intelligence Feed</span>
+            </h2>
+          </motion.div>
+
+          {/* Ticker */}
+          <div className="overflow-hidden border-y border-white/5 py-2.5 mb-10">
+            <div className="ticker-track flex gap-16 whitespace-nowrap w-max">
+              {Array(3).fill(['CORE_LATENCY: 12ms','NODE_COUNT: 2,048','AI_ACCURACY: 99.9%','UPTIME: 99.97%','TRIAGE_QUEUE: 0','EHR_SYNC: ACTIVE','MEMORY_USAGE: 42%','PREDICTIONS: 18,204']).flat().map((item, i) => (
+                <span key={i} className="text-[10px] font-mono text-white/40 tracking-widest uppercase">
+                  <span className="text-white/10 mr-2">/</span> {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {telemetry.map((stat, i) => (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 40, scale: 0.9 }} 
+                whileInView={{ opacity: 1, y: 0, scale: 1 }} 
+                transition={{ duration: 0.6, delay: i * 0.1, type: 'spring', stiffness: 60 }} 
+                viewport={{ once: true, margin: '-40px' }}
+              >
+                <TiltCard intensity={12}>
+                  <div className="rounded-[20px] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-8 text-center">
+                    <stat.icon className="text-white/40 mb-5 mx-auto" size={20} />
+                    <div className="text-3xl font-black text-white font-mono tracking-tighter">
+                      <AnimatedValue target={stat.value} suffix={stat.suffix} />
+                    </div>
+                    <div className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] mt-3 mb-1">{stat.label}</div>
+                    <div className="text-[9px] text-white/20 uppercase tracking-widest">{stat.sub}</div>
+                  </div>
+                </TiltCard>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Health monitor */}
+          <div className="rounded-[20px] border border-white/5 bg-white/[0.02] backdrop-blur-xl p-7 md:px-8 relative overflow-hidden">
+            <div className="scan-sweep absolute inset-0 pointer-events-none" />
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-[9px] font-mono text-white/30 tracking-widest uppercase">SYSTEM_HEALTH_MONITOR</span>
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                <CheckCircle2 size={11} /> All systems nominal
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[{ label: 'Neural Core', pct: 78 }, { label: 'Sync Bus', pct: 91 }, { label: 'Triage AI', pct: 64 }].map((bar, i) => (
+                <div key={i}>
+                  <div className="flex justify-between text-[9px] font-mono text-white/40 uppercase tracking-widest mb-2">
+                    <span>{bar.label}</span><span>{bar.pct}%</span>
+                  </div>
+                  <div className="h-0.5 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }} 
+                      whileInView={{ width: `${bar.pct}%` }} 
+                      transition={{ duration: 1.2, delay: i * 0.2 }} 
+                      viewport={{ once: true }}
+                      className="h-full bg-white/40 rounded-full" 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── SECTION 4: TERMINAL CTA ──────────────────────────────── */}
+        <section className="min-h-screen flex flex-col justify-center items-center px-4 py-20">
+          <motion.div 
+            initial={{ opacity: 0, y: 80 }} 
+            whileInView={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.9, type: 'spring', bounce: 0.25 }} 
+            viewport={{ once: true }}
+            className="w-full max-w-[680px]"
+          >
+            <TiltCard intensity={5}>
+              <div className="rounded-[28px] border border-cyan-500/20 bg-black/60 backdrop-blur-3xl shadow-2xl overflow-hidden">
+                {/* Terminal bar */}
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 bg-white/[0.02]">
+                  {['#ef4444','#f59e0b','#10b981'].map((c, i) => <div key={i} className="w-2.5 h-2.5 rounded-full opacity-70" style={{ background: c }} />)}
+                  <span className="ml-3 text-[10px] font-mono text-slate-500 tracking-widest">dignova-ai — system_boot.sh</span>
+                </div>
+
+                <div className="px-10 py-12 flex flex-col items-center text-center gap-8">
+                  <div>
+                    <Brain size={48} className="text-purple-500 mx-auto mb-5 drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
+                    <h3 className="text-[clamp(2rem,5vw,3rem)] font-black text-white tracking-tighter mb-3 uppercase">Initialize Triage System</h3>
+                    <p className="text-slate-400 text-base leading-relaxed max-w-[440px]">
+                      The core is online and awaiting authorization. Connect securely to access the full sentient layer.
+                    </p>
+                  </div>
+
+                  <div className="p-6 bg-white/[0.02] rounded-xl border border-white/5 w-full text-left font-mono text-[11px] text-white/50 leading-relaxed">
+                    {bootLines.map((line, i) => (
+                      <div key={i} className={`flex gap-3 ${i === 0 ? 'text-white/80' : 'opacity-70'}`}>
+                        <span className="text-white/20">{`0${i + 1}`}</span>
+                        <span>{line}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col gap-4 w-full max-w-[340px]">
+                    <button 
+                      onClick={() => router.push('/login')}
+                      className="py-4 rounded-full bg-white text-black font-bold text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-colors"
+                    >
+                      Secure Login <Lock size={12} className="inline ml-1 opacity-40 mb-0.5" />
+                    </button>
+                    <button 
+                      onClick={() => router.push('/login?role=admin')}
+                      className="py-4 rounded-full bg-transparent text-white/60 font-bold text-xs border border-white/10 uppercase tracking-[0.2em] hover:bg-white/5 transition-colors"
+                    >
+                      Admin Override
+                    </button>
+                  </div>
+                </div>
               </div>
+            </TiltCard>
+          </motion.div>
+        </section>
 
-            </main>
-          </Scroll>
-        </ScrollControls>
-      </Canvas>
+        {/* Footer */}
+        <div className="text-center py-8 text-[9px] font-mono text-slate-600 border-t border-white/5 uppercase tracking-[0.3em]">
+          DIGNOVA AI LAYER v4.2.0 — © 2026 — ZERO-GRAVITY TRIAGE MATRIX
+        </div>
+
+      </main>
     </div>
   );
 }
-
