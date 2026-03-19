@@ -28,10 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} bg-black`}>
-        {/* Global Sentient Canvas Layer */}
-        <GlobalCanvas />
-        
-        {children}
+        {/* Global Sentient Canvas Layer - Now handles synchronized scrolling */}
+        <GlobalCanvas>
+          {children}
+        </GlobalCanvas>
       </body>
     </html>
   );

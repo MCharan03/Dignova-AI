@@ -63,8 +63,8 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="w-screen min-h-screen bg-transparent relative overflow-x-hidden scroll-smooth">
-      <main className="relative text-slate-200 z-10">
+    <>
+      <main className="relative text-slate-200 z-10 w-full">
 
         {/* ── NAV ────────────────────────────────────────────────── */}
         <nav className="fixed top-5 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
