@@ -66,6 +66,7 @@ app.add_middleware(
 # --- Routers ---
 from .hospital.routes import router as hospital_router
 from .hospital.bot_webhooks import router as bot_webhooks_router
+from .hospital.training_routes import router as training_router
 from .auth.routes import router as auth_router
 from .ws.routes import router as ws_router
 from .stats.routes import router as stats_router
@@ -73,6 +74,7 @@ from .stats.routes import router as stats_router
 # Core API Routes
 app.include_router(hospital_router) 
 app.include_router(bot_webhooks_router) 
+app.include_router(training_router, prefix="/api/hospital/training", tags=["Intern Training"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(ws_router) 
 app.include_router(stats_router) 

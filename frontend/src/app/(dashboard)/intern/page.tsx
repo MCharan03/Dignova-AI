@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GraduationCap, Phone, History, Zap, Award, Target, Brain, ArrowRight, ShieldAlert } from 'lucide-react';
+import { SimulationSandbox } from '@/components/dashboard/SimulationSandbox';
 
 interface Report {
     id: number;
@@ -17,34 +18,46 @@ interface Report {
 export default function InternDashboard() {
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSandboxOpen, setIsSandboxOpen] = useState(false);
+
+    const fetchReports = async () => {
+        const token = localStorage.getItem('access_token');
+        try {
+            // Updated endpoint to use the new hospital training sessions
+            const response = await fetch('/api/hospital/training/sessions', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setReports(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch reports");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchReports = async () => {
-            const token = localStorage.getItem('access_token');
-            try {
-                // To be implemented: backend endpoint for training reports
-                const response = await fetch('/api/calls/training-reports', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setReports(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch reports");
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchReports();
     }, []);
 
     const averageScore = reports.length > 0 
-        ? Math.round(reports.reduce((acc, curr) => acc + curr.score, 0) / reports.length) 
+        ? Math.round(reports.reduce((acc, curr) => acc + (curr.score || 0), 0) / reports.length) 
         : 0;
 
     return (
         <div className="flex flex-col gap-8 max-w-[1400px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            {isSandboxOpen && (
+                <SimulationSandbox 
+                    onClose={() => setIsSandboxOpen(false)} 
+                    onComplete={() => {
+                        setIsSandboxOpen(false);
+                        fetchReports();
+                    }}
+                />
+            )}
+            
             {/* Header Section */}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
@@ -61,7 +74,10 @@ export default function InternDashboard() {
                     </h2>
                 </div>
                 
-                <GlassButton className="!rounded-xl border-accent-magenta/20 !px-6 !py-4 bg-accent-magenta/5 hover:bg-accent-magenta/10 group transition-all">
+                <GlassButton 
+                    onClick={() => setIsSandboxOpen(true)}
+                    className="!rounded-xl border-accent-magenta/20 !px-6 !py-4 bg-accent-magenta/5 hover:bg-accent-magenta/10 group transition-all"
+                >
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-accent-magenta/20 rounded-lg group-hover:scale-110 transition-transform">
                             <Phone size={18} className="text-accent-magenta" />

@@ -29,27 +29,39 @@ async def internal_call_ws_handler(websocket: WebSocket):
     await websocket.accept()
     print("In-app Call WebSocket connected.")
 
-    call_db_id = None
+    db_id = None
     persona = "TRIAGE" # Default
+    sim_patient = None
 
-    # 1. Wait for 'init' event from App to get persona/call_id
+    # 1. Wait for 'init' event from App to get persona/id
     try:
         while True:
             message = await websocket.receive_text()
             data = json.loads(message)
             if data['event'] == 'init':
                 persona = data.get('persona', 'TRIAGE')
-                call_db_id = data.get('call_id')
-                print(f"Internal Stream started: Persona: {persona}, Call ID: {call_db_id}")
+                db_id = data.get('call_id') or data.get('session_id')
+                
+                if persona == "TRAINING_PATIENT" and db_id:
+                    async with AsyncSessionLocal() as session:
+                        # Fetch TrainingSession to find SimPatient
+                        stmt = select(domain.TrainingSession).where(domain.TrainingSession.id == int(db_id))
+                        ts = await session.scalar(stmt)
+                        if ts:
+                            # Fetch SimPatient details
+                            stmt_sim = select(domain.SimulatedPatient).where(domain.SimulatedPatient.id == ts.sim_patient_id)
+                            sim_patient = await session.scalar(stmt_sim)
+
+                print(f"Internal Stream started: Persona: {persona}, ID: {db_id}")
                 break
     except Exception as e:
         print(f"Error waiting for init event: {e}")
         await websocket.close()
         return
 
-    # 2. Configure Gemini with the correct persona
-    orchestrator = SentientOrchestrator(persona=persona)
-    system_instruction = orchestrator.PERSONA_PROMPTS.get(persona)
+    # 2. Configure Gemini with the correct persona and dynamic patient data
+    orchestrator = SentientOrchestrator(persona=persona, sim_patient=sim_patient)
+    system_instruction = orchestrator.system_instruction
     
     config = {
         "system_instruction": system_instruction,
@@ -65,11 +77,18 @@ async def internal_call_ws_handler(websocket: WebSocket):
             text_to_save = "".join(transcription_buffer)
             transcription_buffer.clear()
             async with AsyncSessionLocal() as session:
-                stmt = select(domain.Call).where(domain.Call.call_id == int(cid))
-                db_call = await session.scalar(stmt)
-                if db_call:
-                    db_call.transcript = (db_call.transcript or "") + text_to_save
-                    await session.commit()
+                if persona == "TRAINING_PATIENT":
+                    stmt = select(domain.TrainingSession).where(domain.TrainingSession.id == int(cid))
+                    db_session = await session.scalar(stmt)
+                    if db_session:
+                        db_session.transcript = (db_session.transcript or "") + text_to_save
+                        await session.commit()
+                else:
+                    stmt = select(domain.Call).where(domain.Call.call_id == int(cid))
+                    db_call = await session.scalar(stmt)
+                    if db_call:
+                        db_call.transcript = (db_call.transcript or "") + text_to_save
+                        await session.commit()
         except Exception as e:
             print(f"DB Transcript Flush Error: {e}")
 
@@ -101,11 +120,11 @@ async def internal_call_ws_handler(websocket: WebSocket):
                             })
                         elif data['event'] == 'stop':
                             print("Internal Stream stopped.")
-                            await flush_transcript(call_db_id)
+                            await flush_transcript(db_id)
                             break
                 except Exception as e:
                     print(f"App to Gemini Error: {e}")
-                    await flush_transcript(call_db_id)
+                    await flush_transcript(db_id)
 
             async def gemini_to_app():
                 try:
@@ -115,7 +134,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                             for part in parts:
                                 if part.text:
                                     print(f"Gemini [{persona}]: {part.text}")
-                                    await update_transcript(call_db_id, f"ASSISTANT: {part.text}\n")
+                                    await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
                                 
                                 if part.inline_data:
                                     pcm_chunk = part.inline_data.data

@@ -23,8 +23,19 @@ class SentientOrchestrator:
     It can switch personas: Triage Assistant (for Users) or AI Patient (for Interns).
     """
     
-    PERSONA_PROMPTS = {
-        "TRIAGE": """You are Dignova, an advanced AI emergency medical triage assistant.
+    def __init__(self, persona: str = "TRIAGE", sim_patient: Any = None):
+        self.persona = persona
+        self.sim_patient = sim_patient
+        self.model_id = "gemini-2.0-flash"
+        
+        if persona == "TRAINING_PATIENT" and sim_patient:
+            self.system_instruction = self._generate_sim_patient_prompt(sim_patient)
+        else:
+            self.system_instruction = self._get_base_persona_prompt(persona)
+
+    def _get_base_persona_prompt(self, persona: str) -> str:
+        prompts = {
+            "TRIAGE": """You are Dignova, an advanced AI emergency medical triage assistant.
 Your goal is to quickly and calmly assess the caller's medical situation, provide immediate preliminary advice if necessary, and gather enough information to determine the correct hospital resource (e.g., Ambulance, ICU bed, General Admission).
 
 Sentient Capabilities:
@@ -38,28 +49,33 @@ Rules:
 4. If it sounds like a critical emergency (e.g., heart attack, stroke, severe bleeding), advise them to unlock their door and say you are dispatching an ambulance immediately. Output [EMERGENCY_DETECTED] at the end if a real doctor is needed immediately.
 5. If you have gathered enough information to make a preliminary diagnosis, output the word [DIAGNOSIS_READY] at the very end of your response.
 """,
-        "TRAINING_PATIENT": """You are an AI Patient in a medical simulation. Your goal is to help the trainee (the doctor calling you) practice their diagnostic skills.
+            "TRAINING_PATIENT": """You are an AI Patient in a medical simulation. Your goal is to help the trainee practice their diagnostic skills.
+Wait for the trainee to start the conversation."""
+        }
+        return prompts.get(persona, prompts["TRIAGE"])
 
-Simulation Setup:
-- Case: Myocardial Infarction (Heart Attack).
-- Secret Diagnosis: Heart Attack.
-- Secondary Symptoms (ONLY reveal if asked): Pain radiating to left jaw, nausea, cold sweat.
-- Personality: Anxious, slightly breathless, but cooperative.
+    def _generate_sim_patient_prompt(self, sim: Any) -> str:
+        """
+        Dynamically builds a prompt based on a SimulatedPatient database model.
+        """
+        secondary = json.dumps(sim.secondary_symptoms) if sim.secondary_symptoms else "None"
+        
+        return f"""You are an AI Patient in a medical simulation. Your goal is to help the trainee practice their diagnostic skills.
+
+Identity: {sim.name}, {sim.age} years old, {sim.gender}.
+Initial Complaint: {sim.initial_complaint}
+Secret Diagnosis: {sim.secret_diagnosis}
+Secondary Symptoms (ONLY reveal if specifically asked): {secondary}
+Personality: {sim.personality_traits or "Cooperative but slightly anxious"}
 
 Controlled Revelation Rules:
-1. NEVER reveal your diagnosis explicitly.
-2. Only reveal secondary symptoms if the doctor asks specifically about them (e.g., "Does the pain spread?" or "Do you feel sick?").
-3. If the doctor asks "What is your diagnosis?", respond like a confused patient: "I don't know, doctor, that's why I called you!"
+1. NEVER reveal your secret diagnosis explicitly.
+2. Only reveal the secondary symptoms if the trainee asks specifically about them.
+3. If the trainee asks "What is your diagnosis?", respond like a confused patient.
 4. Output [SIM_COMPLETE] only when the trainee provides a definitive diagnosis or says the simulation is over.
-5. Keep responses short and realistic for a phone call.
+5. Keep responses short and realistic for a medical conversation.
 """
-    }
 
-    def __init__(self, persona: str = "TRIAGE"):
-        self.persona = persona
-        self.model_id = "gemini-2.0-flash"
-        self.system_instruction = self.PERSONA_PROMPTS.get(persona, self.PERSONA_PROMPTS["TRIAGE"])
-        
     def process_message_stream(self, transcript: str, new_user_message: str):
         """
         Generates a streaming response based on the active persona and conversation history.
@@ -170,23 +186,24 @@ Controlled Revelation Rules:
             print(f"Health Tips Error: {e}")
             return ["Stay hydrated and maintain a balanced diet."]
 
-    def evaluate_performance(self, transcript: str, is_training: bool = False) -> Dict[str, Any]:
+    def evaluate_performance(self, transcript: str, sim_patient: Any = None) -> Dict[str, Any]:
         """
         Analyzes the transcript to provide a diagnosis (for Users) or a performance score (for Interns).
         """
         if not LLM_AVAILABLE or not client:
             return {"error": "LLM Offline"}
 
-        if is_training:
-            eval_prompt = f"""
-You are the Intern Evaluator. Analyze the transcript of a training simulation.
-Case: Heart Attack.
-Red Flags the trainee should have asked about: Duration of pain, radiation to jaw/arm, nausea, history of heart issues.
+        if sim_patient:
+            eval_prompt = f\"\"\"
+You are the Intern Evaluator. Analyze the transcript of a medical training simulation.
+Case Identity: {sim_patient.name}, {sim_patient.age}y/o {sim_patient.gender}
+Secret Diagnosis: {sim_patient.secret_diagnosis}
+Secondary Symptoms (Red Flags): {json.dumps(sim_patient.secondary_symptoms)}
 
 Transcript:
 {transcript}
 
-Task: Score the intern (0-100) and identify which red flags they missed.
+Task: Score the intern (0-100) and identify which red flags (secondary symptoms) they missed.
 Output a STRICT JSON object:
 {{
   "score": integer,
@@ -194,9 +211,9 @@ Output a STRICT JSON object:
   "missed_red_flags": ["list", "of", "strings"],
   "diagnosis_accuracy": "correct/incorrect"
 }}
-"""
+\"\"\"
         else:
-            eval_prompt = f"""
+            eval_prompt = f\"\"\"
 Analyze the triage call transcript and determine the diagnosis and required resource.
 Available Resources: "ICU", "General", "Ambulance"
 
@@ -209,7 +226,7 @@ Output a STRICT JSON object:
   "recommended_resource": "string",
   "summary": "string"
 }}
-"""
+\"\"\"
 
         try:
             response = client.models.generate_content(

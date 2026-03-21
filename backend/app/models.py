@@ -217,3 +217,38 @@ class AftercarePing(Base):
     responded_at = Column(DateTime, nullable=True)
     doctor_flagged = Column(Boolean, default=False)           # True if patient said No
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SimulatedPatient(Base):
+    """
+    Medical cases for training interns.
+    """
+    __tablename__ = "simulated_patients"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    age = Column(Integer, nullable=False)
+    gender = Column(String, nullable=False)
+    case_title = Column(String, nullable=False)
+    secret_diagnosis = Column(String, nullable=False)
+    initial_complaint = Column(Text, nullable=False)
+    secondary_symptoms = Column(JSON, nullable=True)   # Symptoms revealed only if specifically asked
+    personality_traits = Column(String, nullable=True) # e.g., "Anxious", "Breathless"
+    difficulty = Column(String, default="Beginner")   # Beginner | Intermediate | Advanced
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TrainingSession(Base):
+    """
+    An active or completed training session between an intern and a simulated patient.
+    """
+    __tablename__ = "training_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    intern_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sim_patient_id = Column(Integer, ForeignKey("simulated_patients.id", ondelete="CASCADE"), nullable=False)
+    status = Column(String, default="active")   # active | completed
+    transcript = Column(Text, nullable=True)
+    score = Column(Integer, nullable=True)
+    feedback = Column(Text, nullable=True)
+    missed_red_flags = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)

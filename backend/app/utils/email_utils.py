@@ -173,6 +173,10 @@ def send_email(to: str, subject: str, body: str, html: str = None, category: str
     """
     Sends an email using the Resend SDK.
     """
+    if not resend.api_key:
+        print("❌ Resend Error: RESEND_API_KEY is not set in environment variables.")
+        return False
+
     try:
         params = {
             "from": f"{MAIL_FROM_NAME} <{MAIL_FROM}>",
@@ -182,10 +186,19 @@ def send_email(to: str, subject: str, body: str, html: str = None, category: str
         }
         
         email = resend.Emails.send(params)
-        print(f"✅ Email sent via Resend to {to}: {email.get('id')}")
-        return True
+        if email.get('id'):
+            print(f"✅ Email sent via Resend to {to}: {email.get('id')}")
+            return True
+        else:
+            print(f"⚠️ Resend returned no ID for {to}. Response: {email}")
+            return False
     except Exception as e:
-        print(f"❌ Resend Email failed: {e}")
+        print(f"❌ Resend Email failed for {to}: {str(e)}")
+        # Log common Resend errors for the user
+        if "403" in str(e):
+            print("💡 Pro-Tip: This is usually a 'Domain Not Verified' error. Resend only sends to your own email until you verify your domain.")
+        elif "401" in str(e):
+            print("💡 Pro-Tip: Your RESEND_API_KEY seems invalid or expired.")
         return False
 
 

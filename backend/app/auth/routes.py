@@ -158,20 +158,19 @@ async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: A
     await db.refresh(user)
 
     # Send verification email
-    try:
-        FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
-        token = generate_verification_token(user.email)
-        verify_url = f"{FRONTEND_URL}/verify?token={token}" 
-        
-        # Using the branded Sentient HTML email
-        send_welcome_email(
-            to=user.email,
-            user_name=user.name,
-            verify_url=verify_url,
-            role=user.role.value
-        )
-    except Exception as e:
-        print(f"Error sending verification email: {e}")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+    token = generate_verification_token(user.email)
+    verify_url = f"{FRONTEND_URL}/verify?token={token}" 
+    
+    # Using the branded Sentient HTML email
+    success = send_welcome_email(
+        to=user.email,
+        user_name=user.name,
+        verify_url=verify_url,
+        role=user.role.value
+    )
+    if not success:
+        print(f"⚠️ Registration completed for {user.email}, but verification email failed to dispatch via Resend.")
 
     # Trigger n8n Onboarding (Sentient Orchestration) via Background Task
     user_data = {

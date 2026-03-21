@@ -353,6 +353,50 @@ async def seed_data():
             db.add(report)
         print("Training: Seeded 5 intern training reports")
 
+        # =============================================
+        # 9. SIMULATED PATIENTS (for training)
+        # =============================================
+        sim_patients = [
+            {
+                "name": "Robert Miller",
+                "age": 62,
+                "gender": "Male",
+                "case_title": "Acute Chest Pain",
+                "secret_diagnosis": "Myocardial Infarction (Heart Attack)",
+                "initial_complaint": "I've been having this heavy pressure in my chest for about 20 minutes now. It's not going away.",
+                "secondary_symptoms": ["Pain radiating to left jaw", "Nausea", "Cold sweat", "Shortness of breath"],
+                "personality_traits": "Anxious, slightly breathless, but cooperative",
+                "difficulty": "Beginner"
+            },
+            {
+                "name": "Sarah Jenkins",
+                "age": 45,
+                "gender": "Female",
+                "case_title": "Sudden Weakness",
+                "secret_diagnosis": "Ischemic Stroke",
+                "initial_complaint": "My right arm feels really heavy and I'm having trouble holding my coffee cup. My words sound funny to me.",
+                "secondary_symptoms": ["Facial drooping on right side", "Slurred speech", "Sudden headache", "Loss of balance"],
+                "personality_traits": "Confused, frightened, struggling to speak clearly",
+                "difficulty": "Intermediate"
+            },
+            {
+                "name": "David Thompson",
+                "age": 28,
+                "gender": "Male",
+                "case_title": "Severe Breathlessness",
+                "secret_diagnosis": "Acute Asthma Exacerbation",
+                "initial_complaint": "I can't... get enough... air. My inhaler... isn't... working.",
+                "secondary_symptoms": ["Wheezing", "Tightness in chest", "Unable to speak in full sentences", "Cyanosis (blue tint) around lips"],
+                "personality_traits": "Panic-stricken, very short sentences, audible wheezing",
+                "difficulty": "Intermediate"
+            }
+        ]
+
+        for sim_data in sim_patients:
+            new_sim = domain.SimulatedPatient(**sim_data)
+            db.add(new_sim)
+            print(f"Bootstrap: Simulated Patient created ({sim_data['case_title']})")
+
         await db.commit()
     
     print("\n" + "=" * 50)
