@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassInput } from '@/components/ui/GlassInput';
-import { Activity, Users, Database, Save, Edit3, X, RefreshCcw, Cpu, Wifi, Zap, Terminal, AlertTriangle, ChevronRight, Binary, ServerCrash, CheckCircle2 } from 'lucide-react';
+import { Activity, Users, Database, Save, Edit3, X, RefreshCcw, Cpu, Wifi, Zap, Terminal, AlertTriangle, ChevronRight, Binary, ServerCrash, CheckCircle2, TrendingUp, Boxes, Gauge } from 'lucide-react';
 
 interface Resource {
     id: number;
@@ -296,42 +296,84 @@ export default function AdminDashboardPage() {
                     </div>
                 </GlassCard>
 
-                {/* 2. Resource Availability (Bar Chart) - Spans 3*/}
-                <GlassCard className="lg:col-span-3 p-6 flex flex-col border-white/5">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-white">Resource Pool</h3>
-                        <button className="text-xs font-mono text-accent-cyan border border-accent-cyan/30 px-2 py-1 rounded bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-colors">EDIT NODES</button>
+                {/* 2. Neural Resource Matrix (High-Density Telemetry) - Spans 6 */}
+                <GlassCard className="lg:col-span-6 p-6 flex flex-col border-white/5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 text-accent-blue/10 rotate-12"><Boxes size={120} /></div>
+                    
+                    <div className="flex justify-between items-center mb-6 relative z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-accent-blue/20 flex items-center justify-center border border-accent-blue/30">
+                                <Gauge size={18} className="text-accent-blue" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white tracking-tight leading-none">Neural Resource Matrix</h3>
+                                <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mt-1">Homeostatic Equilibrium Tracking</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <div className="px-2 py-1 rounded bg-black/40 border border-white/5 flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                                <span className="text-[9px] font-mono text-gray-400">SYNC_OK</span>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div className="flex-1 flex items-end justify-between gap-2 border-b border-white/5 pb-2">
-                        {resources.slice(0, 5).map((res, i) => {
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                        {resources.map((res, i) => {
                             const pct = Math.min((res.available / Math.max(res.total, 1)) * 100, 100);
                             const isCrit = pct < 20;
                             const isWarn = pct < 50 && !isCrit;
-                            const color = isCrit ? 'bg-danger shadow-[0_0_10px_rgba(239,68,68,0.5)]' : isWarn ? 'bg-warning shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 'bg-accent-blue shadow-[0_0_10px_rgba(59,130,246,0.5)]';
+                            const color = isCrit ? 'text-danger' : isWarn ? 'text-warning' : 'text-accent-cyan';
+                            const bgColor = isCrit ? 'bg-danger/10' : isWarn ? 'bg-warning/10' : 'bg-accent-cyan/10';
+                            const borderColor = isCrit ? 'border-danger/30' : isWarn ? 'border-warning/30' : 'border-accent-cyan/30';
                             
                             return (
-                                <div key={res.id} className="relative flex-1 flex flex-col items-center justify-end h-[140px] group cursor-pointer" onClick={() => setEditingResource(res)}>
-                                    <div className="absolute -top-8 bg-black/80 border border-white/10 px-2 py-1 rounded text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                                        {res.available}/{res.total}
+                                <motion.div 
+                                    key={res.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.05 }}
+                                    className={`p-4 rounded-xl border ${bgColor} ${borderColor} cursor-pointer group transition-all hover:bg-white/[0.05]`}
+                                    onClick={() => setEditingResource(res)}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-tighter mb-0.5">DESIGNATION</span>
+                                            <span className="text-sm font-black text-white uppercase tracking-tight">{res.resource_type}</span>
+                                        </div>
+                                        <Edit3 size={14} className="text-gray-600 group-hover:text-white transition-colors" />
                                     </div>
-                                    <motion.div 
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${pct}%` }}
-                                        transition={{ duration: 1, delay: i * 0.1 }}
-                                        className={`w-full max-w-[30px] rounded-t-sm ${color} opacity-80 group-hover:opacity-100 transition-opacity relative overflow-hidden`}
-                                    >
-                                        <div className="absolute top-0 right-0 w-1/3 h-full bg-white/20" />
-                                    </motion.div>
-                                    <span className="text-[10px] text-gray-400 mt-2 rotate-[-45deg] origin-top-left -ml-2 whitespace-nowrap uppercase tracking-wider overflow-hidden max-w-full text-ellipsis">{res.resource_type.slice(0, 7)}</span>
-                                </div>
+
+                                    <div className="flex items-end justify-between gap-4 mb-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-2xl font-mono font-black text-white leading-none">
+                                                {res.available}<span className="text-xs text-gray-500 font-normal ml-1">/ {res.total}</span>
+                                            </span>
+                                        </div>
+                                        <div className={`text-xs font-mono font-bold ${color}`}>
+                                            {Math.round(pct)}% <TrendingUp size={10} className="inline ml-0.5 opacity-50" />
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Micro-bar */}
+                                    <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${pct}%` }}
+                                            className={`h-full ${isCrit ? 'bg-danger' : isWarn ? 'bg-warning' : 'bg-accent-cyan'} shadow-[0_0_10px_currentColor]`}
+                                        />
+                                    </div>
+                                </motion.div>
                             )
                         })}
                     </div>
                 </GlassCard>
+            </div>
 
-                {/* 3. Core Node Stability (Ring Charts) - Spans 3*/}
-                <GlassCard className="lg:col-span-3 p-6 flex flex-col justify-between border-white/5 relative overflow-hidden">
+            {/* SECOND ROW: Metrics and Stability */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
+                {/* 3. Core Node Stability (Ring Charts) - Spans 4*/}
+                <GlassCard className="lg:col-span-4 p-6 flex flex-col justify-between border-white/5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-accent-cyan/5 rounded-bl-full pointer-events-none blur-2xl" />
                     <h3 className="text-lg font-bold text-white mb-4 z-10">Node Stability</h3>
                     <div className="flex flex-col gap-6 z-10">
@@ -351,11 +393,7 @@ export default function AdminDashboardPage() {
                         />
                     </div>
                 </GlassCard>
-            </div>
 
-            {/* BOTTOM ROW: Widgets 4, 5, 6, 7 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
-                
                 {/* 4. Diagnostic Confidence (Progress bars) - Spans 4*/}
                 <GlassCard className="lg:col-span-4 p-6 border-white/5 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 text-white/5 pointer-events-none"><CheckCircle2 size={100} /></div>
@@ -416,58 +454,6 @@ export default function AdminDashboardPage() {
                         <div className="mt-4 pt-4 border-t border-white/5">
                             <div className="text-2xl font-bold text-success text-shadow-sm shadow-success">{accuracy}%</div>
                             <div className="text-[10px] font-mono text-gray-500 uppercase">Resolution Rate</div>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* 6. Dropped Requests (Single Large Ring) - Spans 2*/}
-                <GlassCard className="lg:col-span-2 p-6 flex flex-col items-center justify-center border-white/5 relative group cursor-pointer">
-                    <div className="absolute inset-0 bg-gradient-to-t from-danger/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <h3 className="text-sm font-bold text-white mb-4 text-center">Abandoned<br/>Sessions</h3>
-                    
-                    <div className="relative w-28 h-28 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="40" className="stroke-white/5" strokeWidth="8" fill="none" />
-                            <motion.circle 
-                                cx="50" cy="50" r="40" 
-                                className="stroke-danger drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]"
-                                strokeWidth="8" 
-                                fill="none" 
-                                strokeLinecap="round"
-                                initial={{ strokeDashoffset: 251.2 }}
-                                animate={{ strokeDashoffset: 251.2 - (abandonRate / 100) * 251.2 }}
-                                transition={{ duration: 1.5, ease: "easeOut" }}
-                                style={{ strokeDasharray: 251.2 }}
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black text-white tracking-tighter">{abandonRate}<span className="text-lg">%</span></span>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* 7. Failed Requests (Single Large Ring) - Spans 2*/}
-                <GlassCard className="lg:col-span-2 p-6 flex flex-col items-center justify-center border-white/5 relative group cursor-pointer">
-                    <div className="absolute inset-0 bg-gradient-to-t from-warning/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <h3 className="text-sm font-bold text-white mb-4 text-center">Failed<br/>Connections</h3>
-                    
-                    <div className="relative w-28 h-28 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="40" className="stroke-white/5" strokeWidth="8" fill="none" />
-                            <motion.circle 
-                                cx="50" cy="50" r="40" 
-                                className="stroke-warning drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]"
-                                strokeWidth="8" 
-                                fill="none" 
-                                strokeLinecap="round"
-                                initial={{ strokeDashoffset: 251.2 }}
-                                animate={{ strokeDashoffset: 251.2 - (failRate / 100) * 251.2 }}
-                                transition={{ duration: 1.5, ease: "easeOut" }}
-                                style={{ strokeDasharray: 251.2 }}
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black text-white tracking-tighter">{failRate}<span className="text-lg">%</span></span>
                         </div>
                     </div>
                 </GlassCard>
@@ -630,4 +616,3 @@ export default function AdminDashboardPage() {
         </div>
     );
 }
-
