@@ -41,13 +41,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 setUser(data);
 
                 // Role-based Redirection Logic
+                const isSharedPage = pathname === '/user/profile';
+
                 if (data.role === 'admin') {
-                    if (!pathname.startsWith('/admin')) router.push('/admin');
+                    if (!pathname.startsWith('/admin') && !isSharedPage) router.push('/admin');
                 } else if (data.role === 'doctor') {
                     if (data.tier === 'intern') {
-                        if (!pathname.startsWith('/intern')) router.push('/intern');
+                        if (!pathname.startsWith('/intern') && !isSharedPage) router.push('/intern');
                     } else {
-                        if (!pathname.startsWith('/doctor')) router.push('/doctor');
+                        if (!pathname.startsWith('/doctor') && !isSharedPage) router.push('/doctor');
                     }
                 } else {
                     if (!pathname.startsWith('/user')) router.push('/user');
