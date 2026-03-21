@@ -194,7 +194,7 @@ Controlled Revelation Rules:
             return {"error": "LLM Offline"}
 
         if sim_patient:
-            eval_prompt = f\"\"\"
+            eval_prompt = f"""
 You are the Intern Evaluator. Analyze the transcript of a medical training simulation.
 Case Identity: {sim_patient.name}, {sim_patient.age}y/o {sim_patient.gender}
 Secret Diagnosis: {sim_patient.secret_diagnosis}
@@ -211,9 +211,9 @@ Output a STRICT JSON object:
   "missed_red_flags": ["list", "of", "strings"],
   "diagnosis_accuracy": "correct/incorrect"
 }}
-\"\"\"
+"""
         else:
-            eval_prompt = f\"\"\"
+            eval_prompt = f"""
 Analyze the triage call transcript and determine the diagnosis and required resource.
 Available Resources: "ICU", "General", "Ambulance"
 
@@ -226,7 +226,7 @@ Output a STRICT JSON object:
   "recommended_resource": "string",
   "summary": "string"
 }}
-\"\"\"
+"""
 
         try:
             response = client.models.generate_content(
