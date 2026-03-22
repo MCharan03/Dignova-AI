@@ -128,31 +128,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        <div className="dashboard-layout relative overflow-hidden text-gray-200 bg-[#0B0F19]">
-            {/* Custom Pro Scrollbar Theme */}
-            <style jsx global>{`
-                .main-content-area::-webkit-scrollbar {
-                    width: 6px;
-                }
-                .main-content-area::-webkit-scrollbar-track {
-                    background: rgba(0, 0, 0, 0.2);
-                }
-                .main-content-area::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 10px;
-                }
-                .main-content-area::-webkit-scrollbar-thumb:hover {
-                    background: var(--accent-cyan);
-                    box-shadow: 0 0 10px var(--accent-cyan);
-                }
-            `}</style>
-
+        <div className="dashboard-layout relative overflow-hidden text-gray-200 bg-[#0B0F19] w-screen h-screen">
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="fixed inset-0 pointer-events-none bg-[url('/noise.png')] opacity-5 z-50"></div>
-                <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,255,255,0.01)_50%)] bg-[length:100%_4px] scanlines opacity-30"></div>
+                <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,255,255,0.01)_50%)] bg-[length:100%_4px] scanlines opacity-20"></div>
             </div>
 
-            <div className="flex-container relative z-10">
+            <div className="flex-container relative z-10 w-full h-full overflow-hidden">
                 <nav className="bottom-dock">
                     {navItems.map((item) => {
                         const isActive = pathname === item.path;

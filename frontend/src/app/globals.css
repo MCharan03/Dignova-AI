@@ -48,8 +48,14 @@
 }
 
 html {
-  /* Pro Fix: Prevents layout shift when scrollbars appear/disappear during background fetches */
-  scrollbar-gutter: stable;
+  /* Pro Fix: Completely lock horizontal movement and hide scrollbar gutters */
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+html::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
 }
 
 body {
