@@ -128,13 +128,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        <div className="dashboard-layout relative overflow-hidden text-gray-200 bg-[#0B0F19] w-screen h-screen">
+        <div className="dashboard-layout relative overflow-hidden text-gray-200 bg-black w-screen h-screen">
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="fixed inset-0 pointer-events-none bg-[url('/noise.png')] opacity-5 z-50"></div>
-                <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,255,255,0.01)_50%)] bg-[length:100%_4px] scanlines opacity-20"></div>
+                {/* Subtle Neural Noise - Reduced opacity to prevent washout */}
+                <div className="fixed inset-0 pointer-events-none bg-[url('/noise.png')] opacity-[0.02] z-50"></div>
+                {/* Refined Scanlines */}
+                <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,255,255,0.005)_50%)] bg-[length:100%_4px] scanlines opacity-10"></div>
             </div>
 
-            <div className="flex-container relative z-10 w-full h-full overflow-hidden">
+            <div className="flex-container relative z-10 w-full h-full overflow-hidden bg-[#0B0F19]/80 backdrop-blur-[2px]">
                 <nav className="bottom-dock">
                     {navItems.map((item) => {
                         const isActive = pathname === item.path;
