@@ -1,13 +1,28 @@
 import os
-import resend
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from dotenv import load_dotenv
+from pydantic import EmailStr
+from typing import List, Any
+import asyncio
 
 load_dotenv()
 
-# Initialize Resend with API Key
-resend.api_key = os.getenv("RESEND_API_KEY")
-MAIL_FROM = os.getenv("MAIL_FROM", "onboarding@resend.dev")
-MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Dignova AI")
+# --- Pro Configuration: Optimized for Gmail SMTP ---
+conf = ConnectionConfig(
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_FROM_NAME=os.getenv("MAIL_FROM_NAME", "Dignova AI"),
+    MAIL_STARTTLS=os.getenv("MAIL_USE_TLS", "True").lower() == "true",
+    MAIL_SSL_TLS=os.getenv("MAIL_USE_SSL", "False").lower() == "true",
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True,
+    TIMEOUT=30 # Increased for production stability
+)
+
+fastmail = FastMail(conf)
 
 # ─── HTML Template Helpers ─────────────────────────────────────────────────── #
 
@@ -167,39 +182,49 @@ def build_appointment_reminder_email(
     return _wrap_email("Your Dignova AI Appointment", body)
 
 
-# ─── Email Sender ──────────────────────────────────────────────────────────── #
+# ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
-def send_email(to: str, subject: str, body: str, html: str = None, category: str = "default"):
-    """
-    Sends an email using the Resend SDK.
-    """
-    if not resend.api_key:
-        print("❌ Resend Error: RESEND_API_KEY is not set in environment variables.")
-        return False
-
+async def send_email_async(msg: MessageSchema):
+    """Internal async sender with pro-grade error logging."""
     try:
-        params = {
-            "from": f"{MAIL_FROM_NAME} <{MAIL_FROM}>",
-            "to": [to],
-            "subject": subject,
-            "html": html or body,
-        }
-        
-        email = resend.Emails.send(params)
-        if email.get('id'):
-            print(f"✅ Email sent via Resend to {to}: {email.get('id')}")
-            return True
-        else:
-            print(f"⚠️ Resend returned no ID for {to}. Response: {email}")
-            return False
+        await fastmail.send_message(msg)
+        print(f"✅ SMTP SUCCESS: Email dispatched to {msg.recipients}")
+        return True
     except Exception as e:
-        print(f"❌ Resend Email failed for {to}: {str(e)}")
-        # Log common Resend errors for the user
-        if "403" in str(e):
-            print("💡 Pro-Tip: This is usually a 'Domain Not Verified' error. Resend only sends to your own email until you verify your domain.")
-        elif "401" in str(e):
-            print("💡 Pro-Tip: Your RESEND_API_KEY seems invalid or expired.")
+        error_msg = str(e)
+        print(f"❌ SMTP FAILURE: Failed to send to {msg.recipients}. Error: {error_msg}")
+        
+        # Pro-Tip for common Gmail SMTP errors
+        if "AuthenticationFailed" in error_msg or "535" in error_msg:
+            print("💡 Pro-Tip: Your Gmail App Password is likely invalid or expired.")
+        elif "connection" in error_msg.lower():
+            print("💡 Pro-Tip: Render might be blocking port 587 or Gmail is rate-limiting this IP.")
         return False
+
+
+def send_email(to: str, subject: str, body: str, html: str = None):
+    """
+    Standard wrapper for sending emails. 
+    In FastAPI, this should be called with BackgroundTasks for best performance.
+    """
+    message = MessageSchema(
+        subject=subject,
+        recipients=[to],
+        body=html or body,
+        subtype=MessageType.html if html else MessageType.plain
+    )
+    
+    # We use asyncio.create_task to fire-and-forget if not in a background task context
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(send_email_async(message))
+        else:
+            asyncio.run(send_email_async(message))
+    except Exception as e:
+        print(f"⚠️ Email Task Creation Error: {e}")
+    
+    return True # We return True immediately to keep the API snappy
 
 
 def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):
