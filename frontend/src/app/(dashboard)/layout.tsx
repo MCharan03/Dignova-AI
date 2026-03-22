@@ -22,11 +22,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const [user, setUser] = useState<UserState | null>(null);
     const [loading, setLoading] = useState(true);
+    const userFetchedRef = useRef(false); // Pro Optimization: Track if we already have the user
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         if (!token) {
             router.push('/login');
+            return;
+        }
+
+        // Only fetch if we haven't fetched in this session mounting
+        if (userFetchedRef.current && user) {
+            setLoading(false);
             return;
         }
 
@@ -39,30 +46,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })
             .then(data => {
                 setUser(data);
-
-                // Role-based Redirection Logic
-                const isProfilePage = pathname === '/user/profile';
-                const isInternPath = pathname.startsWith('/intern');
-
-                if (data.role === 'admin') {
-                    if (!pathname.startsWith('/admin') && !isProfilePage) router.push('/admin');
-                } else if (data.role === 'doctor') {
-                    if (data.tier === 'intern') {
-                        if (!isInternPath && !isProfilePage) router.push('/intern');
-                    } else {
-                        if (!pathname.startsWith('/doctor') && !isProfilePage) router.push('/doctor');
-                    }
-                } else {
-                    if (!pathname.startsWith('/user') && !isProfilePage) router.push('/user');
-                }
-
+                userFetchedRef.current = true;
                 setLoading(false);
             })
             .catch(() => {
                 localStorage.removeItem('access_token');
                 router.push('/login');
             });
-    }, [pathname, router]);
+    }, [router]); // Removed 'pathname' dependency to prevent re-fetch on nav
+
+    // Handle role-based access separately to keep it snappy
+    useEffect(() => {
+        if (!user || loading) return;
+
+        const isProfilePage = pathname === '/user/profile';
+        const isInternPath = pathname.startsWith('/intern');
+
+        if (user.role === 'admin') {
+            if (!pathname.startsWith('/admin') && !isProfilePage) router.push('/admin');
+        } else if (user.role === 'doctor') {
+            if (user.tier === 'intern') {
+                if (!isInternPath && !isProfilePage) router.push('/intern');
+            } else {
+                if (!pathname.startsWith('/doctor') && !isProfilePage) router.push('/doctor');
+            }
+        } else {
+            if (!pathname.startsWith('/user') && !isProfilePage) router.push('/user');
+        }
+    }, [pathname, user, loading, router]);
 
     const handleLogout = () => {
         localStorage.removeItem('access_token');

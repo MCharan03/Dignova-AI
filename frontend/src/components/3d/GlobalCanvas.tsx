@@ -19,11 +19,17 @@ export function GlobalCanvas() {
     <div className="fixed inset-0 z-0 pointer-events-none">
       <Canvas
         camera={{ position: [0, 0, 15], fov: 50 }}
-        dpr={[1, 1.5]}
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1}
+        frameloop="always" // Keep always for now to ensure smooth scroll sync
         gl={{ 
           antialias: true, 
           alpha: true, 
-          powerPreference: "high-performance"
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true
+        }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0x000000, 0);
         }}
       >
         <Suspense fallback={null}>
