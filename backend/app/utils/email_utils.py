@@ -185,20 +185,23 @@ def build_appointment_reminder_email(
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
 async def send_email_async(msg: MessageSchema):
-    """Internal async sender with pro-grade error logging."""
+    """Internal async sender with deep SMTP diagnostics."""
     try:
+        print(f"📡 SMTP ATTEMPT: Sending to {msg.recipients}...")
         await fastmail.send_message(msg)
-        print(f"✅ SMTP SUCCESS: Email dispatched to {msg.recipients}")
+        print(f"✅ SMTP SUCCESS: Email dispatched.")
         return True
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ SMTP FAILURE: Failed to send to {msg.recipients}. Error: {error_msg}")
+        import traceback
+        print(f"❌ SMTP CRITICAL FAILURE: {error_msg}")
+        print(f"🔍 DIAGNOSTIC TRACEBACK:\n{traceback.format_exc()}")
         
         # Pro-Tip for common Gmail SMTP errors
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
-            print("💡 Pro-Tip: Your Gmail App Password is likely invalid or expired.")
-        elif "connection" in error_msg.lower():
-            print("💡 Pro-Tip: Render might be blocking port 587 or Gmail is rate-limiting this IP.")
+            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Check for: 1. Quotes in Render password, 2. 2FA not enabled, 3. App Password revoked.")
+        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+            print("💡 PRO-TIP: NETWORK BLOCK. Render port 587 might be throttled or blocked by Gmail.")
         return False
 
 
