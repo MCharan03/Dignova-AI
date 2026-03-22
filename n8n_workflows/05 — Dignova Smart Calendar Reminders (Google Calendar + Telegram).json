@@ -3,110 +3,84 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours"
-            }
-          ]
-        }
+        "httpMethod": "POST",
+        "path": "dignova-calendar",
+        "options": {}
       },
-      "name": "Cron: Every Hour",
-      "type": "n8n-nodes-base.scheduleTrigger",
+      "name": "Webhook: Calendar Trigger",
+      "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        208,
-        432
+        240,
+        304
       ],
-      "id": "cron-hourly"
+      "id": "calendar-webhook"
     },
     {
       "parameters": {
-        "calendar": {
-          "__rl": true,
-          "mode": "list",
-          "value": "primary"
-        },
-        "start": "2026-03-17T12:52:00",
-        "end": "2026-03-17T13:51:47",
-        "additionalFields": {}
+        "chatId": "={{$json.body.telegram_chat_id}}",
+        "text": "=📅 *Appointment Reminder*\n\nHi {{$json.body.patient_name}}, you have an appointment scheduled with *Dr. {{$json.body.doctor_name}}*.\n\n⏰ *Time:* {{$json.body.slot_time}}\n\nPlease confirm your attendance:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "✅ Confirm",
+              "callback_data": "={{$json.body.confirm_callback}}"
+            },
+            {
+              "text": "📅 Reschedule",
+              "callback_data": "={{$json.body.reschedule_callback}}"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
       },
-      "name": "Google Calendar: Get Events Next 25h",
-      "type": "n8n-nodes-base.googleCalendar",
+      "name": "Telegram: Reminder",
+      "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        432,
-        432
+        480,
+        304
       ],
-      "id": "gcal-events",
+      "id": "tg-reminder",
       "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "GCAL_CREDENTIAL_ID",
-          "name": "Dignova Google Calendar"
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
         }
       }
     },
     {
       "parameters": {
-        "conditions": {
-          "number": [
-            {
-              "value1": "={{(new Date($json.start.dateTime) - new Date()) / 3600000}}",
-              "operation": "largerEqual",
-              "value2": 23
-            },
-            {
-              "value1": "={{(new Date($json.start.dateTime) - new Date()) / 3600000}}",
-              "operation": "smallerEqual",
-              "value2": 25
-            }
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{$json.body.slot_time}}",
+        "end": "={{$node[\"Webhook: Calendar Trigger\"].json.body.slot_time}}",
+        "summary": "=Dignova Appointment: {{$json.body.patient_name}}",
+        "description": "=Doctor: {{$json.body.doctor_name}}\nAppointment ID: {{$json.body.appointment_id}}",
+        "additionalFields": {
+          "attendees": [
+            "={{$json.body.patient_email}}"
           ]
         }
       },
-      "name": "Event in 24h Window?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
+      "name": "Google Calendar: Sync",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 2,
       "position": [
-        656,
-        432
+        720,
+        208
       ],
-      "id": "check-24h"
-    },
-    {
-      "parameters": {
-        "url": "https://dignova-ai.onrender.com/api/appointments/by-google-event/={{$json.id}}",
-        "options": {}
-      },
-      "name": "Backend: Get Appointment Details",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [
-        880,
-        432
-      ],
-      "id": "get-apt"
-    },
-    {
-      "parameters": {
-        "chatId": "={{$json.patient_telegram_chat_id}}",
-        "text": "📅 *Appointment Reminder — Dignova AI*\n\nHi {{$json.patient_name}}! This is your 24-hour reminder.\n\n👨‍⚕️ *Doctor:* Dr. {{$json.doctor_name}}\n⏰ *Time:* {{$json.slot_time}}\n\nPlease confirm your attendance:",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
-      },
-      "name": "Telegram: Appointment Reminder",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [
-        1104,
-        432
-      ],
-      "id": "tg-reminder",
-      "webhookId": "f1edab31-1491-462c-a842-c5480d56be0d",
+      "id": "gcal-sync",
       "credentials": {
-        "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
-          "name": "Dignova Telegram Bot"
+        "googleCalendarOAuth2Api": {
+          "id": "standard-gcal-id",
+          "name": "Dignova Google Calendar"
         }
       }
     },
@@ -117,141 +91,70 @@
         ],
         "additionalFields": {}
       },
-      "name": "Telegram: Calendar Callback",
+      "name": "Telegram: Action Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
       "position": [
-        208,
-        208
+        240,
+        512
       ],
-      "id": "tg-cal-callback",
-      "webhookId": "ee5ba9fe-3f91-4b7b-aaf0-e8809a184023",
-      "credentials": {
-        "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
-          "name": "Dignova Telegram Bot"
-        }
-      }
+      "id": "tg-action"
     },
     {
       "parameters": {
-        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/calendar-action",
+        "url": "https://dignova-ai-1.onrender.com/api/n8n/webhook/calendar-action",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
               "name": "appointment_id",
-              "value": "={{$json.callback_query.data.replace('cal_confirm_','').replace('cal_reschedule_','')}}"
+              "value": "={{$json.callback_query.data.split('_')[2]}}"
             },
             {
               "name": "patient_telegram_chat_id",
-              "value": "={{$json.callback_query.from.id}}"
+              "value": "={{$json.callback_query.message.chat.id.toString()}}"
             },
             {
               "name": "action",
-              "value": "={{$json.callback_query.data.startsWith('cal_confirm_') ? 'confirm' : 'reschedule'}}"
+              "value": "={{$json.callback_query.data.includes('confirm') ? 'confirm' : 'reschedule'}}"
             }
           ]
         },
         "options": {}
       },
-      "name": "Backend: Calendar Action",
+      "name": "Backend: Submit Action",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        432,
-        208
+        480,
+        512
       ],
-      "id": "backend-cal"
-    },
-    {
-      "parameters": {
-        "chatId": "={{$('Telegram: Calendar Callback').item.json.callback_query.from.id}}",
-        "text": "={{$json.message}}",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
-      },
-      "name": "Telegram: Confirm Calendar Action",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [
-        656,
-        208
-      ],
-      "id": "tg-cal-confirm",
-      "webhookId": "9ae3cf40-ba22-4275-9d4d-93593ae8a945",
-      "credentials": {
-        "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
-          "name": "Dignova Telegram Bot"
-        }
-      }
+      "id": "submit-action"
     }
   ],
   "pinData": {},
   "connections": {
-    "Cron: Every Hour": {
+    "Webhook: Calendar Trigger": {
       "main": [
         [
           {
-            "node": "Google Calendar: Get Events Next 25h",
+            "node": "Telegram: Reminder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Calendar: Sync",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Calendar: Get Events Next 25h": {
+    "Telegram: Action Trigger": {
       "main": [
         [
           {
-            "node": "Event in 24h Window?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Event in 24h Window?": {
-      "main": [
-        [
-          {
-            "node": "Backend: Get Appointment Details",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
-      ]
-    },
-    "Backend: Get Appointment Details": {
-      "main": [
-        [
-          {
-            "node": "Telegram: Appointment Reminder",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Telegram: Calendar Callback": {
-      "main": [
-        [
-          {
-            "node": "Backend: Calendar Action",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Backend: Calendar Action": {
-      "main": [
-        [
-          {
-            "node": "Telegram: Confirm Calendar Action",
+            "node": "Backend: Submit Action",
             "type": "main",
             "index": 0
           }
@@ -261,13 +164,6 @@
   },
   "active": true,
   "settings": {
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
-  },
-  "versionId": "908fbabe-f94d-4950-9f6d-393a850e9cc3",
-  "meta": {
-    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
-  },
-  "id": "52EvV1xQsk3ke12J",
-  "tags": []
+    "callerPolicy": "workflowsFromSameOwner"
+  }
 }

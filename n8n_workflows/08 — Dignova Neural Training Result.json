@@ -1,0 +1,61 @@
+{
+  "name": "08 — Dignova Neural Training Result",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-training-result",
+        "options": {}
+      },
+      "name": "Webhook: Training Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "training-webhook"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.telegram_chat_id}}",
+        "text": "=🧠 *Neural Training Dossier*\n\nSimulation Complete. Your performance has been evaluated by the Dignova Sentient Core.\n\n📊 *Final Score:* {{$json.body.score}}%\n📝 *Feedback:* {{$json.body.feedback}}\n\n🚨 *Missed Red Flags:*\n{{$json.body.missed_red_flags.join('\\n')}}\n\n_Continue training to reach Level 10 Certification._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Telegram: Performance Dossier",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        480,
+        304
+      ],
+      "id": "tg-dossier",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Training Trigger": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Performance Dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

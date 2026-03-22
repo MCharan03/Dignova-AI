@@ -16,10 +16,9 @@
         256
       ],
       "id": "tg-trigger",
-      "webhookId": "ebcdabc1-f4e6-42e1-9ef2-820082984990",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -83,7 +82,7 @@
     },
     {
       "parameters": {
-        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/voice",
+        "url": "https://dignova-ai-1.onrender.com/api/n8n/webhook/voice",
         "sendBody": true,
         "contentType": "multipart-form-data",
         "bodyParameters": {
@@ -111,13 +110,13 @@
     },
     {
       "parameters": {
-        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/triage",
+        "url": "https://dignova-ai-1.onrender.com/api/n8n/webhook/triage",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
               "name": "session_id",
-              "value": "={{$json.message.chat.id}}"
+              "value": "={{$json.message.chat.id.toString()}}"
             },
             {
               "name": "message",
@@ -176,10 +175,9 @@
         160
       ],
       "id": "tg-auto-rx",
-      "webhookId": "ad202aa0-04ab-44f9-8d35-4c197225d8b3",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -200,10 +198,9 @@
         352
       ],
       "id": "tg-reply",
-      "webhookId": "4bd5fee7-d6b3-4077-bd1e-71a4670474f4",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -305,13 +302,6 @@
   },
   "active": true,
   "settings": {
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
-  },
-  "versionId": "7f107922-2508-40df-a0b7-a078cecf334f",
-  "meta": {
-    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
-  },
-  "id": "1vu0b3Vz86L77TRf",
-  "tags": []
+    "callerPolicy": "workflowsFromSameOwner"
+  }
 }

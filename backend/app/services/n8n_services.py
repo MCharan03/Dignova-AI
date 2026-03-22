@@ -202,6 +202,28 @@ class N8nService:
             "book_callback":    f"book_checkup_{patient_data.get('id')}"
         })
 
+    # ── Neural Training ─────────────────────────────────────────────────── #
+
+    @staticmethod
+    async def trigger_training_result(
+        intern_data: Dict[str, Any],
+        score: int,
+        feedback: str,
+        missed_red_flags: List[str]
+    ) -> bool:
+        """
+        Fired when an intern simulation is evaluated.
+        n8n sends a stylized performance dossier to the intern's Telegram.
+        """
+        return await N8nService.trigger_workflow("dignova-training-result", {
+            "event":            "training_evaluated",
+            "telegram_chat_id": intern_data.get("telegram_chat_id"),
+            "intern_name":      intern_data.get("name"),
+            "score":            score,
+            "feedback":         feedback,
+            "missed_red_flags": missed_red_flags
+        })
+
     # ── IoT Pill Reminder (legacy, kept for compatibility) ───────────────── #
 
     @staticmethod

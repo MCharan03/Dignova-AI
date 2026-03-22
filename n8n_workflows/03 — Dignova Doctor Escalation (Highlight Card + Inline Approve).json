@@ -11,56 +11,43 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        208,
-        192
+        240,
+        304
       ],
-      "id": "escalate-webhook",
-      "webhookId": "88e2ef2a-f947-4064-ae0d-ba8c1ab5d49b"
-    },
-    {
-      "parameters": {
-        "chatId": "={{$json.body.patient_telegram_chat_id}}",
-        "text": "🔄 *Connecting you with a doctor...*\n\nI need Dr. {{$json.body.doctor_name || 'a specialist'}} to quickly review your case. Give me just a moment! ⏳",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
-      },
-      "name": "Telegram: Tell Patient",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [
-        432,
-        192
-      ],
-      "id": "tg-patient-notify",
-      "webhookId": "c65b113b-2bf0-4091-b868-aff2bd93a8a2",
-      "credentials": {
-        "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
-          "name": "Dignova Telegram Bot"
-        }
-      }
+      "id": "escalate-webhook"
     },
     {
       "parameters": {
         "chatId": "={{$json.body.doctor_telegram_chat_id}}",
-        "text": "🚨 *PATIENT ALERT — Highlight Card*\n\n*Case:* {{$json.body.highlight_title}}\n*Urgency:* {{$json.body.urgency}}\n\n*Symptoms:*\n{{$json.body.symptoms.join('\\n• ')}}\n\n*Red Flags Detected:*\n⚠️ {{$json.body.red_flags.join('\\n⚠️ ')}}\n\n*Vitals Note:* {{$json.body.patient_vitals_note || 'None recorded'}}\n\n*Suggested Action:* {{$json.body.suggested_action}}\n\n_Tap below to respond:_",
+        "text": "=🚨 *CRITICAL ESCALATION: {{$json.body.highlight_title}}*\n\n👤 *Patient:* {{$json.body.patient_name}}\n⚠️ *Urgency:* {{$json.body.urgency}}\n📝 *Summary:* {{$json.body.suggested_action}}\n\n*Symptoms Detected:*\n{{$json.body.symptoms.join('\\n')}}\n\n*Red Flags:* \n{{$json.body.red_flags.join('\\n')}}\n\n_Note: {{$json.body.patient_vitals_note}}_",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "✅ Approve Prescription",
+              "callback_data": "={{$json.body.approve_callback}}"
+            },
+            {
+              "text": "🛠 Modify / Review",
+              "callback_data": "={{$json.body.modify_callback}}"
+            }
+          ]
+        ],
         "additionalFields": {
           "parse_mode": "Markdown"
         }
       },
-      "name": "Telegram: Highlight Card to Doctor",
+      "name": "Telegram: Doctor Alert",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        656,
-        192
+        480,
+        304
       ],
-      "id": "tg-doctor-card",
-      "webhookId": "aa2e548b-b646-41ed-98a6-461773e96a87",
+      "id": "tg-doctor-alert",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -72,88 +59,86 @@
         ],
         "additionalFields": {}
       },
-      "name": "Telegram: Doctor Callback",
+      "name": "Telegram: Callback Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
       "position": [
-        208,
-        416
+        240,
+        512
       ],
-      "id": "tg-callback",
-      "webhookId": "e3c91008-fa4e-495f-bb80-1d4f65bb8fd6",
-      "credentials": {
-        "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
-          "name": "Dignova Telegram Bot"
-        }
-      }
+      "id": "tg-callback"
     },
     {
       "parameters": {
-        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/doctor-approval",
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.callback_query.data}}",
+              "operation": "startsWith",
+              "value2": "approve_"
+            }
+          ]
+        }
+      },
+      "name": "Is Approval?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        512
+      ],
+      "id": "check-approval"
+    },
+    {
+      "parameters": {
+        "url": "https://dignova-ai-1.onrender.com/api/n8n/webhook/doctor-approval",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
               "name": "call_id",
-              "value": "={{$json.callback_query.data.replace('approve_','').replace('modify_','')}}"
+              "value": "={{$json.callback_query.data.split('_')[1]}}"
             },
             {
               "name": "action",
-              "value": "={{$json.callback_query.data.startsWith('approve_') ? 'approve' : 'modify'}}"
+              "value": "approve"
             },
             {
               "name": "doctor_telegram_chat_id",
-              "value": "={{$json.callback_query.from.id}}"
+              "value": "={{$json.callback_query.message.chat.id.toString()}}"
             }
           ]
         },
         "options": {}
       },
-      "name": "Backend: Doctor Approval",
+      "name": "Backend: Submit Approval",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        432,
+        720,
         416
       ],
-      "id": "doctor-approval"
+      "id": "submit-approval"
     },
     {
       "parameters": {
-        "amount": 5,
-        "unit": "seconds"
-      },
-      "name": "Wait for PDF (Poll 5s)",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1,
-      "position": [
-        656,
-        416
-      ],
-      "id": "wait-pdf",
-      "webhookId": "63652146-bb74-438f-90ce-8070b4798328"
-    },
-    {
-      "parameters": {
-        "chatId": "={{$('Webhook: Escalation Trigger').item.json.body.patient_telegram_chat_id}}",
-        "text": "✅ *Your prescription is ready!*\n\nDr. {{$json.body.doctor_name}} has reviewed and approved your case.\n\nThe PDF is being sent to you now. 📄",
+        "chatId": "={{$json.callback_query.message.chat.id}}",
+        "text": "={{$json.message}}",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
       },
-      "name": "Telegram: Notify Patient — Approved",
+      "name": "Telegram: Confirm to Doctor",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        880,
+        960,
         416
       ],
-      "id": "tg-patient-approved",
-      "webhookId": "068a8d42-0e38-480a-9b3f-8406cd96bdf8",
+      "id": "tg-confirm",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -165,51 +150,40 @@
       "main": [
         [
           {
-            "node": "Telegram: Tell Patient",
+            "node": "Telegram: Doctor Alert",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Telegram: Tell Patient": {
+    "Telegram: Callback Trigger": {
       "main": [
         [
           {
-            "node": "Telegram: Highlight Card to Doctor",
+            "node": "Is Approval?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Telegram: Doctor Callback": {
+    "Is Approval?": {
       "main": [
         [
           {
-            "node": "Backend: Doctor Approval",
+            "node": "Backend: Submit Approval",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Backend: Doctor Approval": {
+    "Backend: Submit Approval": {
       "main": [
         [
           {
-            "node": "Wait for PDF (Poll 5s)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait for PDF (Poll 5s)": {
-      "main": [
-        [
-          {
-            "node": "Telegram: Notify Patient — Approved",
+            "node": "Telegram: Confirm to Doctor",
             "type": "main",
             "index": 0
           }
@@ -219,13 +193,6 @@
   },
   "active": true,
   "settings": {
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
-  },
-  "versionId": "72e70ffe-1bba-40cb-ba59-21ab304fe7f9",
-  "meta": {
-    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
-  },
-  "id": "jeFQt6XP6HQ1j0aK",
-  "tags": []
+    "callerPolicy": "workflowsFromSameOwner"
+  }
 }

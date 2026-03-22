@@ -14,8 +14,7 @@
         240,
         304
       ],
-      "id": "onboard-webhook",
-      "webhookId": "6a45704a-45a8-450a-8db4-03347c675740"
+      "id": "onboard-webhook"
     },
     {
       "parameters": {
@@ -53,10 +52,9 @@
         208
       ],
       "id": "tg-welcome",
-      "webhookId": "85fe0f6c-957a-49e3-8c4c-2bb983e78016",
       "credentials": {
         "telegramApi": {
-          "id": "iv5NZHCR5wjspGfE",
+          "id": "standard-tg-id",
           "name": "Dignova Telegram Bot"
         }
       }
@@ -66,6 +64,7 @@
         "fromEmail": "cherrycostech@gmail.com",
         "toEmail": "={{$json.body.email}}",
         "subject": "Welcome to Dignova AI — Please Verify Your Email",
+        "html": "<h1>Welcome to Dignova AI</h1><p>Hi {{$json.body.name}}, your account is ready.</p><p>Please verify your email here: <a href=\"{{$json.body.verify_url}}\">Verify Now</a></p>",
         "options": {}
       },
       "name": "Email: Welcome",
@@ -78,7 +77,7 @@
       "id": "email-welcome",
       "credentials": {
         "smtp": {
-          "id": "Qiqh2Vgtaueeka34",
+          "id": "standard-smtp-id",
           "name": "Dignova Gmail SMTP"
         }
       }
@@ -129,13 +128,6 @@
   },
   "active": true,
   "settings": {
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
-  },
-  "versionId": "35269153-fdf6-457b-bdd4-a435f9be743a",
-  "meta": {
-    "instanceId": "e2085f3a4cd290088d5aa7a2ac7e2ecd8cf42673fc456d3d817ea49a849eeeb7"
-  },
-  "id": "VbBj14TBC0ZmxvDX",
-  "tags": []
+    "callerPolicy": "workflowsFromSameOwner"
+  }
 }
