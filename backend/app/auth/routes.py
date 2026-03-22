@@ -176,7 +176,10 @@ async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: A
     user_data = {
         "email": user.email,
         "name": user.name,
-        "phone": user.phone_number
+        "phone": user.phone_number,
+        "role": user.role.value,
+        "verify_url": verify_url,
+        "telegram_chat_id": user.telegram_chat_id
     }
     background_tasks.add_task(N8nService.trigger_onboarding, user_data)
 
