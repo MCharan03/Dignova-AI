@@ -1,13 +1,22 @@
 import os
+import resend
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from dotenv import load_dotenv
 from pydantic import EmailStr
-from typing import List, Any
+from typing import List, Any, Optional
 import asyncio
 
 load_dotenv()
 
-# --- Pro Configuration: Optimized for Gmail SMTP ---
+# --- Pro Configuration: Optimized for Resend + Fallback Gmail SMTP ---
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
+# Simulation / Dry Run Mode
+SIMULATE_EMAIL = os.getenv("SIMULATE_EMAIL", "False").lower() == "true"
+
+# SMTP Fallback Config
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
     MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
@@ -19,7 +28,7 @@ conf = ConnectionConfig(
     MAIL_SSL_TLS=os.getenv("MAIL_USE_SSL", "False").lower() == "true",
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
-    TIMEOUT=30 # Increased for production stability
+    TIMEOUT=30
 )
 
 fastmail = FastMail(conf)
@@ -184,24 +193,58 @@ def build_appointment_reminder_email(
 
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
-async def send_email_async(msg: MessageSchema):
-    """Internal async sender with deep SMTP diagnostics."""
+async def send_email_async(to: str, subject: str, body: str, html: str = None):
+    """
+    High-performance async dispatcher.
+    Prioritizes Resend API (HTTP 443), falls back to Gmail SMTP (Port 587).
+    """
+    recipients = [to]
+    content = html or body
+    
+    if SIMULATE_EMAIL:
+        print(f"🧪 SIMULATION MODE: Email would be sent to {recipients}")
+        print(f"Subject: {subject}")
+        # To avoid flooding logs, we just print the first 100 chars of the body
+        print(f"Body Preview: {content[:100]}...")
+        return True
+
+    # 1. Try Resend (Modern, Port 443, Reliable on Render)
+    if RESEND_API_KEY:
+        try:
+            print(f"🚀 RESEND ATTEMPT: Sending to {recipients}...")
+            params = {
+                "from": f"{os.getenv('MAIL_FROM_NAME', 'Dignova AI')} <{os.getenv('MAIL_FROM', 'onboarding@resend.dev')}>",
+                "to": recipients,
+                "subject": subject,
+                "html": html or body,
+            }
+            resend.Emails.send(params)
+            print(f"✅ RESEND SUCCESS: Email dispatched.")
+            return True
+        except Exception as e:
+            print(f"⚠️ RESEND FAILURE: {e}. Falling back to SMTP...")
+
+    # 2. Fallback to SMTP (FastAPI-Mail)
     try:
-        print(f"📡 SMTP ATTEMPT: Sending to {msg.recipients}...")
-        await fastmail.send_message(msg)
+        print(f"📡 SMTP FALLBACK: Sending to {recipients} via {conf.MAIL_SERVER}...")
+        message = MessageSchema(
+            subject=subject,
+            recipients=recipients,
+            body=content,
+            subtype=MessageType.html if html else MessageType.plain
+        )
+        await fastmail.send_message(message)
         print(f"✅ SMTP SUCCESS: Email dispatched.")
         return True
     except Exception as e:
         error_msg = str(e)
-        import traceback
         print(f"❌ SMTP CRITICAL FAILURE: {error_msg}")
-        print(f"🔍 DIAGNOSTIC TRACEBACK:\n{traceback.format_exc()}")
         
-        # Pro-Tip for common Gmail SMTP errors
+        # Diagnostic help
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
-            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Check for: 1. Quotes in Render password, 2. 2FA not enabled, 3. App Password revoked.")
+            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Use an App Password (2FA).")
         elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
-            print("💡 PRO-TIP: NETWORK BLOCK. Render port 587 might be throttled or blocked by Gmail.")
+            print("💡 PRO-TIP: RENDER PORT 587 BLOCK. Port 587 is likely throttled by Render.")
         return False
 
 
@@ -210,24 +253,17 @@ def send_email(to: str, subject: str, body: str, html: str = None):
     Standard wrapper for sending emails. 
     In FastAPI, this should be called with BackgroundTasks for best performance.
     """
-    message = MessageSchema(
-        subject=subject,
-        recipients=[to],
-        body=html or body,
-        subtype=MessageType.html if html else MessageType.plain
-    )
-    
-    # We use asyncio.create_task to fire-and-forget if not in a background task context
+    # We use asyncio.create_task to fire-and-forget
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            loop.create_task(send_email_async(message))
+            loop.create_task(send_email_async(to, subject, body, html))
         else:
-            asyncio.run(send_email_async(message))
+            asyncio.run(send_email_async(to, subject, body, html))
     except Exception as e:
-        print(f"⚠️ Email Task Creation Error: {e}")
+        print(f"⚠️ Email Dispatch Error: {e}")
     
-    return True # We return True immediately to keep the API snappy
+    return True # Non-blocking return
 
 
 def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):

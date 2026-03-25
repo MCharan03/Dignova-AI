@@ -25,16 +25,24 @@ class N8nService:
 
     @staticmethod
     async def trigger_workflow(webhook_path: str, payload: Dict[str, Any]) -> bool:
-        """Triggers a specific n8n webhook. Returns True on success."""
+        """Triggers a specific n8n webhook with fail-safe error handling."""
+        if not N8nService.BASE_URL or "placeholder" in N8nService.BASE_URL:
+            print(f"⏩ n8n Skip: Base URL not configured for {webhook_path}")
+            return False
+
         url = f"{N8nService.BASE_URL}/webhook/{webhook_path}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Pro Optimization: Short timeout for webhooks to prevent API hanging
+        async with httpx.AsyncClient(timeout=5.0) as client:
             try:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 print(f"✅ n8n trigger OK: {webhook_path}")
                 return True
+            except httpx.ConnectError:
+                print(f"⚠️ n8n Offline: Could not connect to {N8nService.BASE_URL}. Is your tunnel active?")
+                return False
             except Exception as e:
-                print(f"⚠️  n8n trigger failed ({webhook_path}): {e}")
+                print(f"⚠️ n8n trigger failed ({webhook_path}): {e}")
                 return False
 
     # ── Onboarding ──────────────────────────────────────────────────────── #
