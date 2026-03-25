@@ -1,5 +1,4 @@
 import os
-import resend
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from dotenv import load_dotenv
 from pydantic import EmailStr
@@ -8,24 +7,24 @@ import asyncio
 
 load_dotenv()
 
-# --- Pro Configuration: Optimized for Resend + Fallback Gmail SMTP ---
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
+# --- SMTP Configuration (Optimized for Gmail + Render) ---
+# Pro-Tip: If Port 587 is blocked on Render, use Port 465 with MAIL_SSL_TLS=True
+MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+MAIL_SSL_TLS = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
+MAIL_STARTTLS = os.getenv("MAIL_USE_TLS", "True").lower() == "true"
 
 # Simulation / Dry Run Mode
 SIMULATE_EMAIL = os.getenv("SIMULATE_EMAIL", "False").lower() == "true"
 
-# SMTP Fallback Config
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
     MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
     MAIL_FROM=os.getenv("MAIL_FROM"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+    MAIL_PORT=MAIL_PORT,
     MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
     MAIL_FROM_NAME=os.getenv("MAIL_FROM_NAME", "Dignova AI"),
-    MAIL_STARTTLS=os.getenv("MAIL_USE_TLS", "True").lower() == "true",
-    MAIL_SSL_TLS=os.getenv("MAIL_USE_SSL", "False").lower() == "true",
+    MAIL_STARTTLS=MAIL_STARTTLS,
+    MAIL_SSL_TLS=MAIL_SSL_TLS,
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
     TIMEOUT=30
@@ -161,72 +160,23 @@ def build_diagnosis_receipt_email(
     return _wrap_email("Your Dignova AI Prescription", body)
 
 
-def build_appointment_reminder_email(
-    patient_name: str,
-    slot_time: str,
-    doctor_name: str,
-    appointment_id: int
-) -> str:
-    body = f"""
-      <p class="greeting">Appointment Reminder 📅</p>
-      <p class="text">Hi <strong>{patient_name}</strong>, this is a reminder for your upcoming appointment at Dignova AI.</p>
-
-      <div class="info-box">
-        <p class="label">Doctor</p>
-        <p style="font-size:15px;font-weight:700;color:#F1F5F9;">Dr. {doctor_name}</p>
-        <p class="label" style="margin-top:10px;">Date & Time</p>
-        <p style="font-size:15px;font-weight:700;color:#00D4FF;">{slot_time}</p>
-        <p class="label" style="margin-top:10px;">Appointment ID</p>
-        <p style="color:#7DD3FC;">#{appointment_id}</p>
-      </div>
-
-      <p class="text">You can also manage your appointment directly from your Telegram bot.</p>
-
-      <hr class="divider">
-      <p class="text" style="font-size:12px;color:#475569;">
-        If you need to reschedule, please do so at least 2 hours in advance.
-        Need help? Contact us via the Telegram bot or call 1800-DIGNOVA.
-      </p>
-    """
-    return _wrap_email("Your Dignova AI Appointment", body)
-
-
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
 async def send_email_async(to: str, subject: str, body: str, html: str = None):
     """
-    High-performance async dispatcher.
-    Prioritizes Resend API (HTTP 443), falls back to Gmail SMTP (Port 587).
+    Async SMTP dispatcher with deep diagnostics and simulation support.
     """
     recipients = [to]
     content = html or body
     
     if SIMULATE_EMAIL:
-        print(f"🧪 SIMULATION MODE: Email would be sent to {recipients}")
+        print(f"🧪 SMTP SIMULATION: Email would be sent to {recipients}")
         print(f"Subject: {subject}")
-        # To avoid flooding logs, we just print the first 100 chars of the body
         print(f"Body Preview: {content[:100]}...")
         return True
 
-    # 1. Try Resend (Modern, Port 443, Reliable on Render)
-    if RESEND_API_KEY:
-        try:
-            print(f"🚀 RESEND ATTEMPT: Sending to {recipients}...")
-            params = {
-                "from": f"{os.getenv('MAIL_FROM_NAME', 'Dignova AI')} <{os.getenv('MAIL_FROM', 'onboarding@resend.dev')}>",
-                "to": recipients,
-                "subject": subject,
-                "html": html or body,
-            }
-            resend.Emails.send(params)
-            print(f"✅ RESEND SUCCESS: Email dispatched.")
-            return True
-        except Exception as e:
-            print(f"⚠️ RESEND FAILURE: {e}. Falling back to SMTP...")
-
-    # 2. Fallback to SMTP (FastAPI-Mail)
     try:
-        print(f"📡 SMTP FALLBACK: Sending to {recipients} via {conf.MAIL_SERVER}...")
+        print(f"📡 SMTP ATTEMPT: Sending to {recipients} via {conf.MAIL_SERVER}:{conf.MAIL_PORT}...")
         message = MessageSchema(
             subject=subject,
             recipients=recipients,
@@ -242,18 +192,16 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
         
         # Diagnostic help
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
-            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Use an App Password (2FA).")
-        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
-            print("💡 PRO-TIP: RENDER PORT 587 BLOCK. Port 587 is likely throttled by Render.")
+            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Check for: 1. Use 16-char App Password (2FA), 2. Remove quotes from password.")
+        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower() or "10060" in error_msg:
+            print(f"💡 PRO-TIP: RENDER PORT {conf.MAIL_PORT} BLOCK. Render blocks 587. TRY PORT 465 + MAIL_USE_SSL=True.")
         return False
 
 
 def send_email(to: str, subject: str, body: str, html: str = None):
     """
     Standard wrapper for sending emails. 
-    In FastAPI, this should be called with BackgroundTasks for best performance.
     """
-    # We use asyncio.create_task to fire-and-forget
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -263,7 +211,7 @@ def send_email(to: str, subject: str, body: str, html: str = None):
     except Exception as e:
         print(f"⚠️ Email Dispatch Error: {e}")
     
-    return True # Non-blocking return
+    return True
 
 
 def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):
@@ -276,41 +224,6 @@ def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "us
         html=html
     )
 
-
-def send_diagnosis_receipt(
-    to: str,
-    patient_name: str,
-    diagnosis: str,
-    medications: list,
-    doctor_name: str,
-    pdf_url: str,
-    call_id: int,
-    is_auto: bool = False
-):
-    """Sends the post-diagnosis prescription receipt email."""
-    html = build_diagnosis_receipt_email(
-        patient_name, diagnosis, medications, doctor_name, pdf_url, call_id, is_auto
-    )
-    return send_email(
-        to=to,
-        subject=f"Your Dignova AI Prescription — Ref #{call_id}",
-        body=f"Your prescription is ready. Download it at: {pdf_url}",
-        html=html
-    )
-
-
-def send_appointment_reminder(
-    to: str,
-    patient_name: str,
-    slot_time: str,
-    doctor_name: str,
-    appointment_id: int
-):
-    """Sends a 24-hour appointment reminder email."""
-    html = build_appointment_reminder_email(patient_name, slot_time, doctor_name, appointment_id)
-    return send_email(
-        to=to,
-        subject=f"Reminder: Your Dignova AI Appointment Tomorrow",
-        body=f"Appointment reminder for {patient_name} with Dr. {doctor_name} at {slot_time}",
-        html=html
-    )
+def send_diagnosis_receipt(to: str, patient_name: str, diagnosis: str, medications: list, doctor_name: str, pdf_url: str, call_id: int, is_auto: bool = False):
+    html = build_diagnosis_receipt_email(patient_name, diagnosis, medications, doctor_name, pdf_url, call_id, is_auto)
+    return send_email(to=to, subject=f"Your Dignova AI Prescription — Ref #{call_id}", body=f"Your prescription is ready. Download it at: {pdf_url}", html=html)
