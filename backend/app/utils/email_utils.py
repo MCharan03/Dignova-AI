@@ -160,6 +160,36 @@ def build_diagnosis_receipt_email(
     return _wrap_email("Your Dignova AI Prescription", body)
 
 
+def build_appointment_reminder_email(
+    patient_name: str,
+    slot_time: str,
+    doctor_name: str,
+    appointment_id: int
+) -> str:
+    body = f"""
+      <p class="greeting">Appointment Reminder 📅</p>
+      <p class="text">Hi <strong>{patient_name}</strong>, this is a reminder for your upcoming appointment at Dignova AI.</p>
+
+      <div class="info-box">
+        <p class="label">Doctor</p>
+        <p style="font-size:15px;font-weight:700;color:#F1F5F9;">Dr. {doctor_name}</p>
+        <p class="label" style="margin-top:10px;">Date & Time</p>
+        <p style="font-size:15px;font-weight:700;color:#00D4FF;">{slot_time}</p>
+        <p class="label" style="margin-top:10px;">Appointment ID</p>
+        <p style="color:#7DD3FC;">#{appointment_id}</p>
+      </div>
+
+      <p class="text">You can also manage your appointment directly from your Telegram bot.</p>
+
+      <hr class="divider">
+      <p class="text" style="font-size:12px;color:#475569;">
+        If you need to reschedule, please do so at least 2 hours in advance.
+        Need help? Contact us via the Telegram bot or call 1800-DIGNOVA.
+      </p>
+    """
+    return _wrap_email("Your Dignova AI Appointment", body)
+
+
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
 async def send_email_async(to: str, subject: str, body: str, html: str = None):
@@ -227,3 +257,13 @@ def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "us
 def send_diagnosis_receipt(to: str, patient_name: str, diagnosis: str, medications: list, doctor_name: str, pdf_url: str, call_id: int, is_auto: bool = False):
     html = build_diagnosis_receipt_email(patient_name, diagnosis, medications, doctor_name, pdf_url, call_id, is_auto)
     return send_email(to=to, subject=f"Your Dignova AI Prescription — Ref #{call_id}", body=f"Your prescription is ready. Download it at: {pdf_url}", html=html)
+
+def send_appointment_reminder(to: str, patient_name: str, slot_time: str, doctor_name: str, appointment_id: int):
+    """Sends a 24-hour appointment reminder email."""
+    html = build_appointment_reminder_email(patient_name, slot_time, doctor_name, appointment_id)
+    return send_email(
+        to=to,
+        subject=f"Reminder: Your Dignova AI Appointment Tomorrow",
+        body=f"Appointment reminder for {patient_name} with Dr. {doctor_name} at {slot_time}",
+        html=html
+    )
