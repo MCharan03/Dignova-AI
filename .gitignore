@@ -1,0 +1,67 @@
+# Environments & Secrets
+.env
+.env*
+!.env.example
+venv/
+ENV/
+env/
+.venv/
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Databases
+*.db
+*.sqlite3
+backend/app/app.db
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+frontend/tsconfig.tsbuildinfo
+frontend/tsc_errors.txt
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+.gemini/
+
+# Dignova Specific / Local Data
+uploads/
+backend/app/static/prescriptions/*.pdf
+*.log
+backend/test_*.py
+backend/bootstrap_*.py
+backend/fix_*.py
+backend/force_*.py
+backend/link_*.py
+backend/migrate_*.py
+backend/sentient_*.py
+backend/trigger_*.py
+backend/check_*.py
+backend/delete_user.py
+patch_n8n_urls.py
+Replica/
+Replica-Exclude.txt
+
+# n8n
+n8n_workflows/patch_credentials.py

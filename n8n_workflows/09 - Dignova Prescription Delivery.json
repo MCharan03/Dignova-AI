@@ -1,0 +1,56 @@
+{
+  "name": "09 - Dignova Prescription Delivery (FINAL STABLE)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-prescription",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "id": "webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nreturn [{\n  json: {\n    chat_id: body.telegram_chat_id || \"6019617155\",\n    name: body.patient_name || \"User\",\n    diagnosis: body.diagnosis || \"General Assessment\",\n    pdf_url: body.pdf_url || \"https://dignova.ai\"\n  }\n}];"
+      },
+      "name": "Fix Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "id": "fix-data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8683777677:AAFScRxgvXdFgBvdJJuVKVBc_EN01g0-wOs/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{$json.chat_id}}" },
+            { "name": "text", "value": "={{'📄 <b>PRESCRIPTION READY</b>\\n\\nHello ' + $json.name + ', your treatment plan is ready.\\n\\n<b>Diagnosis:</b> ' + $json.diagnosis + '\\n\\nYou can download the official PDF below.'}}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "reply_markup", "value": "={{JSON.stringify({inline_keyboard: [[{text: '📥 Download PDF', url: $json.pdf_url}]]})}}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [550, 300],
+      "id": "telegram-api"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Fix Data", "type": "main", "index": 0 }]] },
+    "Fix Data": { "main": [[{ "node": "Telegram API", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}

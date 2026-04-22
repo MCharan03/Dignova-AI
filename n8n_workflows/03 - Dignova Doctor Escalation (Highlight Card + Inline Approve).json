@@ -1,0 +1,76 @@
+{
+  "name": "03 - Dignova Doctor Escalation (ULTIMATE STABILITY)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-escalate",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "id": "webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nreturn [{\n  json: {\n    chat_id: body.doctor_telegram_chat_id || \"6019617155\",\n    patient: body.patient_name || \"Unknown\",\n    urgency: body.urgency || \"HIGH\",\n    title: body.highlight_title || \"Review Required\",\n    symptoms: (body.symptoms || []).join('\\n'),\n    action: body.suggested_action || \"Manual Review\",\n    callback: body.approve_callback || \"approve_0\"\n  }\n}];"
+      },
+      "name": "Fix Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "id": "fix-data"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chat_id}}",
+        "text": "=🚨 <b>HIGH-RISK ESCALATION</b>\n\n<b>Patient:</b> {{$json.patient}}\n<b>Urgency:</b> 🔴 {{$json.urgency}}\n\n<b>Summary:</b> {{$json.title}}\n\n<b>Symptoms:</b>\n{{$json.symptoms}}\n\n<b>Suggested Action:</b>\n{{$json.action}}\n\n<i>Review and approve below.</i>",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "✅ Approve Plan",
+              "callback_data": "={{$json.callback}}"
+            }
+          ],
+          [
+            {
+              "text": "🏥 Dashboard",
+              "url": "https://dignova-ai.vercel.app/doctor"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [550, 300],
+      "id": "telegram",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Fix Data", "type": "main", "index": 0 }]]
+    },
+    "Fix Data": {
+      "main": [[{ "node": "Telegram", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

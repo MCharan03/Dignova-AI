@@ -1,0 +1,79 @@
+{
+  "name": "02 - Dignova Telegram Force Hub (RECONNECTED)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tg-force-hub",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 400],
+      "id": "tg-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nconst is_callback = !!body.callback_query;\nreturn [{\n  json: {\n    is_callback,\n    chat_id: is_callback ? body.callback_query.message.chat.id : (body.message ? body.message.chat.id : null),\n    text: is_callback ? \"\" : (body.message ? body.message.text : \"\"),\n    callback_data: is_callback ? body.callback_query.data : \"\",\n    patient_name: is_callback ? body.callback_query.from.first_name : (body.message ? body.message.from.first_name : \"User\")\n  }\n}];"
+      },
+      "name": "Normalize",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [300, 400],
+      "id": "normalize"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.is_callback}}", "value2": true }]
+        }
+      },
+      "name": "Is Button?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 400],
+      "id": "is-button"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exhaustively-overaggressive-kathrine.ngrok-free.dev/api/n8n/webhook/aftercare-response",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "patient_telegram_chat_id", "value": "={{$json.chat_id.toString()}}" },
+            { "name": "response", "value": "={{$json.callback_data}}" }
+          ]
+        }
+      },
+      "name": "Backend: Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 500],
+      "id": "backend-cb"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Normalize\"].json.chat_id}}",
+        "text": "👍 <b>Response recorded.</b>",
+        "additionalFields": { "parse_mode": "HTML" }
+      },
+      "name": "Telegram: Ack",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [900, 500],
+      "id": "tg-ack",
+      "credentials": { "telegramApi": { "id": "standard-tg-id", "name": "Dignova Telegram Bot" } }
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
+    "Normalize": { "main": [[{ "node": "Is Button?", "type": "main", "index": 0 }]] },
+    "Is Button?": { "main": [[{ "node": "Backend: Callback", "type": "main", "index": 0 }], []] },
+    "Backend: Callback": { "main": [[{ "node": "Telegram: Ack", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}

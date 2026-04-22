@@ -1,0 +1,55 @@
+{
+  "name": "06 - Dignova Geofence Check-in (ULTIMATE STABILITY)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-geofence",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "id": "webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nreturn [{\n  json: {\n    chat_id: body.patient_telegram_chat_id || \"6019617155\",\n    name: body.patient_name || \"User\"\n  }\n}];"
+      },
+      "name": "Fix Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [300, 300],
+      "id": "fix-data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8683777677:AAFScRxgvXdFgBvdJJuVKVBc_EN01g0-wOs/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{$json.chat_id}}" },
+            { "name": "text", "value": "={{'📍 <b>HOSPITAL PROXIMITY DETECTED</b>\\n\\nWelcome, ' + $json.name + '! \\n\\nI have automatically checked you in. Please proceed to the Triage desk.'}}" },
+            { "name": "parse_mode", "value": "HTML" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [550, 300],
+      "id": "telegram-api"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Fix Data", "type": "main", "index": 0 }]] },
+    "Fix Data": { "main": [[{ "node": "Telegram API", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}

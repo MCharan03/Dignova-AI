@@ -1,0 +1,42 @@
+{
+  "name": "05 - Dignova Smart Calendar (HARDENED)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-calendar",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "id": "webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8683777677:AAFScRxgvXdFgBvdJJuVKVBc_EN01g0-wOs/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{$json.body.telegram_chat_id || \"6019617155\"}}" },
+            { "name": "text", "value": "={{'📅 <b>Appointment Reminder</b>\\n\\nHi ' + ($json.body.patient_name || 'User') + ', you have a visit scheduled for:\\n\\n🕒 <b>' + ($json.body.slot_time || 'Tomorrow') + '</b>\\n👨‍⚕️ <b>Dr. ' + ($json.body.doctor_name || 'Dignova Expert') + '</b>\\n\\nPlease confirm your arrival below.'}}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "reply_markup", "value": "={{JSON.stringify({inline_keyboard: [[{text: '✅ Confirm Arrival', callback_data: 'cal_confirm_' + ($json.body.appointment_id || '0')}, {text: '🔄 Reschedule', url: 'https://dignova-ai.vercel.app/user/history'}]]})}}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram: Send Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [400, 300],
+      "id": "tg-reminder"
+    }
+  ],
+  "connections": { "Webhook": { "main": [[{ "node": "Telegram: Send Reminder", "type": "main", "index": 0 }]] } },
+  "active": true,
+  "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}

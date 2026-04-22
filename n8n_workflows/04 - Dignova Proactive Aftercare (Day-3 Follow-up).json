@@ -1,0 +1,42 @@
+{
+  "name": "04 - Dignova Aftercare (ULTRA LIGHT)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-aftercare",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "id": "webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8683777677:AAFScRxgvXdFgBvdJJuVKVBc_EN01g0-wOs/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{$json.body.telegram_chat_id || \"6019617155\"}}" },
+            { "name": "text", "value": "={{'💙 <b>Health Check-in</b>\\n\\nHi ' + ($json.body.patient_name || 'User') + ', how are you feeling?'}}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "reply_markup", "value": "={{JSON.stringify({inline_keyboard: [[{text: '😊 Better', url: 'https://dignova.ai/recovered'}, {text: '🤒 Still Sick', url: 'https://dignova.ai/emergency'}]]})}}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram: Send Direct",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [400, 300],
+      "id": "tg-direct"
+    }
+  ],
+  "connections": { "Webhook Trigger": { "main": [[{ "node": "Telegram: Send Direct", "type": "main", "index": 0 }]] } },
+  "active": true,
+  "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}

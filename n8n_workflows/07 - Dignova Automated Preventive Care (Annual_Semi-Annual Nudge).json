@@ -1,0 +1,37 @@
+{
+  "name": "07 - Dignova Preventive Care (HARDENED)",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "dignova-preventive", "responseMode": "onReceived", "options": {} },
+      "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1, "position": [100, 300], "id": "webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nreturn [{\n  json: {\n    chat_id: body.telegram_chat_id || \"6019617155\",\n    name: body.patient_name || \"User\",\n    months: body.months_since || \"12\",\n    type: body.overdue_type || \"Check-up\"\n  }\n}];"
+      },
+      "name": "Fix Data", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [300, 300], "id": "fix-data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8683777677:AAFScRxgvXdFgBvdJJuVKVBc_EN01g0-wOs/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{$json.chat_id}}" },
+            { "name": "text", "value": "={{'💙 <b>Dignova Preventive Care</b>\\n\\nHi ' + $json.name + '! It has been ' + $json.months + ' months since your last ' + $json.type + '.\\n\\nProactive health management is key to longevity. Would you like to book a slot for this week?'}}" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "reply_markup", "value": "={{JSON.stringify({inline_keyboard: [[{text: '📅 Book Now', url: 'https://dignova.ai/book'}]]})}}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram API", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [550, 300], "id": "telegram-api"
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Fix Data", "type": "main", "index": 0 }]] },
+    "Fix Data": { "main": [[{ "node": "Telegram API", "type": "main", "index": 0 }]] }
+  },
+  "active": true, "settings": { "callerPolicy": "workflowsFromSameOwner" }
+}
