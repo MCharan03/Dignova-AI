@@ -45,14 +45,18 @@ async def internal_call_ws_handler(websocket: WebSocket):
                 
                 async with AsyncSessionLocal() as session:
                     if persona == "TRAINING_PATIENT" and db_id:
-                        # Fetch TrainingScenario
-                        stmt = select(domain.TrainingScenario).where(domain.TrainingScenario.id == int(db_id))
-                        sim_patient = await session.scalar(stmt)
-                        if sim_patient:
-                            # Get Org philosophy
-                            org_stmt = select(domain.Organization).where(domain.Organization.id == sim_patient.organization_id)
-                            org = await session.scalar(org_stmt)
-                            if org: philosophy = org.ai_philosophy
+                        # Fetch TrainingReport
+                        report_stmt = select(domain.TrainingReport).where(domain.TrainingReport.id == int(db_id))
+                        report = await session.scalar(report_stmt)
+                        if report and report.scenario_id:
+                            # Fetch TrainingScenario
+                            stmt = select(domain.TrainingScenario).where(domain.TrainingScenario.id == report.scenario_id)
+                            sim_patient = await session.scalar(stmt)
+                            if sim_patient:
+                                # Get Org philosophy
+                                org_stmt = select(domain.Organization).where(domain.Organization.id == sim_patient.organization_id)
+                                org = await session.scalar(org_stmt)
+                                if org: philosophy = org.ai_philosophy
                     elif db_id:
                         # Fetch Call to find Org philosophy
                         stmt = select(domain.Call).where(domain.Call.call_id == int(db_id))

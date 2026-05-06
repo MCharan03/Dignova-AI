@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function LoginScene({ isRegistering, isTransitioning, role }: Props) {
-  const monolithRef = useRef<THREE.Mesh>(null);
+  const monolithRef = useRef<THREE.Group>(null);
   const ringGroupRef = useRef<THREE.Group>(null);
   const cameraRef = useRef(new THREE.Vector3());
 
@@ -21,16 +21,29 @@ export function LoginScene({ isRegistering, isTransitioning, role }: Props) {
   const ringColor = role === 'doctor' ? '#34d399' : '#c084fc';
 
   useFrame((state, delta) => {
-    // 1. Monolith rotation
+    // 1. Bipyramid (Octahedron) rotation & dynamic effects based on login/register state
     if (monolithRef.current) {
-      monolithRef.current.rotation.y += delta * 0.1;
-      monolithRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+      // Base rotation
+      monolithRef.current.rotation.y += delta * 0.15;
+      monolithRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+      
+      // Dynamic scale/spin effect when switching
+      const targetScale = isRegistering ? 1.2 : 1.0;
+      monolithRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 4);
+      
+      // Extra spin when registering
+      if (isRegistering) {
+        monolithRef.current.rotation.y += delta * 0.5;
+      }
     }
 
     // 2. Ring rotation
     if (ringGroupRef.current) {
       ringGroupRef.current.rotation.z -= delta * 0.05;
-      ringGroupRef.current.rotation.x += delta * 0.02;
+      ringGroupRef.current.rotation.x += delta * (isRegistering ? 0.08 : 0.02);
+      
+      const ringTargetScale = isRegistering ? 1.1 : 1.0;
+      ringGroupRef.current.scale.lerp(new THREE.Vector3(ringTargetScale, ringTargetScale, ringTargetScale), delta * 3);
     }
 
     // 3. Smooth Camera Positioning
@@ -39,69 +52,71 @@ export function LoginScene({ isRegistering, isTransitioning, role }: Props) {
 
     if (isTransitioning) {
       // THE PORTAL DIVE
-      tCamera.position.z = THREE.MathUtils.lerp(tCamera.position.z, -20, delta * 3);
+      tCamera.position.z = THREE.MathUtils.lerp(tCamera.position.z, -10, delta * 3);
     } else {
       // Normal state transitions (Login vs Register)
-      const targetX = isRegistering ? -4 : 4;
-      const targetZ = isRegistering ? 12 : 14;
+      const targetX = isRegistering ? -3 : 3;
+      const targetZ = isRegistering ? 12 : 15;
       
       // Slight mouse tracking
-      const mouseX = (state.pointer.x * state.viewport.width) / 5;
-      const mouseY = (state.pointer.y * state.viewport.height) / 5;
+      const mouseX = (state.pointer.x * state.viewport.width) / 10;
+      const mouseY = (state.pointer.y * state.viewport.height) / 10;
       
       cameraRef.current.set(targetX + mouseX * 0.2, mouseY * 0.2, targetZ);
-      tCamera.position.lerp(cameraRef.current, delta * 2);
+      tCamera.position.lerp(cameraRef.current, delta * 2.5);
 
-      // Look roughly at center
-      tCamera.lookAt(0, 0, 0);
+      // Look at the bipyramid
+      tCamera.lookAt(0, 0, -2);
     }
   });
 
   // Geometry memorization for performance
-  const ringGeom = useMemo(() => new THREE.TorusGeometry(8, 0.02, 16, 100), []);
-  const innerRingGeom = useMemo(() => new THREE.TorusGeometry(6, 0.01, 16, 100), []);
+  const ringGeom = useMemo(() => new THREE.TorusGeometry(8, 0.015, 16, 100), []);
+  const innerRingGeom = useMemo(() => new THREE.TorusGeometry(6.5, 0.01, 16, 100), []);
+  const bipyramidGeom = useMemo(() => new THREE.OctahedronGeometry(5, 0), []);
 
   return (
     <>
       <ambientLight intensity={0.2} />
       <directionalLight position={[10, 10, 5]} intensity={1} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} />
       
-      <pointLight position={[0, 0, -2]} intensity={isTransitioning ? 50 : 5} distance={20} color={glowColor} />
+      <pointLight position={[0, 0, -2]} intensity={isTransitioning ? 50 : (isRegistering ? 15 : 5)} distance={30} color={glowColor} />
 
-      <Stars radius={100} depth={100} count={10000} factor={7} saturation={0} fade speed={isTransitioning ? 10 : 2} />
-      <Sparkles count={500} scale={120} size={6} speed={0.4} opacity={1} color="#fff" />
+      <Stars radius={100} depth={50} count={12000} factor={6} saturation={0} fade speed={isTransitioning ? 10 : (isRegistering ? 4 : 1.5)} />
+      <Sparkles count={800} scale={150} size={4} speed={0.4} opacity={0.5} color="#fff" />
 
       <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
-        <group position={[0, 0, -2]}>
-          {/* Main Dark Monolith */}
-          <mesh ref={monolithRef}>
-            <octahedronGeometry args={[4.5, 0]} />
-            <meshStandardMaterial 
-              color="#3a3a45"
-              metalness={0.9}
-              roughness={0.1}
-              emissive="#2a2a35"
-              emissiveIntensity={1.5}
+        <group ref={monolithRef} position={[0, 0, -2]}>
+          {/* Ethereal Square Bipyramid (Wireframe) */}
+          <mesh geometry={bipyramidGeom}>
+            <meshBasicMaterial 
+              color={glowColor}
+              wireframe
+              transparent
+              opacity={isRegistering ? 0.6 : 0.3}
             />
           </mesh>
+          
+          {/* Inner solid core to hide back lines slightly and give depth */}
+          <mesh geometry={bipyramidGeom} scale={0.98}>
+            <meshBasicMaterial color="#050508" transparent opacity={0.9} />
+          </mesh>
 
-
-          {/* Internal core floating element */}
-          <mesh scale={0.5}>
-            <dodecahedronGeometry args={[2, 0]} />
-            <meshStandardMaterial color={glowColor} emissive={glowColor} emissiveIntensity={2} wireframe />
+          {/* Internal glowing core */}
+          <mesh scale={0.4}>
+            <octahedronGeometry args={[2, 0]} />
+            <meshBasicMaterial color={glowColor} wireframe transparent opacity={0.8} />
           </mesh>
         </group>
       </Float>
 
-      {/* Orbiting wireframe rings */}
-      <group ref={ringGroupRef} position={[0, 0, -2]}>
+      {/* Orbiting faint rings */}
+      <group ref={ringGroupRef} position={[0, 0, -2]} rotation={[Math.PI / 3, Math.PI / 6, 0]}>
         <mesh geometry={ringGeom}>
-          <meshBasicMaterial color={ringColor} transparent opacity={0.2} />
+          <meshBasicMaterial color={ringColor} transparent opacity={0.15} />
         </mesh>
         <mesh geometry={innerRingGeom} rotation={[Math.PI / 2, 0, 0]}>
-          <meshBasicMaterial color={ringColor} transparent opacity={0.4} />
+          <meshBasicMaterial color={ringColor} transparent opacity={0.25} />
         </mesh>
       </group>
     </>

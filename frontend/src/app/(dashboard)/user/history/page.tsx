@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { History, Activity, Clock, CheckCircle2, AlertCircle, PhoneIncoming, ChevronRight, X, FileText, Download, User, Shield } from 'lucide-react';
+import { History, Activity, Clock, CheckCircle2, AlertCircle, PhoneIncoming, ChevronRight, X, FileText, Download, User, Shield, Heart as HeartPulse } from 'lucide-react';
 
 interface Call {
     call_id: number;

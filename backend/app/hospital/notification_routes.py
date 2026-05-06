@@ -1,68 +1,74 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
-from typing import List, Optional
-from datetime import datetime
+from sqlalchemy import select, func
 from pydantic import BaseModel
+from datetime import datetime, timedelta
+from typing import Optional, List
+import asyncio, json
 
 from ..extensions import get_db
-from ..models import Notification, User, UserRole
+from ..models import User, UserRole, Notification
 from ..utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
-# ═══════════════════════════════════════════════════
-# SCHEMAS
-# ═══════════════════════════════════════════════════
+# ─── SSE Broadcaster ──────────────────────────────────────────────────────────
+# Import the broadcaster from sos_routes to share the same registry
+def _get_broadcaster():
+    from .sos_routes import register_sse_subscriber, unregister_sse_subscriber
+    return register_sse_subscriber, unregister_sse_subscriber
 
-class NotificationResponse(BaseModel):
-    id: int
-    title: str
-    message: str
-    type: str
-    category: str
-    link: Optional[str] = None
-    is_read: bool
-    created_at: datetime
-    class Config:
-        from_attributes = True
 
-class BroadcastRequest(BaseModel):
-    title: str
-    message: str
-    type: str = "info"
-    category: str = "system"
-    link: Optional[str] = None
-    target_role: Optional[str] = None  # None = all users in org
+# ─── SSE Stream Endpoint ───────────────────────────────────────────────────────
 
-# ═══════════════════════════════════════════════════
-# ROUTES
-# ═══════════════════════════════════════════════════
-
-@router.get("", response_model=List[NotificationResponse])
-async def get_notifications(
-    unread_only: bool = False,
-    limit: int = 30,
+@router.get("/stream")
+async def notification_stream(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get the current user's notifications."""
-    stmt = select(Notification).where(
-        Notification.user_id == current_user.id
-    ).order_by(Notification.created_at.desc()).limit(limit)
-    
-    if unread_only:
-        stmt = stmt.where(Notification.is_read == False)
-    
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    """
+    Server-Sent Events stream for real-time notification push.
+    Client connects once and receives events as they are broadcast.
+    """
+    register_fn, unregister_fn = _get_broadcaster()
+    queue = register_fn(current_user.id)
+
+    async def event_generator():
+        try:
+            # Send initial heartbeat
+            yield f"data: {json.dumps({'type': 'connected', 'user_id': current_user.id})}\n\n"
+
+            while True:
+                try:
+                    # Wait for new notification, heartbeat every 25s
+                    payload = await asyncio.wait_for(queue.get(), timeout=25.0)
+                    yield f"data: {json.dumps(payload)}\n\n"
+                except asyncio.TimeoutError:
+                    # Heartbeat to keep connection alive
+                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            unregister_fn(current_user.id)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+# ─── Notification CRUD ────────────────────────────────────────────────────────
 
 @router.get("/count")
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get unread notification count for badge display."""
     count = await db.scalar(
         select(func.count(Notification.id)).where(
             Notification.user_id == current_user.id,
@@ -71,13 +77,41 @@ async def get_unread_count(
     )
     return {"unread_count": count or 0}
 
-@router.patch("/{notification_id}/read")
+
+@router.get("/list")
+async def get_notifications(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+    )
+    notifs = result.scalars().all()
+    return [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.type,
+            "category": n.category,
+            "link": n.link,
+            "is_read": n.is_read,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+        }
+        for n in notifs
+    ]
+
+
+@router.put("/{notification_id}/read")
 async def mark_as_read(
     notification_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Mark a notification as read."""
     notif = await db.scalar(
         select(Notification).where(
             Notification.id == notification_id,
@@ -86,71 +120,23 @@ async def mark_as_read(
     )
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found.")
-    
     notif.is_read = True
     await db.commit()
-    return {"message": "Marked as read."}
+    return {"status": "marked_read"}
 
-@router.patch("/read-all")
+
+@router.put("/read-all")
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Mark all notifications as read."""
-    await db.execute(
-        update(Notification).where(
+    result = await db.execute(
+        select(Notification).where(
             Notification.user_id == current_user.id,
             Notification.is_read == False
-        ).values(is_read=True)
-    )
-    await db.commit()
-    return {"message": "All notifications marked as read."}
-
-@router.post("/broadcast")
-async def broadcast_notification(
-    req: BroadcastRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Broadcast a notification to users. Admins can target by role."""
-    if current_user.role not in [UserRole.super_admin, UserRole.org_admin]:
-        raise HTTPException(status_code=403, detail="Only admins can broadcast notifications.")
-    
-    # Find target users
-    stmt = select(User)
-    
-    if current_user.role == UserRole.org_admin:
-        # Org admins can only broadcast within their organization
-        stmt = stmt.where(User.organization_id == current_user.organization_id)
-    elif current_user.role == UserRole.super_admin and current_user.organization_id:
-        # Super admin with org context — scope to that org
-        # If no org context, broadcast platform-wide
-        pass
-    
-    if req.target_role:
-        try:
-            role_enum = UserRole(req.target_role)
-            stmt = stmt.where(User.role == role_enum)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid target role.")
-    
-    result = await db.execute(stmt)
-    users = result.scalars().all()
-    
-    notifications = []
-    for user in users:
-        notif = Notification(
-            user_id=user.id,
-            organization_id=current_user.organization_id,
-            title=req.title,
-            message=req.message,
-            type=req.type,
-            category=req.category,
-            link=req.link,
         )
-        notifications.append(notif)
-    
-    db.add_all(notifications)
+    )
+    for notif in result.scalars().all():
+        notif.is_read = True
     await db.commit()
-    
-    return {"message": f"Broadcast sent to {len(notifications)} users.", "count": len(notifications)}
+    return {"status": "all_read"}

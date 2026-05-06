@@ -1,0 +1,350 @@
+{
+  "name": "Dignova AI: Master Sentient Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dignova-sentient-master",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook: Master Entrance",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 500],
+      "id": "master-webhook"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.body.metadata.event}}",
+        "rules": {
+          "values": [
+            { "operation": "equal", "value2": "USER_ONBOARDING" },
+            { "operation": "equal", "value2": "TRIAGE_VOICE_TEXT" },
+            { "operation": "equal", "value2": "DOCTOR_ESCALATION" },
+            { "operation": "equal", "value2": "AFTERCARE_PING" },
+            { "operation": "equal", "value2": "CALENDAR_REMINDER" },
+            { "operation": "equal", "value2": "GEOFENCE_ARRIVAL" },
+            { "operation": "equal", "value2": "PREVENTIVE_NUDGE" },
+            { "operation": "equal", "value2": "TRAINING_EVALUATION" },
+            { "operation": "equal", "value2": "PRESCRIPTION_DELIVERY" }
+          ]
+        }
+      },
+      "name": "Sentient Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "id": "sentient-router"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=👋 *Welcome to Dignova AI*, {{$json.body.data.name}}!\n\n✅ Your clinical profile is now linked.\n\n🩺 *Triage* — Describe symptoms\n🎙️ *Voice* — Send audio notes\n📍 *Location* — Share live location",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Onboarding",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 100],
+      "id": "path-onboarding",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=🎙️ *Voice Assessment Received*\n\nProcessing clinical audio via Gemini 2.0 Flash...",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Triage Voice",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 200],
+      "id": "path-voice",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.doctor_telegram_chat_id}}",
+        "text": "=🚨 *HIGH-RISK ESCALATION*\n\n*Patient:* {{$json.body.data.patient_name}}\n*Severity:* 🔴 {{$json.body.data.urgency}}\n\n*Summary:* {{$json.body.data.highlight_title}}\n\n*Action:* {{$json.body.data.suggested_action}}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "✅ Approve",
+              "callback_data": "={{$json.body.data.approve_callback}}"
+            }
+          ],
+          [
+            {
+              "text": "🏥 Dashboard",
+              "url": "https://dignova-ai.vercel.app/doctor"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Escalation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 300],
+      "id": "path-escalation",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=🕒 *Aftercare Follow-up*\n\nHow are you feeling after your consultation for *{{$json.body.data.medication_summary}}*?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "🟢 Better",
+              "callback_data": "={{$json.body.data.yes_callback}}"
+            }
+          ],
+          [
+            {
+              "text": "🔴 No Change / Worse",
+              "callback_data": "={{$json.body.data.no_callback}}"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Aftercare",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 400],
+      "id": "path-aftercare",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=📅 *Appointment Reminder*\n\nYou have a visit scheduled with *{{$json.body.data.doctor_name}}*.\n\n⏰ *Time:* {{$json.body.data.slot_time}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Calendar",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 500],
+      "id": "path-calendar",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.doctor_telegram_chat_id}}",
+        "text": "=📍 *Patient Arriving*\n\n*{{$json.body.data.patient_name}}* is within {{$json.body.data.distance_meters}}m of hospital geofence.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Geofence",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 600],
+      "id": "path-geofence",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=🛡️ *Preventive Nudge*\n\nIt's time for your annual checkup. Stay proactive about your health.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "📅 Book Now",
+              "callback_data": "={{$json.body.data.book_callback}}"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Preventive",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 700],
+      "id": "path-preventive",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=🎓 *Training Dossier*\n\n*Score:* {{$json.body.data.score}}%\n*Alignment:* {{$json.body.data.alignment}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Training",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 800],
+      "id": "path-training",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.body.data.telegram_chat_id}}",
+        "text": "=💊 *Prescription Delivered*\n\nYour clinical documentation is ready for download.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": [
+          [
+            {
+              "text": "📂 Open PDF",
+              "url": "={{$json.body.data.pdf_url}}"
+            }
+          ]
+        ],
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Path: Delivery",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [600, 900],
+      "id": "path-delivery",
+      "credentials": {
+        "telegramApi": {
+          "id": "standard-tg-id",
+          "name": "Dignova Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Master Entrance": {
+      "main": [
+        [
+          {
+            "node": "Sentient Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentient Router": {
+      "main": [
+        [
+          {
+            "node": "Path: Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Triage Voice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Aftercare",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Geofence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Preventive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Training",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Path: Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

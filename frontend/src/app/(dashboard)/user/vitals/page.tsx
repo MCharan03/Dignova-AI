@@ -89,10 +89,10 @@ export default function VitalsPage() {
     };
 
     const vitalStatus = (val: number | null, low: number, high: number) => {
-        if (val === null) return { color: 'text-gray-500', bg: 'bg-white/5', status: 'N/A', icon: null };
-        if (val < low) return { color: 'text-accent-blue', bg: 'bg-accent-blue/10', status: 'LOW', icon: TrendingDown };
-        if (val > high) return { color: 'text-danger', bg: 'bg-danger/10', status: 'HIGH', icon: AlertTriangle };
-        return { color: 'text-success', bg: 'bg-success/10', status: 'NORMAL', icon: CheckCircle };
+        if (val === null) return { color: 'text-gray-500', bg: 'bg-white/5', status: 'N/A', statusIcon: null };
+        if (val < low) return { color: 'text-accent-blue', bg: 'bg-accent-blue/10', status: 'LOW', statusIcon: TrendingDown };
+        if (val > high) return { color: 'text-danger', bg: 'bg-danger/10', status: 'HIGH', statusIcon: AlertTriangle };
+        return { color: 'text-success', bg: 'bg-success/10', status: 'NORMAL', statusIcon: CheckCircle };
     };
 
     if (loading) {
@@ -131,7 +131,7 @@ export default function VitalsPage() {
                             <GlassCard className={`p-5 border-white/5 ${v.bg} hover:border-white/10 transition-all`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <v.icon size={20} className={v.color} />
-                                    {v.icon && v.status !== 'N/A' && (
+                                    {v.statusIcon && v.status !== 'N/A' && (
                                         <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-wider ${v.color} ${v.bg} border border-current/20`}>{v.status}</span>
                                     )}
                                 </div>

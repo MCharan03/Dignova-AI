@@ -113,6 +113,18 @@
     background: rgba(255, 255, 255, 0.08);
 }
 
+.dock-item:hover > svg {
+    transform: translateY(-4px) scale(1.15);
+}
+
+.dock-item > svg {
+    transition: transform 0.25s var(--apple-ease);
+}
+
+.dock-item:active > svg {
+    transform: scale(0.9);
+}
+
 .dock-item.active {
     color: #fff;
     background: linear-gradient(135deg, var(--org-primary), var(--org-accent));

@@ -28,6 +28,21 @@ export default function UserCallPage() {
     const [loading, setLoading] = useState(true);
 
     // Triage Session State
+    const [isTrainingMode, setIsTrainingMode] = useState(false);
+    const [scenarioId, setScenarioId] = useState<string | null>(null);
+    const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+    const [finalDiagnosis, setFinalDiagnosis] = useState('');
+    const [evalResult, setEvalResult] = useState<any>(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            setIsTrainingMode(params.get('training') === '1');
+            setScenarioId(params.get('scenario_id'));
+        }
+    }, []);
+
+    // Triage Session State
     const [isTriageActive, setIsTriageActive] = useState(false);
     const [simCallId, setSimCallId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -200,29 +215,37 @@ export default function UserCallPage() {
     const startTriage = async () => {
         try {
             setIsTriageActive(true);
-            setMessages([{ role: 'assistant', text: 'Establishing Neural Uplink... Please wait.' }]);
+            setMessages([{ role: 'assistant', text: isTrainingMode ? 'Establishing Simulation Uplink... Please wait.' : 'Establishing Neural Uplink... Please wait.' }]);
             
             const token = localStorage.getItem('access_token');
-            // Decode token locally if possible or fetch /me
             const meRes = await fetch('/api/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const userData = await meRes.json();
 
-            // 1. Start Call Session in DB
-            const startRes = await fetch('/api/calls/start', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_id: userData.id })
-            });
-            
-            if (!startRes.ok) throw new Error("Failed to initialize call session");
-            
-            const callData = await startRes.json();
-            setSimCallId(callData.call_id);
+            let callIdToUse;
+            if (isTrainingMode && scenarioId) {
+                const startRes = await fetch(`/api/hospital/training/start/${scenarioId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!startRes.ok) throw new Error("Failed to initialize training session");
+                const callData = await startRes.json();
+                callIdToUse = callData.report_id;
+            } else {
+                const startRes = await fetch('/api/calls/start', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: userData.id })
+                });
+                if (!startRes.ok) throw new Error("Failed to initialize call session");
+                const callData = await startRes.json();
+                callIdToUse = callData.call_id;
+            }
+            setSimCallId(callIdToUse);
 
             // 2. Establish WebSocket for Sentient AI
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -235,10 +258,10 @@ export default function UserCallPage() {
                 console.log("Sentient Uplink Established");
                 socket.send(JSON.stringify({
                     event: 'init',
-                    persona: 'TRIAGE',
-                    call_id: callData.call_id
+                    persona: isTrainingMode ? 'TRAINING_PATIENT' : 'TRIAGE',
+                    call_id: callIdToUse
                 }));
-                setMessages([{ role: 'assistant', text: 'Connecting to Dignova AI... Please state your emergency.' }]);
+                setMessages([{ role: 'assistant', text: isTrainingMode ? 'Simulation Connected. You may begin the triage.' : 'Connecting to Dignova AI... Please state your emergency.' }]);
             };
 
             socket.onmessage = (event) => {
@@ -290,7 +313,11 @@ export default function UserCallPage() {
 
         try {
             const token = localStorage.getItem('access_token');
-            const response = await fetch(`/api/calls/${simCallId}/chat`, {
+            const endpoint = isTrainingMode 
+                ? `/api/hospital/training/${simCallId}/chat` 
+                : `/api/calls/${simCallId}/chat`;
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -363,6 +390,11 @@ export default function UserCallPage() {
     };
 
     const handleTerminate = async (callId: number) => {
+        if (isTrainingMode) {
+            setDiagnosisModalOpen(true);
+            return;
+        }
+
         // Immediate UI reset for better "Sentient" feel
         setActiveCall(null);
         setBookings([]);
@@ -381,6 +413,39 @@ export default function UserCallPage() {
         } catch (err) {
             console.error("Termination failed:", err);
         }
+    };
+
+    const submitFinalDiagnosis = async () => {
+        if (!scenarioId || !finalDiagnosis.trim()) return;
+        setChatLoading(true);
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/hospital/training/submit/${scenarioId}`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ diagnosis: finalDiagnosis })
+            });
+            if (!res.ok) throw new Error("Failed to submit diagnosis");
+            const data = await res.json();
+            setEvalResult(data);
+        } catch (err) {
+            console.error(err);
+            alert("Error submitting diagnosis");
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const closeSimulation = () => {
+        setDiagnosisModalOpen(false);
+        setEvalResult(null);
+        setIsTriageActive(false);
+        setSimCallId(null);
+        if (ws) ws.close();
+        window.location.href = '/intern';
     };
 
     const getResourceIcon = (type: string) => {
@@ -409,12 +474,12 @@ export default function UserCallPage() {
 
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight mb-4">
-                            {isTriageActive ? "Agent Session Active" : "Dignova AI Agent"}
+                            {isTriageActive ? (isTrainingMode ? "Simulation Active" : "Agent Session Active") : (isTrainingMode ? "Training Simulation" : "Dignova AI Agent")}
                         </h2>
                         <p className="text-gray-400 text-lg">
                             {isTriageActive 
-                                ? "You are connected to the Dignova Sentient Layer. Describe your condition and the AI will triage in real-time."
-                                : "Connect directly to the Dignova AI Triage Agent. It will assess your condition, generate a preliminary diagnosis, and auto-reserve hospital resources."}
+                                ? (isTrainingMode ? "You are connected to a simulated patient. Use chat or voice to triage." : "You are connected to the Dignova Sentient Layer. Describe your condition and the AI will triage in real-time.")
+                                : (isTrainingMode ? "Connect to a Ghost Replay simulated patient to practice triage and diagnosis." : "Connect directly to the Dignova AI Triage Agent. It will assess your condition, generate a preliminary diagnosis, and auto-reserve hospital resources.")}
                         </p>
                     </div>
 
@@ -422,11 +487,11 @@ export default function UserCallPage() {
                     <div className="flex justify-center">
                         <button 
                             onClick={startTriage}
-                            disabled={isTriageActive || (activeCall && activeCall.state === 'active')}
+                            disabled={isTriageActive || Boolean(!isTrainingMode && activeCall && activeCall.state === 'active')}
                             className={`group relative flex items-center gap-3 px-10 py-5 rounded-2xl font-bold tracking-widest transition-all duration-500 uppercase text-lg overflow-hidden ${
                                 isTriageActive 
-                                    ? 'bg-accent-magenta/20 border-accent-magenta/50 text-accent-magenta cursor-not-allowed opacity-60'
-                                    : 'bg-white/5 text-white border border-white/10 hover:border-accent-cyan/70 hover:shadow-[0_0_40px_rgba(0,255,255,0.25)] active:scale-95'
+                                    ? (isTrainingMode ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 cursor-not-allowed opacity-60' : 'bg-accent-magenta/20 border-accent-magenta/50 text-accent-magenta cursor-not-allowed opacity-60')
+                                    : (isTrainingMode ? 'bg-white/5 text-amber-500 border border-amber-500/30 hover:border-amber-500 hover:shadow-[0_0_40px_rgba(245,158,11,0.3)] active:scale-95' : 'bg-white/5 text-white border border-white/10 hover:border-accent-cyan/70 hover:shadow-[0_0_40px_rgba(0,255,255,0.25)] active:scale-95')
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             {/* NEW: Left-to-Right Loading Fill */}
@@ -435,13 +500,13 @@ export default function UserCallPage() {
                                     initial={{ width: 0 }}
                                     animate={{ width: '100%' }}
                                     transition={{ duration: 2, ease: "easeInOut" }}
-                                    className="absolute inset-0 bg-accent-magenta/20 z-0"
+                                    className={`absolute inset-0 z-0 ${isTrainingMode ? 'bg-amber-500/20' : 'bg-accent-magenta/20'}`}
                                 />
                             )}
                             
                             <span className="relative z-10 flex items-center gap-3">
                                 <PhoneCall size={24} className={isTriageActive ? "animate-pulse" : ""} />
-                                {isTriageActive ? 'Initializing Link...' : 'Call Agent'}
+                                {isTriageActive ? 'Initializing Link...' : (isTrainingMode ? 'Start Simulation' : 'Call Agent')}
                             </span>
                         </button>
                     </div>
@@ -671,6 +736,57 @@ export default function UserCallPage() {
                                 </button>
                             </form>
                         </div>
+                    </GlassCard>
+                </div>
+            )}
+
+            {/* Diagnosis Submission Modal */}
+            {diagnosisModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4">
+                    <GlassCard className="max-w-xl w-full p-8 border-amber-500/50 shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+                        {!evalResult ? (
+                            <>
+                                <h2 className="text-2xl font-bold text-amber-500 mb-2">Submit Final Diagnosis</h2>
+                                <p className="text-gray-400 mb-6">Review the patient's symptoms from the simulation and provide your final triage assessment.</p>
+                                <textarea
+                                    value={finalDiagnosis}
+                                    onChange={(e) => setFinalDiagnosis(e.target.value)}
+                                    placeholder="Patient presents with..."
+                                    className="w-full h-32 bg-black/50 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500/50 outline-none resize-none mb-6 font-mono"
+                                />
+                                <div className="flex justify-end gap-4">
+                                    <button onClick={closeSimulation} className="px-6 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-all">Cancel</button>
+                                    <button 
+                                        onClick={submitFinalDiagnosis}
+                                        disabled={!finalDiagnosis.trim() || chatLoading}
+                                        className="px-6 py-3 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 transition-all font-bold"
+                                    >
+                                        {chatLoading ? "Submitting..." : "Submit Diagnosis"}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-3xl font-bold text-success mb-2 flex items-center gap-3"><CheckCircle2 /> Evaluation Complete</h2>
+                                <div className="space-y-4 my-8">
+                                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-gray-400 font-mono">Final Score</span>
+                                        <span className="text-3xl font-bold text-amber-500">{evalResult.score}/10</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-gray-400 font-mono">Expert Alignment</span>
+                                        <span className="text-2xl font-bold text-accent-cyan">{(evalResult.alignment_with_expert * 100).toFixed(0)}%</span>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <span className="text-gray-400 font-mono block mb-2">AI Feedback</span>
+                                        <p className="text-white text-sm">{evalResult.feedback}</p>
+                                    </div>
+                                </div>
+                                <button onClick={closeSimulation} className="w-full px-6 py-4 rounded-xl bg-accent-cyan/20 border border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/30 transition-all font-bold uppercase tracking-widest">
+                                    Return to Lab
+                                </button>
+                            </>
+                        )}
                     </GlassCard>
                 </div>
             )}

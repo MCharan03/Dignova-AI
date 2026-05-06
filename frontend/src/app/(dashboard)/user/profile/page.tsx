@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { 
     User, Save, ShieldAlert, Activity, Cpu, Fingerprint, 
     Stethoscope, Award, Briefcase, CreditCard, Clock, Globe,
-    Undo2, ChevronRight, Binary, Send
+    Undo2, ChevronRight, Binary, Send, ShieldCheck
 } from 'lucide-react';
 
 interface UserProfile {
@@ -34,6 +34,7 @@ interface UserProfile {
     consultation_fee: number | '';
     available_hours: string;
     telegram_chat_id: string;
+    tier: string;
     is_verified: boolean;
     verified_at: string | null;
 }

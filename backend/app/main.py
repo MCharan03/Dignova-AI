@@ -78,8 +78,15 @@ from .stats.routes import router as stats_router
 from .hospital.ai_routes import router as ai_router
 from .hospital.message_routes import router as message_router
 from .hospital.notes_routes import router as notes_router
+from .hospital.sos_routes import router as sos_router
+from .hospital.appointment_routes import router as appointment_router
+from .hospital.analytics_routes import router as analytics_router
+from .hospital.alert_routes import router as alert_router
 
 # Core API Routes
+from .hospital.clinical_core import router as clinical_core_router
+app.include_router(clinical_core_router)
+
 app.include_router(hospital_router, prefix="/api/hospital", tags=["Hospital & Training"])
 app.include_router(admin_router, prefix="/api")
 app.include_router(org_router)
@@ -94,6 +101,10 @@ app.include_router(stats_router)
 app.include_router(ai_router)
 app.include_router(message_router)
 app.include_router(notes_router)
+app.include_router(sos_router)
+app.include_router(appointment_router)
+app.include_router(analytics_router)
+app.include_router(alert_router)
 
 # --- Static Files ---
 os.makedirs("app/static/prescriptions", exist_ok=True)

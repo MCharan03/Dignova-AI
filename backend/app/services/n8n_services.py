@@ -53,6 +53,22 @@ class N8nService:
                 print(f"⚠️ n8n trigger failed ({webhook_path}): {e}")
                 return False
 
+    @staticmethod
+    async def dispatch(event_type: str, payload: Dict[str, Any]) -> bool:
+        """
+        The Unified Master Dispatcher.
+        Routes all clinical events through a single 'dignova-master-orchestrator' webhook.
+        """
+        full_payload = {
+            "metadata": {
+                "event": event_type,
+                "timestamp": datetime.utcnow().isoformat(),
+                "system": "Dignova Sentient OS"
+            },
+            "data": payload
+        }
+        return await N8nService.trigger_workflow("dignova-master-orchestrator", full_payload)
+
     # ── Onboarding ──────────────────────────────────────────────────────── #
 
     @staticmethod

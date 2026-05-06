@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CallBell, FileText, Calendar, Activity, ChevronRight } from 'lucide-react';
+import { Bell, FileText, Calendar, Activity, ChevronRight } from 'lucide-react';
 
 interface TimelineEvent {
     type: 'call' | 'prescription' | 'appointment';

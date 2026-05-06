@@ -4,7 +4,7 @@ from sqlalchemy import select, func, desc
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
-from ..extensions import get_db
+from ..extensions import get_db, AsyncSessionLocal
 from ..models import Organization, TrainingScenario, TrainingReport, User, UserRole, DoctorTier
 from ..utils.auth import get_current_user
 
@@ -137,51 +137,61 @@ async def start_training_session(
     await db.refresh(report)
     return {"report_id": report.id, "scenario": scenario}
 
-class DiagnosisSubmission(BaseModel):
-    diagnosis: str
+from fastapi.responses import StreamingResponse
+from ..services.ai_service import SentientOrchestrator
+from ..schemas.call_schema import ChatRequest
+import asyncio
 
-@router.post("/training/submit/{scenario_id}")
-async def submit_training_diagnosis(
-    scenario_id: int,
-    submission: DiagnosisSubmission,
-    db: AsyncSession = Depends(get_db),
+@router.post("/training/{report_id}/chat")
+async def chat_with_training_patient(
+    report_id: int, 
+    request: ChatRequest, 
+    db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    """Evaluates an intern's diagnosis and triggers n8n alert."""
-    from ..services.n8n_services import N8nService
+    """
+    Streaming text-based chat for intern training.
+    """
     from ..models import TrainingReport
     
-    scenario = await db.get(TrainingScenario, scenario_id)
-    if not scenario:
-        raise HTTPException(status_code=404, detail="Scenario not found")
+    stmt = select(TrainingReport).where(TrainingReport.id == report_id)
+    report = await db.scalar(stmt)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    # Fetch scenario to get patient persona
+    scenario_stmt = select(TrainingScenario).where(TrainingScenario.id == report.scenario_id)
+    scenario = await db.scalar(scenario_stmt)
+    
+    # Get organization philosophy
+    philosophy = "balanced"
+    org_stmt = select(Organization).where(Organization.id == scenario.organization_id)
+    org = await db.scalar(org_stmt)
+    if org:
+        philosophy = org.ai_philosophy
 
-    alignment = 85.0
-    feedback = f"Simulation Evaluation Complete. Alignment: {alignment}%."
-
-    report = TrainingReport(
-        user_id=current_user.id,
-        scenario_id=scenario_id,
-        score=int(alignment),
-        alignment_with_expert=alignment,
-        feedback=feedback
-    )
-    db.add(report)
+    agent = SentientOrchestrator(persona="TRAINING_PATIENT", sim_patient=scenario, philosophy=philosophy)
+    
+    # Update transcript
+    report.transcript = (report.transcript or "") + f"INTERN: {request.message}\n"
     await db.commit()
 
-    if current_user.telegram_chat_id:
-        await N8nService.trigger_workflow("dignova-training-result", {
-            "telegram_chat_id": current_user.telegram_chat_id,
-            "intern_name":      current_user.name,
-            "score":            str(int(alignment)),
-            "alignment":        f"{alignment}%",
-            "feedback":         feedback
-        })
+    async def stream_generator():
+        full_response = ""
+        for chunk in agent.process_message_stream(report.transcript or "", request.message):
+            full_response += chunk
+            yield chunk
+            await asyncio.sleep(0.01)
+            
+        async with AsyncSessionLocal() as session:
+            # Re-fetch report
+            r_stmt = select(TrainingReport).where(TrainingReport.id == report_id)
+            inner_report = await session.scalar(r_stmt)
+            if inner_report:
+                inner_report.transcript = (inner_report.transcript or "") + f"PATIENT: {full_response}\n"
+                await session.commit()
 
-    return {
-        "status": "evaluated",
-        "alignment_with_expert": alignment,
-        "feedback": feedback
-    }
+    return StreamingResponse(stream_generator(), media_type="text/plain")
 
 
 # ═══════════════════════════════════════════════════
@@ -436,6 +446,34 @@ async def get_intern_progress(
         "scenario_id": r.scenario_id,
     } for i, r in enumerate(reports)]
 
+    # Per-scenario metrics (used by intern dashboard cards)
+    scenario_groups = {}
+    for r in reports:
+        if not r.scenario_id:
+            continue
+        if r.scenario_id not in scenario_groups:
+            scenario_groups[r.scenario_id] = []
+        scenario_groups[r.scenario_id].append(r)
+
+    scenario_metrics = {}
+    for scenario_id, scenario_reports in scenario_groups.items():
+        scenario = await db.scalar(
+            select(TrainingScenario).where(TrainingScenario.id == scenario_id)
+        )
+        report_scores = [rep.score for rep in scenario_reports if rep.score is not None]
+        report_alignments = [rep.alignment_with_expert for rep in scenario_reports if rep.alignment_with_expert is not None]
+        success_count = sum(1 for s in report_scores if s >= 60)
+        attempts = len(scenario_reports)
+
+        scenario_metrics[str(scenario_id)] = {
+            "scenario_id": scenario_id,
+            "scenario_title": scenario.title if scenario else "Unknown",
+            "attempts": attempts,
+            "success_rate": round((success_count / attempts) * 100, 1) if attempts else 0,
+            "avg_score": round(sum(report_scores) / len(report_scores), 1) if report_scores else 0,
+            "avg_alignment": round(sum(report_alignments) / len(report_alignments), 1) if report_alignments else 0,
+        }
+
     # Recent reports with scenario titles
     recent = reports[-5:]
     recent_reports = []
@@ -470,6 +508,49 @@ async def get_intern_progress(
     else:
         trend = "insufficient_data"
 
+    # Real streak calculations from report activity dates
+    report_dates = sorted(
+        {r.created_at.date() for r in reports if r.created_at},
+        reverse=True
+    )
+    streak_days = 0
+    if report_dates:
+        from datetime import timedelta
+        cursor_day = datetime.utcnow().date()
+        if report_dates[0] not in {cursor_day, cursor_day - timedelta(days=1)}:
+            streak_days = 0
+        else:
+            expected = report_dates[0]
+            for d in report_dates:
+                if d == expected:
+                    streak_days += 1
+                    expected = expected - timedelta(days=1)
+                elif d > expected:
+                    continue
+                else:
+                    break
+
+    # Weekly activity map for Mon..Sun
+    from datetime import timedelta
+    today = datetime.utcnow().date()
+    week_start = today - timedelta(days=today.weekday())
+    daily_counts = {}
+    for r in reports:
+        if not r.created_at:
+            continue
+        day = r.created_at.date()
+        daily_counts[day.isoformat()] = daily_counts.get(day.isoformat(), 0) + 1
+
+    weekly_activity = []
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        weekly_activity.append({
+            "day": day.strftime("%a"),
+            "date": day.isoformat(),
+            "count": daily_counts.get(day.isoformat(), 0),
+            "completed": daily_counts.get(day.isoformat(), 0) > 0,
+        })
+
     return {
         "total_simulations": total,
         "avg_score": round(avg_score, 1),
@@ -483,6 +564,9 @@ async def get_intern_progress(
         "recent_reports": recent_reports,
         "recommended_difficulty": recommended_difficulty,
         "trend": trend,
+        "scenario_metrics": scenario_metrics,
+        "streak_days": streak_days,
+        "weekly_activity": weekly_activity,
     }
 
 

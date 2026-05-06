@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Activity, Heart, Search, Bell, Droplets, Wind, Shield, UserCircle, Calendar, ShieldCheck, ArrowUpRight, Star, Clock, Briefcase, Stethoscope, CreditCard, Sparkles, History, Droplet } from 'lucide-react';
 import { MedicalTimeline } from '@/components/dashboard/MedicalTimeline';
-import { DoctorBooking } from '@/components/dashboard/DoctorBooking';
+import { AppointmentBooking as DoctorBooking } from '@/components/dashboard/DoctorBooking';
 import { AshaLocationNode } from '@/components/dashboard/AshaLocationNode';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 
@@ -268,7 +268,7 @@ export default function UserDashboard() {
 
                 {activeTab === 'booking' && (
                     <motion.div key="booking" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
-                        <GlassCard className="border-white/5 bg-black/20"><DoctorBooking doctors={assigned_doctors} onBooked={() => setActiveTab('timeline')} /></GlassCard>
+                        <GlassCard className="border-white/5 bg-black/20"><DoctorBooking doctors={stats.assigned_doctors as any} onBooked={() => setActiveTab('timeline')} /></GlassCard>
                     </motion.div>
                 )}
             </AnimatePresence>
