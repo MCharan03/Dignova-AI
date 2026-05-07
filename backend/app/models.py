@@ -307,3 +307,18 @@ class UserVitals(Base):
     source = Column(String, default="manual")          # manual | wearable | iot | clinic
     notes = Column(Text, nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow)
+
+class CaseStudy(Base):
+    """
+    Medical Case Studies created by interns for learning and documentation.
+    """
+    __tablename__ = "case_studies"
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
+    intern_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    title = Column(String, nullable=False)
+    symptoms = Column(Text, nullable=False)
+    diagnostics = Column(Text, nullable=False)
+    treatment_plan = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

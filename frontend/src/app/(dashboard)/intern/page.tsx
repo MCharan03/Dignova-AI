@@ -98,34 +98,53 @@ function HistoryBarChart({ data }: { data: number[] }) {
     );
 }
 
+interface CaseStudy {
+    id: number;
+    title: string;
+    symptoms: string;
+    diagnostics: string;
+    treatment_plan?: string;
+    notes?: string;
+    created_at: string;
+}
+
 export default function InternTrainingPage() {
     const router = useRouter();
     const [scenarios, setScenarios] = useState<TrainingScenario[]>([]);
+    const [cases, setCases] = useState<CaseStudy[]>([]);
     const [progress, setProgress] = useState<ProgressData | null>(null);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [activeTab, setActiveTab] = useState<string>('training');
 
+    // Case Study Form States
+    const [showCaseForm, setShowCaseForm] = useState(false);
+    const [caseTitle, setCaseTitle] = useState('');
+    const [caseSymptoms, setCaseSymptoms] = useState('');
+    const [caseDiagnostics, setCaseDiagnostics] = useState('');
+    const [casePlan, setCasePlan] = useState('');
+    const [caseNotes, setCaseNotes] = useState('');
+    const [creatingCase, setCreatingCase] = useState(false);
+
     // Simulation States
-    const [activeScenario, setActiveScenario] = useState<TrainingScenario | null>(null);
-    const [diagnosis, setDiagnosis] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    // ... rest of states ...
 
     useEffect(() => {
         const fetchData = async () => {
             const token = localStorage.getItem('access_token');
             const headers = { Authorization: `Bearer ${token}` };
             try {
-                const [scenariosRes, progressRes] = await Promise.all([
+                const [scenariosRes, progressRes, casesRes] = await Promise.all([
                     fetch('/api/hospital/training/scenarios', { headers }),
                     fetch('/api/hospital/training/progress', { headers }),
+                    fetch('/api/hospital/cases', { headers }),
                 ]);
                 const userRes = await fetch('/api/auth/me', { headers });
 
                 if (scenariosRes.ok) setScenarios(await scenariosRes.json());
                 if (progressRes.ok) setProgress(await progressRes.json());
+                if (casesRes.ok) setCases(await casesRes.json());
                 if (userRes.ok) setCurrentUser(await userRes.json());
             } catch (error) {
                 console.error('Failed to load intern training dashboard:', error);
@@ -135,6 +154,42 @@ export default function InternTrainingPage() {
         };
         fetchData();
     }, []);
+
+    const handleCreateCase = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setCreatingCase(true);
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/hospital/cases', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: caseTitle,
+                    symptoms: caseSymptoms,
+                    diagnostics: caseDiagnostics,
+                    treatment_plan: casePlan,
+                    notes: caseNotes
+                })
+            });
+            if (res.ok) {
+                const newCase = await res.json();
+                setCases([newCase, ...cases]);
+                setShowCaseForm(false);
+                setCaseTitle('');
+                setCaseSymptoms('');
+                setCaseDiagnostics('');
+                setCasePlan('');
+                setCaseNotes('');
+            }
+        } catch (error) {
+            console.error('Failed to create case study:', error);
+        } finally {
+            setCreatingCase(false);
+        }
+    };
 
     const startGhostReplay = (id: number) => {
         const scenario = scenarios.find(s => s.id === id);
@@ -252,83 +307,127 @@ export default function InternTrainingPage() {
                 {activeScenario ? (
                     /* SIMULATION VIEW */
                     <div className="flex flex-col gap-8 h-full">
+                        {/* ... existing simulation view code ... */}
+                    </div>
+                ) : activeTab === 'cases' ? (
+                    /* CASES VIEW */
+                    <div className="flex flex-col gap-6">
                         <header className="flex items-center justify-between">
                             <div>
-                                <h1 className="text-[28px] font-black text-white tracking-[0.15em] uppercase">{activeScenario.title}</h1>
-                                <p className="text-[10px] font-mono text-accent-cyan uppercase tracking-[0.1em]">Neural_Link_Active // Ghost_Simulation_Mode</p>
+                                <h1 className="text-[28px] font-black text-white tracking-[0.15em] uppercase">Medical Case Studies</h1>
+                                <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.1em]">Clinical_Documentation // Intern_Knowledge_Base</p>
                             </div>
-                            <button 
-                                onClick={() => setActiveScenario(null)}
-                                className="text-[10px] font-bold tracking-[0.2em] text-white/40 hover:text-rose-500 transition-colors border border-white/10 px-6 py-2.5 rounded-full uppercase bg-white/5"
-                            >
-                                Terminate Simulation
-                            </button>
+                            <GlassButton onClick={() => setShowCaseForm(true)} className="gap-2">
+                                <FileText size={14} /> BUILD_NEW_CASE
+                            </GlassButton>
                         </header>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 space-y-8">
-                                <GlassCard className="p-8 border-white/5 bg-black/40 min-h-[200px]">
-                                    <div className="flex items-center gap-3 text-accent-cyan border-b border-white/5 pb-4 mb-6">
-                                        <ShieldAlert size={18} />
-                                        <span className="text-xs font-bold uppercase tracking-widest">Initial Sequence Log</span>
-                                    </div>
-                                    <p className="text-lg text-white font-light italic leading-relaxed uppercase">&quot;{activeScenario.initial_symptoms}&quot;</p>
-                                </GlassCard>
-
-                                {result ? (
-                                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-                                        <GlassCard className="p-8 border-emerald-500/30 bg-emerald-500/5 text-center">
-                                            <CheckCircle2 className="mx-auto mb-4 text-emerald-500" size={48} />
-                                            <h3 className="text-2xl font-black text-white uppercase tracking-widest mb-2">Simulation Evaluated</h3>
-                                            <p className="text-white/40 mb-6 text-sm">A performance dossier has been dispatched to your Neural Link.</p>
-                                            <div className="inline-block px-10 py-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 font-black tracking-[0.3em] text-xl uppercase">
-                                                ALIGNMENT: {result.alignment_with_expert}%
+                        <AnimatePresence>
+                            {showCaseForm && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: -20 }} 
+                                    animate={{ opacity: 1, y: 0 }} 
+                                    exit={{ opacity: 0, y: -20 }}
+                                    className="mb-8"
+                                >
+                                    <GlassCard className="p-8 border-accent-cyan/20 bg-accent-cyan/[0.02]">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Construct Case Study</h3>
+                                            <button onClick={() => setShowCaseForm(false)} className="text-[10px] text-white/40 hover:text-rose-500 uppercase font-bold">Cancel</button>
+                                        </div>
+                                        <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block mb-2">Case Title</label>
+                                                <input 
+                                                    value={caseTitle} 
+                                                    onChange={(e) => setCaseTitle(e.target.value)}
+                                                    placeholder="e.g., Acute Myocardial Infarction - Triage Observation"
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-cyan/50 outline-none"
+                                                    required
+                                                />
                                             </div>
-                                        </GlassCard>
-                                    </motion.div>
-                                ) : (
-                                    <GlassCard className="p-8 border-white/5 bg-white/[0.02]">
-                                        <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6">Enter Diagnostic Assessment</h3>
-                                        <form onSubmit={handleSubmitDiagnosis} className="space-y-6">
-                                            <textarea 
-                                                value={diagnosis}
-                                                onChange={(e) => setDiagnosis(e.target.value)}
-                                                placeholder="Enter your clinical findings and action plan..."
-                                                className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-6 text-white font-mono text-sm focus:outline-none focus:border-accent-cyan/50 transition-all"
-                                                required
-                                            />
-                                            <div className="flex justify-end">
-                                                <GlassButton type="submit" disabled={submitting} className="gap-2 px-10">
-                                                    {submitting ? 'PROCESSING...' : 'SUBMIT_FOR_EVALUATION'} <Send size={16} />
+                                            <div>
+                                                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block mb-2">Symptoms</label>
+                                                <textarea 
+                                                    value={caseSymptoms} 
+                                                    onChange={(e) => setCaseSymptoms(e.target.value)}
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-cyan/50 outline-none h-32"
+                                                    placeholder="Describe presenting symptoms..."
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block mb-2">Diagnostics Given</label>
+                                                <textarea 
+                                                    value={caseDiagnostics} 
+                                                    onChange={(e) => setCaseDiagnostics(e.target.value)}
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-cyan/50 outline-none h-32"
+                                                    placeholder="What diagnostics were performed?"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block mb-2">Treatment Plan</label>
+                                                <textarea 
+                                                    value={casePlan} 
+                                                    onChange={(e) => setCasePlan(e.target.value)}
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-cyan/50 outline-none h-32"
+                                                    placeholder="Action plan taken..."
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest block mb-2">Personal Notes</label>
+                                                <textarea 
+                                                    value={caseNotes} 
+                                                    onChange={(e) => setCaseNotes(e.target.value)}
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-accent-cyan/50 outline-none h-32"
+                                                    placeholder="Learnings or additional context..."
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2 flex justify-end">
+                                                <GlassButton type="submit" disabled={creatingCase} className="px-10">
+                                                    {creatingCase ? 'COMMITING...' : 'FINALIZE_CASE_STUDY'}
                                                 </GlassButton>
                                             </div>
                                         </form>
                                     </GlassCard>
-                                )}
-                            </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                            <div className="space-y-6">
-                                <GlassCard className="p-6 border-accent-purple/20 bg-accent-purple/5">
-                                    <h4 className="text-[10px] font-black text-accent-purple uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                                        <ShieldAlert size={14} /> Expert_Decision_Log
-                                    </h4>
-                                    <div className="space-y-6">
-                                        {(activeScenario.expert_action_plan || []).map((action: any, idx: number) => (
-                                            <div key={idx} className={`flex gap-4 transition-all duration-1000 ${result ? 'opacity-100' : 'opacity-20 grayscale blur-[2px]'}`}>
-                                                <div className="w-1 h-12 bg-accent-purple/30 rounded-full" />
-                                                <div>
-                                                    <p className="text-[10px] font-mono text-accent-purple uppercase">NODE_POINT</p>
-                                                    <p className="text-xs text-white/60 font-light italic">{result ? action.description : 'Locked...'}</p>
-                                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {cases.length === 0 ? (
+                                <div className="md:col-span-2 py-20 text-center border-2 border-dashed border-white/5 rounded-3xl">
+                                    <p className="text-white/20 text-xs font-mono uppercase tracking-[0.2em]">Repository_Empty // No_Cases_Found</p>
+                                </div>
+                            ) : (
+                                cases.map((c) => (
+                                    <GlassCard key={c.id} className="p-6 bg-[#121420] border-white/5 hover:border-accent-cyan/30 transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="w-8 h-8 rounded-lg bg-accent-cyan/10 flex items-center justify-center border border-accent-cyan/20"><FileText size={16} className="text-accent-cyan" /></div>
+                                            <span className="text-[8px] font-mono text-white/30 uppercase">{new Date(c.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <h3 className="text-sm font-black text-white uppercase mb-4">{c.title}</h3>
+                                        <div className="space-y-4 mb-6">
+                                            <div>
+                                                <p className="text-[9px] font-mono text-accent-cyan uppercase tracking-widest mb-1">Symptoms</p>
+                                                <p className="text-xs text-white/60 line-clamp-2">{c.symptoms}</p>
                                             </div>
-                                        ))}
-                                    </div>
-                                </GlassCard>
-                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-mono text-amber-500 uppercase tracking-widest mb-1">Diagnostics</p>
+                                                <p className="text-xs text-white/60 line-clamp-2">{c.diagnostics}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end pt-4 border-t border-white/5">
+                                            <button className="text-[10px] font-black text-accent-cyan uppercase flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">EXPAND_CASE <ArrowUpRight size={12} /></button>
+                                        </div>
+                                    </GlassCard>
+                                ))
+                            )}
                         </div>
                     </div>
                 ) : (
-                    /* DASHBOARD VIEW */
+                    /* DASHBOARD VIEW (Training Tab) */
                     <>
                     <header className="flex flex-col gap-1">
                         <h1 className="text-[28px] font-black text-white tracking-[0.15em] uppercase">Training Dashboard</h1>

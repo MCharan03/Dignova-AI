@@ -5,8 +5,12 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from ..extensions import get_db, AsyncSessionLocal
-from ..models import Organization, TrainingScenario, TrainingReport, User, UserRole, DoctorTier
+from ..models import Organization, TrainingScenario, TrainingReport, User, UserRole, DoctorTier, CaseStudy
 from ..utils.auth import get_current_user
+from fastapi.responses import StreamingResponse
+from ..services.ai_service import SentientOrchestrator
+from ..schemas.call_schema import ChatRequest
+import asyncio
 
 router = APIRouter()
 
@@ -60,6 +64,26 @@ class UpdateScenarioRequest(BaseModel):
 class TrainingStartResponse(BaseModel):
     report_id: int
     scenario: ScenarioResponse
+
+class CaseStudyResponse(BaseModel):
+    id: int
+    title: str
+    symptoms: str
+    diagnostics: str
+    treatment_plan: Optional[str] = None
+    notes: Optional[str] = None
+    intern_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CreateCaseStudyRequest(BaseModel):
+    title: str
+    symptoms: str
+    diagnostics: str
+    treatment_plan: Optional[str] = None
+    notes: Optional[str] = None
 
 # --- Routes ---
 
@@ -126,8 +150,9 @@ async def start_training_session(
         raise HTTPException(status_code=404, detail="Scenario not found.")
 
     report = TrainingReport(
-        user_id=current_user.id,
+        intern_id=current_user.id,
         scenario_id=scenario_id,
+        organization_id=current_user.organization_id,
         score=0,
         alignment_with_expert=0.0,
         feedback="Simulation Initialized"
@@ -136,11 +161,6 @@ async def start_training_session(
     await db.commit()
     await db.refresh(report)
     return {"report_id": report.id, "scenario": scenario}
-
-from fastapi.responses import StreamingResponse
-from ..services.ai_service import SentientOrchestrator
-from ..schemas.call_schema import ChatRequest
-import asyncio
 
 @router.post("/training/{report_id}/chat")
 async def chat_with_training_patient(
@@ -764,3 +784,63 @@ async def get_intern_performance(
         "total_interns": len(interns),
         "total_scenarios": len(scenarios),
     }
+
+# ═══════════════════════════════════════════════════
+# INTERN CASE STUDIES — LEARNING REPOSITORY
+# ═══════════════════════════════════════════════════
+
+@router.get("/cases", response_model=List[CaseStudyResponse])
+async def list_case_studies(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List case studies. Interns see their own, doctors/admins see organization's."""
+    stmt = select(CaseStudy)
+    
+    if current_user.role == UserRole.doctor and current_user.tier == DoctorTier.intern:
+        stmt = stmt.where(CaseStudy.intern_id == current_user.id)
+    elif current_user.role != UserRole.super_admin:
+        stmt = stmt.where(CaseStudy.organization_id == current_user.organization_id)
+        
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+@router.post("/cases", response_model=CaseStudyResponse)
+async def create_case_study(
+    payload: CreateCaseStudyRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Interns build case studies based on their clinical experience."""
+    new_case = CaseStudy(
+        organization_id=current_user.organization_id,
+        intern_id=current_user.id,
+        title=payload.title,
+        symptoms=payload.symptoms,
+        diagnostics=payload.diagnostics,
+        treatment_plan=payload.treatment_plan,
+        notes=payload.notes
+    )
+    db.add(new_case)
+    await db.commit()
+    await db.refresh(new_case)
+    return new_case
+
+@router.get("/cases/{case_id}", response_model=CaseStudyResponse)
+async def get_case_study(
+    case_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(CaseStudy).where(CaseStudy.id == case_id)
+    case = await db.scalar(stmt)
+    
+    if not case:
+        raise HTTPException(status_code=404, detail="Case study not found.")
+        
+    # Security check
+    if current_user.role != UserRole.super_admin:
+        if case.organization_id != current_user.organization_id:
+            raise HTTPException(status_code=403, detail="Access denied.")
+            
+    return case
