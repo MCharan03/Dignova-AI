@@ -35,18 +35,18 @@ export default function VoiceTriagePage() {
     const transcriptEndRef = useRef<HTMLDivElement>(null);
 
     const REASONING_LOGS = [
-        "Analyzing respiratory cadence...",
-        "Evaluating cardiac rhythm stability...",
-        "Cross-referencing symptoms with neural medical database...",
-        "Assessing stress-telemetry markers...",
-        "Validating clinical consensus protocols...",
-        "Calibrating diagnostic certainty index...",
-        "Synthesizing preliminary triage report...",
-        "Mapping emergency priority via Triage Matrix...",
-        "Detecting emotional undertones in vocal frequency...",
-        "Checking for rapid-onset hypoxia indicators...",
-        "Syncing with local EMS availability...",
-        "Scanning for neurological coherence markers..."
+        "Listening to your breathing...",
+        "Checking your heart rate signs...",
+        "Looking up medical help for you...",
+        "Understanding how you are feeling...",
+        "Checking best doctor advice...",
+        "Making sure I understand clearly...",
+        "Writing down your health report...",
+        "Deciding how fast you need help...",
+        "Listening to the tone of your voice...",
+        "Checking for urgent health signs...",
+        "Checking if an ambulance is nearby...",
+        "Checking how clear you are speaking..."
     ];
 
     useEffect(() => {
@@ -343,13 +343,13 @@ export default function VoiceTriagePage() {
                                 <h2 className="text-5xl font-black text-white tracking-tighter uppercase leading-none">
                                     {status === 'IDLE' ? 'Sentient Physician' : status}
                                 </h2>
-                                <p className="text-gray-400 font-mono text-[10px] uppercase tracking-[0.4em]">Protocol: MD_SKILLED_AGENCY_v4</p>
+                                <p className="text-gray-400 font-mono text-[10px] uppercase tracking-[0.4em]">Mode: Family Doctor</p>
                             </div>
                             
                             {/* Neural Sync Bar */}
                             <div className="max-w-xs mx-auto">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">Neural_Sync</span>
+                                    <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">AI Understanding</span>
                                     <span className="text-[8px] font-mono text-accent-cyan">{syncLevel}%</span>
                                 </div>
                                 <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
@@ -365,13 +365,13 @@ export default function VoiceTriagePage() {
                         <div className="h-40 bg-black/60 rounded-2xl border border-white/5 p-4 overflow-y-auto text-left font-mono relative group">
                             <div className="absolute top-2 right-4 flex items-center gap-2">
                                 <div className={`w-2 h-2 rounded-full ${isTriageActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-700'}`} />
-                                <span className="text-[8px] text-gray-500 uppercase">Live_Transcript</span>
+                                <span className="text-[8px] text-gray-500 uppercase">Live Subtitles</span>
                             </div>
                             <div className="space-y-2">
                                 {transcription.map((t, i) => (
                                     <div key={i} className="text-[10px] leading-relaxed">
                                         <span className={t.role === 'ai' ? 'text-accent-magenta font-black' : 'text-accent-cyan font-black'}>
-                                            {t.role === 'ai' ? '[ATTENDING_MD]: ' : '[PATIENT]: '}
+                                            {t.role === 'ai' ? '[DOCTOR]: ' : '[YOU]: '}
                                         </span>
                                         <span className="text-gray-300">{t.text}</span>
                                     </div>
@@ -386,14 +386,14 @@ export default function VoiceTriagePage() {
                                     onClick={startVoiceSession}
                                     className="group flex items-center gap-4 px-12 py-6 rounded-3xl bg-white text-black font-black text-xl hover:scale-105 transition-all shadow-[0_0_50px_rgba(255,255,255,0.2)]"
                                 >
-                                    <PhoneCall size={28} /> CALL_ATTENDING_MD
+                                    <PhoneCall size={28} /> TALK_TO_DOCTOR
                                 </button>
                             ) : (
                                 <button 
                                     onClick={terminate}
                                     className="px-12 py-6 rounded-3xl bg-rose-500/20 border-2 border-rose-500/50 text-rose-500 font-black text-xl hover:bg-rose-500/30 transition-all uppercase tracking-widest"
                                 >
-                                    Terminate Uplink
+                                    End Call
                                 </button>
                             )}
                         </div>
@@ -404,7 +404,7 @@ export default function VoiceTriagePage() {
                 <div className="h-40 bg-black/80 rounded-2xl border border-accent-cyan/20 p-5 font-mono overflow-hidden relative group">
                     <div className="flex items-center gap-2 mb-3">
                         <Brain size={14} className="text-accent-cyan group-hover:animate-pulse" />
-                        <span className="text-[10px] text-accent-cyan font-black uppercase tracking-[0.2em]">Internal Clinical Reasoning Matrix</span>
+                        <span className="text-[10px] text-accent-cyan font-black uppercase tracking-[0.2em]">Sentient OS Thinking</span>
                         <div className="ml-auto flex gap-1">
                             <div className="w-1 h-1 rounded-full bg-accent-cyan/40" />
                             <div className="w-1 h-1 rounded-full bg-accent-cyan/40" />
@@ -430,28 +430,28 @@ export default function VoiceTriagePage() {
 
             {/* Right: Autonomous Grid */}
             <div className="lg:col-span-4 space-y-6">
-                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em] mb-4">Autonomous_Grid</h3>
+                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em] mb-4">Dashboard</h3>
                 
                 <GlassCard className="p-6 border-l-2 border-l-accent-magenta/40">
                     <div className="flex items-center gap-3 mb-6">
                         <Activity className="text-accent-magenta" size={20} />
-                        <span className="font-bold text-white uppercase text-[10px] tracking-widest">Biometric Stream</span>
+                        <span className="font-bold text-white uppercase text-[10px] tracking-widest">System Connection</span>
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center p-3 rounded-xl bg-black/40 border border-white/5 hover:border-accent-cyan/30 transition-all group">
-                            <span className="text-[9px] font-mono text-gray-500 uppercase">Link Latency</span>
+                            <span className="text-[9px] font-mono text-gray-500 uppercase">Delay</span>
                             <span className="text-[10px] font-mono text-accent-cyan font-bold group-hover:scale-110 transition-transform">
                                 {biometrics.latency.toFixed(1)}ms
                             </span>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-xl bg-black/40 border border-white/5 hover:border-accent-magenta/30 transition-all group">
-                            <span className="text-[9px] font-mono text-gray-500 uppercase">Jitter Variance</span>
+                            <span className="text-[9px] font-mono text-gray-500 uppercase">Voice Smoothness</span>
                             <span className="text-[10px] font-mono text-accent-magenta font-bold group-hover:scale-110 transition-transform">
                                 {biometrics.jitter.toFixed(1)}ms
                             </span>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-xl bg-black/40 border border-white/5 hover:border-success/30 transition-all group">
-                            <span className="text-[9px] font-mono text-gray-500 uppercase">Packet Stability</span>
+                            <span className="text-[9px] font-mono text-gray-500 uppercase">Call Quality</span>
                             <span className="text-[10px] font-mono text-success font-bold group-hover:scale-110 transition-transform">
                                 {(100 - biometrics.packetLoss).toFixed(2)}%
                             </span>
@@ -463,12 +463,12 @@ export default function VoiceTriagePage() {
                 <GlassCard className="p-6 border-l-2 border-l-amber-500/40">
                     <div className="flex items-center gap-3 mb-6">
                         <Brain className="text-amber-500" size={20} />
-                        <span className="font-bold text-white uppercase text-[10px] tracking-widest">Sentient Analysis</span>
+                        <span className="font-bold text-white uppercase text-[10px] tracking-widest">AI Health Check</span>
                     </div>
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <span className="text-[8px] font-mono text-gray-500 uppercase">Patient Stress Index</span>
+                                <span className="text-[8px] font-mono text-gray-500 uppercase">Your Worry Level</span>
                                 <span className="text-[10px] font-mono text-amber-500 font-bold">{biometrics.stress.toFixed(0)}%</span>
                             </div>
                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -483,16 +483,16 @@ export default function VoiceTriagePage() {
                         </div>
                         <div className="p-3 rounded-xl bg-black/40 border border-white/5">
                             <p className="text-[9px] font-mono text-gray-400 uppercase leading-tight">
-                                {biometrics.stress > 70 ? "HIGH ADRENALINE DETECTED. PERSONA ADAPTED TO EMERGENCY CALM." : 
-                                 biometrics.stress > 40 ? "MODERATE ANXIETY INDICATED. PRIORITIZING REASSURANCE." : 
-                                 "STABLE COGNITIVE STATE. PROCEEDING WITH STANDARD DIAGNOSTICS."}
+                                {biometrics.stress > 70 ? "YOU SEEM VERY WORRIED. I WILL STAY CALM FOR YOU." : 
+                                 biometrics.stress > 40 ? "YOU SEEM A BIT ANXIOUS. DON'T WORRY, I'M HERE." : 
+                                 "YOU SEEM CALM. LET'S CHECK YOUR HEALTH."}
                             </p>
                         </div>
                     </div>
                 </GlassCard>
 
                 <div className="space-y-4">
-                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest pl-2">Neural Reservations</span>
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest pl-2">Booked Help</span>
                     {bookings.length > 0 ? (
                         <AnimatePresence>
                             {bookings.map(b => (
@@ -515,14 +515,14 @@ export default function VoiceTriagePage() {
                     ) : (
                         <div className="py-12 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
                             <Bot className="text-gray-800 mx-auto mb-2 opacity-50" size={32} />
-                            <p className="text-gray-700 text-[9px] font-mono uppercase tracking-[0.2em]">Awaiting_Clinical_Directive</p>
+                            <p className="text-gray-700 text-[9px] font-mono uppercase tracking-[0.2em]">Waiting for AI...</p>
                         </div>
                     )}
                 </div>
 
                 <div className="p-4 rounded-2xl bg-accent-magenta/5 border border-accent-magenta/20">
                     <p className="text-[9px] text-accent-magenta/70 leading-relaxed font-mono uppercase tracking-tighter">
-                        NOTICE: Attending MD is an AI-powered Sentient Agent. Decisions are synchronized with the Dignova Global Consensus Matrix.
+                        NOTICE: This is an AI Doctor. I use professional medical knowledge to help you.
                     </p>
                 </div>
             </div>

@@ -4,6 +4,7 @@ import asyncio
 import os
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google import genai
+from google.genai import types
 from ..extensions import AsyncSessionLocal
 from .. import models as domain
 from sqlalchemy import select, update
@@ -18,7 +19,7 @@ router = APIRouter()
 
 # Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1alpha'})
-MODEL_ID = "gemini-3.1-flash-live-preview"
+MODEL_ID = "gemini-2.0-flash-exp" # High-velocity model for presentation
 
 @router.websocket("/ws/internal-call")
 async def internal_call_ws_handler(websocket: WebSocket):
@@ -67,7 +68,6 @@ async def internal_call_ws_handler(websocket: WebSocket):
                         stmt = select(domain.Call).where(domain.Call.call_id == int(db_id))
                         call = await session.scalar(stmt)
                         if call:
-                            # 🛠 NEW: Auto-link call to organization
                             if not call.organization_id:
                                 u_stmt = select(domain.User).where(domain.User.id == call.user_id)
                                 u = await session.scalar(u_stmt)
@@ -89,12 +89,14 @@ async def internal_call_ws_handler(websocket: WebSocket):
 
     # 2. Configure Gemini with the correct persona and dynamic patient data
     orchestrator = SentientOrchestrator(persona=persona, sim_patient=sim_patient, philosophy=philosophy)
-    system_instruction = orchestrator.system_instruction
     
-    config = {
-        "system_instruction": system_instruction,
-        "response_modalities": ["AUDIO", "TEXT"]
-    }
+    # Standardize system instruction for Gemini Live API
+    config = types.LiveConnectConfig(
+        system_instruction=types.Content(
+            parts=[types.Part(text=orchestrator.system_instruction)]
+        ),
+        response_modalities=["AUDIO", "TEXT"]
+    )
 
     # 3. Define helper for DB updates with buffering
     transcription_buffer = []
@@ -130,10 +132,12 @@ async def internal_call_ws_handler(websocket: WebSocket):
         async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
             print(f"CONNECTED to Gemini Live API with persona: {persona}")
             
-            # 🛠 NEW: Trigger initial greeting so the AI speaks first
+            # 🛠 Initial greeting
             try:
-                greeting_trigger = "The patient has connected. Please introduce yourself as Attending MD and ask how you can help with their triage today."
-                await session.send(greeting_trigger, end_of_turn=True)
+                await session.send(
+                    input="Hello! I am ready to help the patient. Please greet them warmly and ask how you can help.",
+                    end_of_turn=True
+                )
                 print("Greeting trigger sent to Gemini.")
             except Exception as ge:
                 print(f"Failed to send initial greeting: {ge}")
