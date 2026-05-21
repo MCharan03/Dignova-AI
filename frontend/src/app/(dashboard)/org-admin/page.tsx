@@ -8,7 +8,8 @@ import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { 
     Building2, Users, Stethoscope, Activity, AlertTriangle, Bed, 
     Calendar, ClipboardList, TrendingUp, Shield, RefreshCcw, 
-    UserCheck, HeartPulse, Zap, Megaphone, ChevronRight, DollarSign
+    UserCheck, HeartPulse, Zap, Megaphone, ChevronRight, DollarSign,
+    Map as MapIcon
 } from 'lucide-react';
 
 interface OrgDashboardData {
@@ -216,7 +217,7 @@ export default function OrgAdminDashboard() {
                         <div className="grid grid-cols-2 gap-3">
                             {[
                                 { label: 'Command Center', href: '/org-admin/admissions', icon: Zap, color: 'accent-cyan' },
-                                { label: 'Ward Matrix', href: '/org-admin/ward', icon: Map, color: 'accent-blue' },
+                                { label: 'Ward Matrix', href: '/org-admin/ward', icon: MapIcon, color: 'accent-blue' },
                                 { label: 'Staff Management', href: '/org-admin/staff', icon: Users, color: 'accent-purple' },
                                 { label: 'Add Department', href: '/org-admin/departments', icon: ClipboardList, color: 'accent-purple' },
                                 { label: 'Manage Shifts', href: '/org-admin/schedules', icon: Calendar, color: 'accent-blue' },
