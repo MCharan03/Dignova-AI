@@ -49,6 +49,23 @@ def confirm_reset_token(token, max_age=1800):
     except (SignatureExpired, BadSignature):
         return None
 
+def generate_sync_token(user_id):
+    """Generate a short-lived token for Telegram linking."""
+    s = _get_serializer()
+    return s.dumps(user_id, salt='telegram-sync')
+
+def confirm_sync_token(token, max_age=300):
+    """
+    Confirm a telegram sync token. Valid for 5 minutes.
+    Returns the user_id if valid.
+    """
+    s = _get_serializer()
+    try:
+        user_id = s.loads(token, salt='telegram-sync', max_age=max_age)
+        return user_id
+    except (SignatureExpired, BadSignature):
+        return None
+
 # --- Rate Limiting (DISABLED) ---
 def check_rate_limit(email):
     # System bypassed per Sentient Core requirement

@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from .extensions import engine, Base, AsyncSessionLocal
 from contextlib import asynccontextmanager
@@ -7,16 +7,20 @@ from . import models as domain
 from sqlalchemy import select
 from fastapi.staticfiles import StaticFiles
 
+# --- Security Imports ---
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 🛠 1. Auto-Create Tables
+    # ... existing logic ...
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
-        print(f"⚠️ Table Creation Warning (may already exist): {e}")
+        print(f"⚠️ Table Creation Warning: {e}")
         
-    # 🛠 2. Self-Healing: Clean up hung sessions
     try:
         async with AsyncSessionLocal() as session:
             from sqlalchemy import update
@@ -31,7 +35,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Session Cleanup Skip: {e}")
     
-    # 🛠 3. Seed Default Settings
     try:
         async with AsyncSessionLocal() as session:
             default_settings = {
@@ -51,16 +54,87 @@ async def lifespan(app: FastAPI):
         
     yield
 
+# --- Military Grade Security Initialization ---
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 app = FastAPI(title="Dignova AI Sentient API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# --- CORS Configuration (Production Optimized) ---
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+from slowapi.middleware import SlowAPIMiddleware
+app.add_middleware(SlowAPIMiddleware)
+
+# --- Military Grade Security Middleware: Headers & Shield ---
+@app.middleware("http")
+async def security_shield_middleware(request: Request, call_next):
+    # 1. Inject Strict Security Headers
+    response: Response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.openrouter.ai;"
+    response.headers["X-Dignova-Secure-Node"] = "ACTIVE"
+    return response
+
+# --- Audit Log Middleware (Zero-Trust Auditing) ---
+@app.middleware("http")
+async def audit_log_middleware(request: Request, call_next):
+    # We only audit state-changing or sensitive operations
+    sensitive_methods = ["POST", "PUT", "DELETE", "PATCH"]
+    if request.method in sensitive_methods:
+        # Extract metadata
+        path = request.url.path
+        ip = request.client.host if request.client else "unknown"
+        
+        # We try to get user_id from token if present (Peek into JWT)
+        user_id = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                import jwt
+                from .utils.auth import SECRET_KEY, ALGORITHM
+                token = auth_header.split(" ")[1]
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("user_id")
+            except:
+                pass
+
+        # Call next to get response
+        response = await call_next(request)
+        
+        # Record to DB (async)
+        if response.status_code < 400: # Only log successful sensitive actions for now
+            try:
+                async with AsyncSessionLocal() as session:
+                    from .models import AuditLog
+                    log_entry = AuditLog(
+                        user_id=user_id,
+                        action=f"{request.method} {path}",
+                        ip_address=ip,
+                        details={"status_code": response.status_code}
+                    )
+                    session.add(log_entry)
+                    await session.commit()
+            except Exception as e:
+                print(f"⚠️ Audit Log Error: {e}")
+        
+        return response
+    
+    return await call_next(request)
+
+# --- CORS Configuration (Military Mode) ---
+ALLOWED_ORIGINS = [
+    os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app"),
+    "http://localhost:3000",
+    "*" # Allow all origins for dev/tunnels
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:3000"], 
+    allow_origins=["*"], # More permissive for dev
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Dignova-Secure-Node"]
 )
 
 # --- Routers ---
@@ -82,6 +156,9 @@ from .hospital.sos_routes import router as sos_router
 from .hospital.appointment_routes import router as appointment_router
 from .hospital.analytics_routes import router as analytics_router
 from .hospital.alert_routes import router as alert_router
+from .hospital.security_routes import router as security_router
+from .hospital.reception_routes import router as reception_router
+from .hospital.doctor_routes import router as doctor_router
 
 # Core API Routes
 from .hospital.clinical_core import router as clinical_core_router
@@ -105,6 +182,9 @@ app.include_router(sos_router)
 app.include_router(appointment_router)
 app.include_router(analytics_router)
 app.include_router(alert_router)
+app.include_router(security_router)
+app.include_router(reception_router)
+app.include_router(doctor_router)
 
 # --- Static Files ---
 os.makedirs("app/static/prescriptions", exist_ok=True)

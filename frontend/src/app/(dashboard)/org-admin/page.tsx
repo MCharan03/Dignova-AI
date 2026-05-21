@@ -8,7 +8,7 @@ import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { 
     Building2, Users, Stethoscope, Activity, AlertTriangle, Bed, 
     Calendar, ClipboardList, TrendingUp, Shield, RefreshCcw, 
-    UserCheck, HeartPulse, Zap, Megaphone, ChevronRight
+    UserCheck, HeartPulse, Zap, Megaphone, ChevronRight, DollarSign
 } from 'lucide-react';
 
 interface OrgDashboardData {
@@ -185,8 +185,8 @@ export default function OrgAdminDashboard() {
             {/* SECOND ROW: Capacity + Quick Actions + Notifications */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Capacity Utilization */}
-                <BlurIn delay={0.4}>
-                    <GlassCard className="lg:col-span-4 p-6 border-white/5">
+                <BlurIn delay={0.4} className="lg:col-span-4">
+                    <GlassCard className="p-6 border-white/5 h-full">
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                             <Bed className="text-accent-cyan" size={18} /> Capacity_Utilization
                         </h3>
@@ -208,16 +208,18 @@ export default function OrgAdminDashboard() {
                 </BlurIn>
 
                 {/* Quick Actions */}
-                <BlurIn delay={0.5}>
-                    <GlassCard className="lg:col-span-4 p-6 border-white/5">
+                <BlurIn delay={0.5} className="lg:col-span-4">
+                    <GlassCard className="p-6 border-white/5 h-full">
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                             <Zap className="text-warning" size={18} /> Quick_Actions
                         </h3>
                         <div className="grid grid-cols-2 gap-3">
                             {[
+                                { label: 'Command Center', href: '/org-admin/admissions', icon: Zap, color: 'accent-cyan' },
+                                { label: 'Ward Matrix', href: '/org-admin/ward', icon: Map, color: 'accent-blue' },
+                                { label: 'Staff Management', href: '/org-admin/staff', icon: Users, color: 'accent-purple' },
                                 { label: 'Add Department', href: '/org-admin/departments', icon: ClipboardList, color: 'accent-purple' },
                                 { label: 'Manage Shifts', href: '/org-admin/schedules', icon: Calendar, color: 'accent-blue' },
-                                { label: 'View Patients', href: '/org-admin/patients', icon: Users, color: 'accent-cyan' },
                                 { label: 'Org Settings', href: '/org-admin/settings', icon: Shield, color: 'success' },
                             ].map((action) => (
                                 <motion.a
@@ -236,8 +238,8 @@ export default function OrgAdminDashboard() {
                 </BlurIn>
 
                 {/* Recent Notifications */}
-                <BlurIn delay={0.6}>
-                    <GlassCard className="lg:col-span-4 p-6 border-white/5">
+                <BlurIn delay={0.6} className="lg:col-span-4">
+                    <GlassCard className="p-6 border-white/5 h-full">
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
                             <HeartPulse className="text-danger" size={18} /> Live_Feed
                         </h3>

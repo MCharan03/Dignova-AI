@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #0B0F19;
+  --background: #0A0A0B;
   --foreground: #F1F5F9;
   
   /* Apple-Style Fluid Easing */
@@ -17,8 +17,8 @@
   --org-primary: #06b6d4; 
   --org-accent: #a855f7;
 
-  --glass-bg: rgba(30, 41, 59, 0.6);
-  --glass-bg-hover: rgba(51, 65, 85, 0.8);
+  --glass-bg: rgba(24, 24, 27, 0.6);
+  --glass-bg-hover: rgba(39, 39, 42, 0.8);
   --glass-border: rgba(255, 255, 255, 0.05);
   --glass-border-highlight: rgba(139, 92, 246, 0.3);
 

@@ -3,341 +3,850 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dignova AI | Sentient Dossier</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>Dignova-AI | Sentient Architecture Map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --accent: #00d4ff;
-            --bg: #050505;
-            --sidebar: #0a0a0a;
-            --glass: rgba(255, 255, 255, 0.03);
+            --bg: #03050a;
+            --accent: #00f2ff;
+            --accent-glow: rgba(0, 242, 255, 0.3);
+            --accent-dim: rgba(0, 242, 255, 0.1);
+            --node-bg: #0b0d13;
+            --text-main: #ffffff;
+            --text-dim: #70757e;
+            --border: rgba(255, 255, 255, 0.05);
+            --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-code: 'Space Grotesk', sans-serif;
+            --apple-ease: cubic-bezier(0.4, 0, 0.2, 1);
+            --spring-ease: cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
         body {
             background-color: var(--bg);
-            color: #f1f5f9;
-            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            font-family: var(--font-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Scanline Effect */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        /* Sentient Observer Background */
+        #sentient-observer {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+                        rgba(0, 242, 255, 0.06) 0%, 
+                        transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Pro Background */
+        .engine-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 10% 10%, rgba(0, 242, 255, 0.02) 0%, transparent 40%);
+        }
+
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
             overflow: hidden;
         }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* NotebookLLM Enhanced Styling */
-        .sidebar { background-color: var(--sidebar); border-right: 1px solid rgba(255,255,255,0.05); }
-        .glass-card { background: var(--glass); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.06); }
-        
-        /* Unfolding Tree Logic */
-        .tree-node { transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .tree-children { 
-            max-height: 0; 
-            overflow: hidden; 
-            transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s; 
-            opacity: 0;
-            padding-left: 1.5rem;
-            border-left: 1px border-white/5;
+
+        #canvas {
+            position: relative;
+            width: 10000px;
+            height: 10000px;
+            transform-origin: 0 0;
+            transition: transform 0.7s var(--apple-ease);
+            will-change: transform;
         }
-        .tree-node.open > .tree-children { max-height: 1000px; opacity: 1; margin-top: 0.5rem; }
-        
-        .node-label { 
-            cursor: pointer; 
-            padding: 0.75rem 1rem; 
-            border-radius: 12px; 
-            display: flex; 
-            align-items: center; 
-            gap: 0.75rem;
-            transition: all 0.2s;
+
+        #viewport:active { cursor: grabbing; }
+
+        /* Connections - Screenshot Style */
+        #connections-layer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-group {
+            opacity: 0;
+            transition: opacity 0.8s var(--apple-ease);
+        }
+
+        .connection-group.visible {
+            opacity: 1;
+        }
+
+        .connection-path-bg {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 1;
+            stroke-dasharray: 2, 4;
+            opacity: 0.2;
+        }
+
+        .connection-path-main {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 1;
+            stroke-dasharray: 2, 4;
+            animation: flow 20s linear infinite;
+            opacity: 0.6;
+        }
+
+        .connection-pulse {
+            fill: none;
+            stroke: #fff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 40, 1000;
+            animation: pulse-flow 6s var(--apple-ease) infinite;
+            filter: blur(0.5px) drop-shadow(0 0 5px var(--accent));
+            opacity: 0;
+        }
+
+        @keyframes flow {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes pulse-flow {
+            0% { stroke-dashoffset: 1000; opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        /* Node Component */
+        .node-container {
+            position: absolute;
+            width: 260px;
+            z-index: 10;
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+            transition: opacity 0.6s var(--apple-ease), transform 0.6s var(--spring-ease);
+            will-change: transform, opacity;
+        }
+
+        .node-container.revealed {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .node-module {
+            background: linear-gradient(135deg, rgba(20, 24, 33, 0.9) 0%, rgba(11, 13, 19, 0.95) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 20px;
+            text-align: left;
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.4),
+                inset 0 0 20px rgba(0, 242, 255, 0.02);
+            backdrop-filter: blur(10px);
+            transition: all 0.4s var(--apple-ease);
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            overflow: hidden;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Inner Glass Shine */
+        .node-module::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .node-module:hover {
+            border-color: rgba(0, 242, 255, 0.5);
+            background: linear-gradient(135deg, rgba(25, 30, 40, 0.95) 0%, rgba(17, 20, 27, 0.98) 100%);
+            box-shadow: 
+                0 10px 40px rgba(0, 242, 255, 0.15),
+                inset 0 0 15px rgba(0, 242, 255, 0.05);
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .node-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.03);
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s var(--spring-ease);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 2;
+        }
+
+        .node-module:hover .node-icon {
+            transform: scale(1.1) rotate(-5deg);
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--accent-dim);
+        }
+
+        .node-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .node-tag {
+            font-size: 0.5rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 900;
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .node-title {
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #ececec;
+        }
+
+        /* '>' Chevron Button */
+        .chevron-btn {
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: all 0.3s var(--spring-ease);
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .node-container:hover .chevron-btn {
+            opacity: 1;
+            pointer-events: auto;
+            right: -12px;
+        }
+
+        .chevron-btn:hover {
+            background: #fff;
+            transform: translateY(-50%) scale(1.15);
+        }
+
+        /* Floating Apple Popup */
+        #popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(15px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s var(--apple-ease);
+        }
+
+        #popup-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .popup-card {
+            width: 520px;
+            max-width: 90vw;
+            background: #11141d;
+            border: 1px solid var(--border);
+            border-radius: 36px;
+            padding: 45px;
+            box-shadow: var(--card-shadow);
+            transform: scale(0.85) translateY(30px);
+            transition: all 0.5s var(--spring-ease);
             position: relative;
         }
-        .node-label:hover { background: rgba(255,255,255,0.03); }
-        .node-label.active { background: rgba(0, 212, 255, 0.08); color: var(--accent); }
-        .node-label.active::before {
-            content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 2px; background: var(--accent);
+
+        #popup-overlay.active .popup-card {
+            transform: scale(1) translateY(0);
         }
 
-        /* Connecting Lines */
-        .line {
-            position: absolute; left: -1rem; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.05);
+        .popup-close {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            transition: 0.2s;
         }
+
+        .popup-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+        .popup-tag { color: var(--accent); font-weight: 800; font-size: 0.75rem; letter-spacing: 3px; margin-bottom: 12px; text-transform: uppercase; }
+        .popup-title { font-size: 3rem; font-weight: 800; margin-bottom: 25px; line-height: 1; letter-spacing: -2px; }
+        .popup-body { color: var(--text-dim); font-size: 1.15rem; line-height: 1.7; margin-bottom: 40px; }
         
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.98) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+        .popup-insight {
+            background: rgba(0, 242, 255, 0.04);
+            border: 1px solid var(--accent-dim);
+            padding: 25px;
+            border-radius: 20px;
         }
-        .animate-content { animation: fadeInScale 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-        .progress-bar { transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .popup-insight h4 { color: var(--accent); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
+
+        /* Automation Layer */
+        #automation-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(1, 2, 8, 0.95);
+            z-index: 3000;
+            display: none;
+            padding: 100px 50px;
+            overflow-y: auto;
+            backdrop-filter: blur(40px);
+        }
+
+        #automation-screen.active {
+            display: block;
+            animation: fadeIn 0.8s var(--apple-ease);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; backdrop-filter: blur(0); }
+            to { opacity: 1; backdrop-filter: blur(40px); }
+        }
+
+        .auto-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 30px;
+        }
+
+        .auto-box {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            padding: 40px;
+            border-radius: 32px;
+            transition: all 0.5s var(--spring-ease);
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        #automation-screen.active .auto-box {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .auto-box:hover { 
+            border-color: var(--accent); 
+            background: rgba(0, 242, 255, 0.02);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(0, 242, 255, 0.05);
+        }
+
+        /* Status Ticker */
+        .status-ticker {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            font-family: var(--font-code);
+            font-size: 0.7rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 242, 255, 0.05);
+            padding: 10px 20px;
+            border-radius: 100px;
+            border: 1px solid var(--accent-dim);
+        }
+
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 var(--accent-glow); }
+            70% { transform: scale(1.5); opacity: 0; box-shadow: 0 0 0 10px transparent; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        .btn-launch {
+            display: block;
+            width: fit-content;
+            margin: 70px auto 0;
+            padding: 25px 65px;
+            background: var(--accent);
+            color: #000;
+            text-decoration: none;
+            font-family: var(--font-code);
+            font-weight: 900;
+            border-radius: 20px;
+            font-size: 1.3rem;
+            box-shadow: 0 0 50px var(--accent-glow);
+            transition: 0.3s;
+        }
+
+        .btn-launch:hover { background: #fff; transform: scale(1.05); }
+
+        /* Controls */
+        .hud-ui {
+            position: fixed;
+            top: 40px;
+            left: 40px;
+            z-index: 100;
+        }
+
+        .hud-ui h1 { font-family: var(--font-code); font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+
+        .btn-panel {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            font-weight: 700;
+            backdrop-filter: blur(15px);
+            transition: 0.2s;
+        }
+
+        .glass-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0, 242, 255, 0.05); }
     </style>
 </head>
-<body class="h-screen w-screen flex">
+<body>
+    <div id="sentient-observer"></div>
+    <div class="engine-bg"></div>
 
-    <!-- NAVIGATION SIDEBAR (The Unfolding Tree) -->
-    <aside class="sidebar w-80 h-full flex flex-col z-20">
-        <div class="p-8 border-b border-white/5">
-            <div class="flex items-center gap-3 mb-1">
-                <i data-lucide="brain" class="text-accent w-6 h-6"></i>
-                <h1 class="text-lg font-black tracking-tighter uppercase">Dignova Intelligence</h1>
-            </div>
-            <p class="text-[9px] mono text-white/30 tracking-[0.3em] uppercase">Sentient Dossier_v1</p>
+    <div class="hud-ui">
+        <div style="color: var(--accent); font-size: 0.65rem; letter-spacing: 6px; font-weight: 800; margin-bottom: 8px;">SENTIENT_OS_ARCH</div>
+        <h1>DIGNOVA_CORE</h1>
+    </div>
+
+    <div id="viewport">
+        <div id="canvas">
+            <svg id="connections-layer"></svg>
         </div>
+    </div>
 
-        <nav class="flex-1 overflow-y-auto p-4 custom-scrollbar" id="tree-root">
-            <!-- Root: Dignova-AI -->
-            <div class="tree-node open" id="node-root">
-                <div class="node-label active" onclick="jumpTo(0)">
-                    <i data-lucide="network" class="w-4 h-4"></i>
-                    <span class="text-xs font-bold uppercase tracking-wider">Dignova-AI</span>
-                </div>
-                
-                <div class="tree-children">
-                    <!-- Super Admin Branch -->
-                    <div class="tree-node" id="node-admin-parent">
-                        <div class="node-label" onclick="jumpTo(1)">
-                            <i data-lucide="shield" class="w-4 h-4"></i>
-                            <span class="text-xs font-bold uppercase tracking-wider">Super Admin</span>
-                        </div>
-                        <div class="tree-children">
-                            <div class="tree-node">
-                                <div class="node-label" onclick="jumpTo(2)">
-                                    <i data-lucide="zap" class="w-4 h-4"></i>
-                                    <span class="text-xs font-bold uppercase tracking-wider">Features (n8n)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Application Branch -->
-                    <div class="tree-node" id="node-app-parent">
-                        <div class="node-label" onclick="jumpTo(3)">
-                            <i data-lucide="layout" class="w-4 h-4"></i>
-                            <span class="text-xs font-bold uppercase tracking-wider">Application</span>
-                        </div>
-                        <div class="tree-children">
-                            <!-- Organization Branch -->
-                            <div class="tree-node" id="node-org-parent">
-                                <div class="node-label" onclick="jumpTo(4)">
-                                    <i data-lucide="building-2" class="w-4 h-4"></i>
-                                    <span class="text-xs font-bold uppercase tracking-wider">Organization</span>
-                                </div>
-                                <div class="tree-children">
-                                    <div class="tree-node" id="node-doc-parent">
-                                        <div class="node-label" onclick="jumpTo(5)">
-                                            <i data-lucide="stethoscope" class="w-4 h-4"></i>
-                                            <span class="text-xs font-bold uppercase tracking-wider">Doctor</span>
-                                        </div>
-                                        <div class="tree-children">
-                                            <div class="node-label" onclick="jumpTo(6)">
-                                                <i data-lucide="file-text" class="w-4 h-4"></i>
-                                                <span class="text-xs font-bold uppercase tracking-wider">Details</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="tree-node" id="node-pat-parent">
-                                        <div class="node-label" onclick="jumpTo(7)">
-                                            <i data-lucide="users" class="w-4 h-4"></i>
-                                            <span class="text-xs font-bold uppercase tracking-wider">Patients</span>
-                                        </div>
-                                        <div class="tree-children">
-                                            <div class="node-label" onclick="jumpTo(8)">
-                                                <i data-lucide="file-text" class="w-4 h-4"></i>
-                                                <span class="text-xs font-bold uppercase tracking-wider">Details</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- User Branch -->
-                            <div class="tree-node" id="node-user-parent">
-                                <div class="node-label" onclick="jumpTo(9)">
-                                    <i data-lucide="user-circle" class="w-4 h-4"></i>
-                                    <span class="text-xs font-bold uppercase tracking-wider">User</span>
-                                </div>
-                                <div class="tree-children">
-                                    <div class="node-label" onclick="jumpTo(10)">
-                                        <i data-lucide="file-text" class="w-4 h-4"></i>
-                                        <span class="text-xs font-bold uppercase tracking-wider">Details</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <div class="p-6 border-t border-white/5 bg-black/20">
-            <div class="flex items-center justify-between mb-4">
-                <span class="text-[10px] mono text-white/20 uppercase">Intelligence Feed</span>
-                <span class="text-[10px] font-bold text-accent">LIVE</span>
-            </div>
-            <div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                <div id="progress" class="progress-bar h-full bg-accent" style="width: 10%"></div>
+    <div id="popup-overlay" onclick="handlePopupClick(event)">
+        <div class="popup-card">
+            <div class="popup-close" onclick="closePopup()">×</div>
+            <div id="pop-tag" class="popup-tag"></div>
+            <h2 id="pop-title" class="popup-title"></h2>
+            <div id="pop-body" class="popup-body"></div>
+            <div class="popup-insight">
+                <h4>System Architectural Protocol</h4>
+                <p id="pop-edge"></p>
             </div>
         </div>
-    </aside>
+    </div>
 
-    <!-- MAIN CONTENT AREA (NotebookLLM Guide) -->
-    <main class="flex-1 relative flex flex-col">
-        <!-- Header Controls -->
-        <div class="p-8 flex justify-between items-center bg-transparent z-10">
-            <div class="flex gap-4">
-                <button onclick="prev()" class="w-10 h-10 rounded-full glass-card flex items-center justify-center hover:bg-white/10 transition-all">
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                </button>
-                <button onclick="next()" class="w-10 h-10 rounded-full glass-card flex items-center justify-center hover:bg-white/10 transition-all text-accent">
-                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
+    <div id="automation-screen">
+        <div class="status-ticker">
+            <div class="pulse-dot"></div>
+            SENTIENT_NODE_ACTIVE: 0x88AF_99
+        </div>
+        <h2 style="text-align: center; font-size: 3.5rem; font-weight: 800; margin-bottom: 60px; letter-spacing: -2px;">Sentient Automation Registry</h2>
+        <div class="auto-grid">
+            <div class="auto-box" style="transition-delay: 0.1s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">01. Neural Onboarding</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Auto-initializes the Digital Health Twin and establishes the secure Telegram Nervous System bridge for every new patient.</p>
             </div>
-            <div class="px-6 py-2 rounded-full glass-card">
-                <span class="text-[11px] font-bold uppercase tracking-widest text-white/40" id="step-id">Node: Root_Entry</span>
+            <div class="auto-box" style="transition-delay: 0.2s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">02. Zero-Touch Rx</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Converts medical voice dictation into structured, AI-validated prescriptions with sub-second accuracy.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.3s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">03. Proactive Escalation</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Detects high-severity triage markers and pushes instant "Inline Approval" cards to the doctor's lock screen.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.4s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">04. Proactive Aftercare</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Autonomous Day-3 follow-up sequence to monitor recovery progress and detect post-discharge regressions.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.5s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">05. Smart Reminders</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Synchronizes hospital calendars with patient Telegram bots for zero-friction appointment adherence.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.6s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">06. Geofence Bypass</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Detects live location to automatically check-in patients when they enter the hospital perimeter.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.7s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">07. Automated Preventive Care</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Runs annual and semi-annual health "nudges" based on the patient's long-term neural medical profile.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.8s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">08. Neural Training Loop</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Scores intern performance against the AI-Human consensus gold standard during Ghost Replays.</p>
+            </div>
+            <div class="auto-box" style="transition-delay: 0.9s;">
+                <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 1.3rem;">09. Encrypted Fulfillment</h3>
+                <p style="color: var(--text-dim); line-height: 1.6; font-size: 0.9rem;">Autonomous generation and delivery of cryptographically signed PDF prescriptions via Telegram.</p>
             </div>
         </div>
+        <a href="http://localhost:3000" target="_blank" rel="noopener noreferrer" class="btn-launch">LAUNCH_DIGN_OS</a>
+        <div style="text-align: center; margin-top: 50px; color: #444; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;" onclick="document.getElementById('automation-screen').classList.remove('active')">[ RETURN_TO_STRUCTURE ]</div>
+    </div>
 
-        <!-- Dynamic Content -->
-        <div class="flex-1 flex items-center justify-center px-20">
-            <div id="content-viewport" class="max-w-3xl w-full opacity-0 translate-y-4">
-                <!-- Content will be injected here -->
-            </div>
-        </div>
-
-        <!-- Footer Ticker -->
-        <div class="p-6 border-t border-white/5 bg-black/40 backdrop-blur-md">
-            <div class="overflow-hidden">
-                <div class="flex gap-12 whitespace-nowrap opacity-20 text-[9px] mono uppercase tracking-[0.3em]">
-                    <span>Neural_Sync_Active</span> <span>Node_Status: Nominal</span> <span>EHR_Link_Established</span> <span>Sentient_OS_v1.0</span> <span>Multi_Tenant_Active</span>
-                </div>
-            </div>
-        </div>
-    </main>
+    <div class="btn-panel">
+        <button class="glass-btn" onclick="zoomView(1.3)">ZOOM +</button>
+        <button class="glass-btn" onclick="zoomView(0.7)">ZOOM -</button>
+        <button class="glass-btn" style="background: var(--accent); color: #000;" onclick="resetView()">RECENTER</button>
+    </div>
 
     <script>
-        const nodes = [
-            { id: "root", title: "Dignova Sentient Layer", sub: "THE_OS_FOUNDATION", icon: "network", desc: "The core architecture of Dignova-AI. It operates as a sentient foundation that orchestrates healthcare workflows through passive observation and autonomous agency.", parents: [] },
-            { id: "admin-parent", title: "Super Admin Control", sub: "ARCHITECT_PLANE", icon: "shield", desc: "The platform-wide control center. Responsible for multi-tenant isolation, global health monitoring, and scaling the neural grid across multiple organizations.", parents: ["node-root"] },
-            { id: "features", title: "Intelligent Features (n8n)", sub: "NERVOUS_SYSTEM", icon: "zap", desc: "The 'Nervous System' of Dignova. Powered by n8n, this layer executes autonomous agency—Telegram alerts, zero-touch prescriptions, and geofenced check-ins.", parents: ["node-root", "node-admin-parent"] },
-            { id: "app-parent", title: "Application Interface", sub: "INTERACTIVE_SURFACE", icon: "layout", desc: "The primary touchpoint for users. Designed with a Sentient UI philosophy to minimize friction and maximize data clarity through 3D visualization.", parents: ["node-root"] },
-            { id: "org-parent", title: "Organization Context", sub: "TENANT_SPACE", icon: "building-2", desc: "A scoped hospital environment. Each organization has its own clinical philosophy, resource management, and departmental orchestration.", parents: ["node-root", "node-app-parent"] },
-            { id: "doc-parent", title: "Doctor Command Center", sub: "CLINICAL_CORE", icon: "stethoscope", desc: "A specialized portal for medical staff, focusing on live triage intervention, patient history, and diagnostic alignment scoring.", parents: ["node-root", "node-app-parent", "node-org-parent"] },
-            { id: "doc-details", title: "Clinical Metrics", sub: "DOCTOR_DETAILS", icon: "file-text", desc: "Deep-dive data on doctor performance: diagnostic accuracy, patients cleared, and availability readiness within the organization.", parents: ["node-root", "node-app-parent", "node-org-parent", "node-doc-parent"] },
-            { id: "pat-parent", title: "Patients Registry", sub: "CARE_QUEUE", icon: "users", desc: "Management of the patient population within the org. Handles check-ins, medical grid assignments, and severity monitoring.", parents: ["node-root", "node-app-parent", "node-org-parent"] },
-            { id: "pat-details", title: "Patient Intelligence", sub: "PATIENT_DETAILS", icon: "file-text", desc: "Complete 360-degree patient view: Neural medical timeline, real-time vitals, and proactive health nudge history.", parents: ["node-root", "node-app-parent", "node-org-parent", "node-pat-parent"] },
-            { id: "user-parent", title: "User Profile Layer", sub: "PERSONAL_IDENTITY", icon: "user-circle", desc: "The public-facing portal for patients to manage their own health identity, record vitals manually, and view personalized tips.", parents: ["node-root", "node-app-parent"] },
-            { id: "user-details", title: "Identity Record", sub: "USER_DETAILS", icon: "file-text", desc: "Personal settings, emergency contacts, and the 'Emotional Telemetry' profile which tracks stress levels via typing cadence.", parents: ["node-root", "node-app-parent", "node-user-parent"] }
+        const nodeData = [
+            // ROOT
+            { id: 'core', tag: 'SENTIENT_KERNEL', title: 'Dignova Sentient Core', icon: '🌌', level: 0, parent: null, desc: '<b>The Evolution:</b> Moving from passive data storage to an active, self-aware hospital layer.<br><br><b>Role:</b> Orchestrates AI reasoning, clinical telemetry, and autonomous workflows in real-time.', edge: 'The primary kernel bridging clinical expertise with autonomous agency.' },
+
+            // PILLAR 1: ARCHITECT LAYER (Super Admin)
+            { id: 'architect', tag: 'GLOBAL_PLANE', title: 'Architect Layer', icon: '🔑', level: 1, parent: 'core', desc: 'The Super Admin control center for managing hundreds of isolated, multi-tenant hospital environments.', edge: 'Global control plane for all hospital organizations.' },
+            { id: 'kpis', tag: 'KPI_CORE', title: 'Platform Metrics', icon: '📊', level: 2, parent: 'architect', desc: 'Real-time monitoring of hospital capacity, AI diagnostic accuracy, and response latencies across the entire network.', edge: 'Cross-organization performance tracking.' },
+            { id: 'node-mon', tag: 'HEALTH', title: 'Neural Node Monitoring', icon: '📡', level: 2, parent: 'architect', desc: 'Self-healing architectural monitoring that detects and restarts failing clinical services before clinicians notice.', edge: 'Zero-downtime infrastructure maintenance.' },
+
+            // PILLAR 2: NERVOUS SYSTEM (n8n Automations)
+            { id: 'nervous', tag: 'AUTONOMOUS', title: 'n8n Nervous System', icon: '⚡', level: 1, parent: 'core', desc: 'The "Nerves" of the system. Handles tasks that happen in the background without human intervention.', edge: 'Autonomous agency layer powered by complex workflow chains.' },
+            { id: 'telegram', tag: 'BRIDGE', title: 'Telegram Nervous Bridge', icon: '📱', level: 2, parent: 'nervous', desc: 'Direct neural link to doctor lock-screens. Pushes "Red-Alert" triage cards for instant inline approval.', edge: 'Sub-second emergency notification delivery.' },
+            { id: 'geofence', tag: 'LOGISTICS', title: 'Geofence Bypass', icon: '📍', level: 2, parent: 'nervous', desc: 'Live location tracking that automatically checks-in patients as they cross the hospital perimeter.', edge: 'Eliminating manual queue entry latency.' },
+            { id: 'aftercare', tag: 'PREVENTIVE', title: 'Proactive Aftercare', icon: '💊', level: 2, parent: 'nervous', desc: 'Autonomous Day-3 follow-up sequences to monitor recovery and detect post-discharge regression.', edge: 'Closing the loop on patient recovery.' },
+
+            // PILLAR 3: UI PLANE (User Roles & Interaction)
+            { id: 'ui-plane', tag: 'UI_PLANE', title: 'Multi-Role UI Plane', icon: '🖥️', level: 1, parent: 'core', desc: 'The front-end interaction layer tailored for specific hospital stakeholders and external partners.', edge: 'Role-based access control with real-time data streaming.' },
+            
+            // Org Admin Branch
+            { id: 'org-admin', tag: 'MGMT', title: 'Org Admin', icon: '🏛️', level: 2, parent: 'ui-plane', desc: 'Command center for hospital leadership. Orchestrates clinical philosophy and staff performance.', edge: 'Direct access to Department Orchestration and AI Philosophy Config.' },
+            { id: 'staff-reg', tag: 'RESOURCES', title: 'Staff Registry', icon: '📋', level: 3, parent: 'org-admin', desc: 'Managing clinical workload and resource allocation across departments.', edge: 'Real-time staff availability monitoring.' },
+
+            // Clinical Branch
+            { id: 'clinical', tag: 'MEDICAL_BRAIN', title: 'Clinical Core', icon: '🩺', level: 2, parent: 'ui-plane', desc: 'Where AI diagnostic reasoning meets human expertise. Primary interface for medical operations.', edge: 'Live Triage Matrix integration for real-time decisions.' },
+            { id: 'doc-mid', tag: 'RESIDENT', title: 'Resident Doctor', icon: '⚕️', level: 3, parent: 'clinical', desc: 'Primary operators managing high-volume flow and n8n-pushed escalations.', edge: 'Primary intervention unit for Red-Alert protocols.' },
+            { id: 'doc-int', tag: 'TRAINEE', title: 'Intern Ghost', icon: '👻', level: 3, parent: 'clinical', desc: 'Next-gen training using historical case replays to learn from the AI-Human consensus gold standard.', edge: 'Zero-risk clinical training via the Ghost Replay Matrix.' },
+
+            // External Branch
+            { id: 'external', tag: 'PUBLIC', title: 'External Physician', icon: '👨‍⚕️', level: 2, parent: 'ui-plane', desc: 'Gateway for non-hospital physicians to sync referrals and verify medical credentials.', edge: 'Unified medical credential bridge.' },
+
+            // PILLAR 4: PATIENT IDENTITY (Digital Twin)
+            { id: 'patient', tag: 'IDENTITY', title: 'Digital Health Twin', icon: '🧘', level: 1, parent: 'core', desc: 'The patient\'s persistent digital identity. Monitored through biometric telemetry and stress analysis.', edge: 'The individual at the center of the sentient loop.' },
+            { id: 'timeline', tag: 'DATA_LAKE', title: 'Neural Medical Timeline', icon: '🎞️', level: 2, parent: 'patient', desc: 'A living, chronological medical record capturing every biometric shift, AI nudge, and triage event.', edge: 'Immutable history of the patient\'s digital twin.' },
+            { id: 'telemetry', tag: 'PASSIVE', title: 'Emotional Telemetry', icon: '💓', level: 2, parent: 'patient', desc: 'Detects psychological stress by analyzing typing cadence, interaction jitter, and voice tone during triage.', edge: 'Bridging physiological data with mental health insights.' },
+            
+            // FINAL ROADMAP
+            { id: 'final', tag: 'FUTURE', title: 'Sentient Beacon (Roadmap)', icon: '📡', level: 2, parent: 'patient', desc: '<b>Under Development: BLE Emergency Broadcast</b><br><br>Detects critical cardiac events and triggers a low-energy Bluetooth alert.', edge: 'Hyper-local community emergency response.' }
         ];
 
-        let currentIdx = 0;
+        const canvas = document.getElementById('canvas');
+        const svg = document.getElementById('connections-layer');
+        const overlay = document.getElementById('popup-overlay');
+        const colWidth = 350;
+        const rowHeight = 160;
 
-        function render() {
-            const node = nodes[currentIdx];
-            const viewport = document.getElementById('content-viewport');
-            
-            // Animation Out
-            viewport.classList.remove('animate-content');
-            viewport.style.opacity = '0';
-            viewport.style.transform = 'translateY(10px)';
+        let scale = 0.65, posX = 0, posY = 0;
+        let isDragging = false, startX, startY;
+        let revealedIds = ['core'];
 
-            setTimeout(() => {
-                viewport.innerHTML = `
-                    <div class="flex flex-col gap-8">
-                        <div>
-                            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/20 bg-accent/5 text-accent text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-                                <i data-lucide="${node.icon}" class="w-3 h-3"></i> ${node.sub}
-                            </div>
-                            <h2 class="text-6xl font-black text-white tracking-tighter leading-[1.1] mb-8">
-                                ${node.title}
-                            </h2>
-                            <p class="text-xl text-white/50 leading-relaxed font-medium">
-                                ${node.desc}
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 mt-12">
-                            <div class="glass-card p-6 rounded-3xl border-white/5 flex flex-col gap-4">
-                                <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
-                                    <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-white uppercase tracking-widest">Sentient Sync</h4>
-                                    <p class="text-[10px] text-white/30 mt-1 uppercase mono tracking-widest">Security_Protocols_Active</p>
-                                </div>
-                            </div>
-                            <div class="glass-card p-6 rounded-3xl border-white/5 flex flex-col gap-4">
-                                <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
-                                    <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-white uppercase tracking-widest">Neural Agency</h4>
-                                    <p class="text-[10px] text-white/30 mt-1 uppercase mono tracking-widest">Autonomous_Workflows</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Animation In
-                viewport.classList.add('animate-content');
-                updateTreeState();
-                lucide.createIcons();
-            }, 50);
-        }
-
-        function updateTreeState() {
-            const node = nodes[currentIdx];
-            
-            // 1. Reset all labels
-            document.querySelectorAll('.node-label').forEach(l => l.classList.remove('active'));
-            
-            // 2. Set current label active
-            const labels = document.querySelectorAll('.node-label');
-            labels[currentIdx].classList.add('active');
-
-            // 3. Open parents
-            document.querySelectorAll('.tree-node').forEach(tn => tn.classList.remove('open'));
-            document.getElementById('node-root').classList.add('open');
-            
-            node.parents.forEach(pId => {
-                const el = document.getElementById(pId);
-                if (el) el.classList.add('open');
+        function buildMap() {
+            // Group nodes by parent to calculate layout
+            const tree = {};
+            nodeData.forEach(n => {
+                if (!tree[n.parent]) tree[n.parent] = [];
+                tree[n.parent].push(n);
             });
 
-            // 4. Update Header Step ID
-            document.getElementById('step-id').innerText = `Node: ${node.sub}`;
-
-            // 5. Update Progress
-            const progress = ((currentIdx + 1) / nodes.length) * 100;
-            document.getElementById('progress').style.width = `${progress}%`;
-        }
-
-        function next() {
-            if (currentIdx < nodes.length - 1) {
-                currentIdx++;
-                render();
+            // Layout Engine: Balanced Vertical Distribution
+            function calculateSubtreeHeight(pId) {
+                const children = (tree[pId] || []).filter(c => revealedIds.includes(c.id));
+                if (children.length === 0) return rowHeight;
+                
+                let totalH = 0;
+                children.forEach(child => {
+                    totalH += calculateSubtreeHeight(child.id);
+                });
+                return Math.max(totalH, rowHeight);
             }
-        }
 
-        function prev() {
-            if (currentIdx > 0) {
-                currentIdx--;
-                render();
+            function positionNodes(pId, parentX, parentY) {
+                const children = (tree[pId] || []).filter(c => revealedIds.includes(c.id));
+                if (children.length === 0) return;
+
+                const totalChildrenHeight = calculateSubtreeHeight(pId);
+                let currentYOffset = parentY - (totalChildrenHeight / 2);
+
+                children.forEach(child => {
+                    const childSubtreeHeight = calculateSubtreeHeight(child.id);
+                    
+                    child.x = parentX + colWidth;
+                    // Position child at the center of its own subtree's allocated space
+                    child.y = currentYOffset + (childSubtreeHeight / 2);
+                    
+                    currentYOffset += childSubtreeHeight;
+                    positionNodes(child.id, child.x, child.y);
+                });
             }
+
+            // Fixed Root position
+            const root = nodeData[0];
+            root.x = 800;
+            root.y = 1500;
+            positionNodes('core', root.x, root.y);
+
+            // Render Nodes
+            nodeData.forEach(node => {
+                let el = document.getElementById(`node-${node.id}`);
+                if (!el) {
+                    el = document.createElement('div');
+                    el.className = 'node-container';
+                    el.id = `node-${node.id}`;
+                    canvas.appendChild(el);
+                }
+
+                const isRevealed = revealedIds.includes(node.id);
+                el.className = `node-container ${isRevealed ? 'revealed' : ''}`;
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y - 45}px`; // Adjust for vertical centering of the 90px tall module
+
+                const hasChildren = nodeData.some(n => n.parent === node.id);
+                const nextBtn = hasChildren ? `<div class="chevron-btn" onclick="toggleBranch('${node.id}', event)">></div>` : '';
+
+                el.innerHTML = `
+                    <div class="node-module" onclick="openPopup('${node.id}')">
+                        <div class="node-icon">${node.icon}</div>
+                        <div class="node-info">
+                            <span class="node-tag">${node.tag}</span>
+                            <div class="node-title">${node.title}</div>
+                        </div>
+                    </div>
+                    ${nextBtn}
+                `;
+            });
+
+            // Render Connections
+            svg.innerHTML = '';
+            nodeData.forEach(node => {
+                if (node.parent && revealedIds.includes(node.id)) {
+                    const parent = nodeData.find(n => n.id === node.parent);
+                    drawCurve(parent, node);
+                }
+            });
         }
 
-        function jumpTo(idx) {
-            currentIdx = idx;
-            render();
+        function drawCurve(p, c) {
+            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            group.setAttribute('class', 'connection-group');
+            
+            const x1 = p.x + 280, y1 = p.y + 45;
+            const x2 = c.x, y2 = c.y + 45;
+            const midX = (x1 + x2) / 2;
+            const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+
+            // 1. Background static line
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            bg.setAttribute('d', d);
+            bg.setAttribute('class', 'connection-path-bg');
+            group.appendChild(bg);
+
+            // 2. Main flowing dashed line
+            const main = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            main.setAttribute('d', d);
+            main.setAttribute('class', 'connection-path-main');
+            group.appendChild(main);
+
+            // 3. Bright pulse line
+            const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            pulse.setAttribute('d', d);
+            pulse.setAttribute('class', 'connection-pulse');
+            // Randomize pulse speed for organic feel
+            pulse.style.animationDuration = `${3 + Math.random() * 4}s`;
+            pulse.style.animationDelay = `${Math.random() * 2}s`;
+            group.appendChild(pulse);
+
+            svg.appendChild(group);
+
+            // Trigger visibility
+            setTimeout(() => group.classList.add('visible'), 50);
         }
 
-        // Initialize
-        window.onload = () => {
-            render();
-            lucide.createIcons();
+        function toggleBranch(id, e) {
+            e.stopPropagation();
+            const children = nodeData.filter(n => n.parent === id);
+            const anyNew = children.some(c => !revealedIds.includes(c.id));
+            
+            if (anyNew) {
+                children.forEach(c => { if (!revealedIds.includes(c.id)) revealedIds.push(c.id); });
+            }
+            
+            buildMap();
+            const pNode = nodeData.find(n => n.id === id);
+            focusCamera(pNode.x + 400, pNode.y);
+        }
+
+        function openPopup(id) {
+            const node = nodeData.find(n => n.id === id);
+            if (id === 'final') { document.getElementById('automation-screen').classList.add('active'); return; }
+            
+            document.getElementById('pop-tag').innerText = node.tag;
+            document.getElementById('pop-title').innerText = node.title;
+            document.getElementById('pop-body').innerHTML = node.desc;
+            document.getElementById('pop-edge').innerText = node.edge;
+            overlay.classList.add('active');
+        }
+
+        function closePopup() { overlay.classList.remove('active'); }
+        function handlePopupClick(e) { if(e.target === overlay) closePopup(); }
+
+        function focusCamera(tx, ty) {
+            posX = window.innerWidth / 2 - tx * scale;
+            posY = window.innerHeight / 2 - ty * scale;
+            updateTransform();
+        }
+
+        function zoomView(amt) { scale *= amt; updateTransform(); }
+        function resetView() { scale = 0.65; focusCamera(nodeData[0].x + 140, nodeData[0].y + 45); }
+        function updateTransform() { canvas.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; }
+
+        // Interaction Logic
+        let dragThreshold = 5;
+        let isActuallyDragging = false;
+        let startMouseX, startMouseY;
+
+        // Sentient Observer Tracking
+        let targetX = 50, targetY = 50;
+        let currentX = 50, currentY = 50;
+
+        document.getElementById('viewport').onmousedown = (e) => {
+            if (e.target.closest('.node-container') || e.target.closest('.popup-card')) return;
+            isDragging = true; 
+            isActuallyDragging = false;
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+            startX = e.clientX - posX; 
+            startY = e.clientY - posY;
+            canvas.style.transition = 'none';
         };
 
-        // Keyboard support
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prev();
-        });
+        window.onmousemove = (e) => {
+            // Update Sentient Observer Targets
+            targetX = (e.clientX / window.innerWidth) * 100;
+            targetY = (e.clientY / window.innerHeight) * 100;
+
+            if (!isDragging) return;
+
+            const dx = Math.abs(e.clientX - startMouseX);
+            const dy = Math.abs(e.clientY - startMouseY);
+
+            if (!isActuallyDragging && (dx > dragThreshold || dy > dragThreshold)) {
+                isActuallyDragging = true;
+            }
+
+            if (isActuallyDragging) {
+                posX = e.clientX - startX; 
+                posY = e.clientY - startY; 
+                updateTransform();
+            }
+        };
+
+        window.onmouseup = () => { 
+            isDragging = false; 
+            isActuallyDragging = false;
+            canvas.style.transition = 'transform 0.7s var(--apple-ease)'; 
+        };
+
+        // Smooth Lerp for Observer
+        function animateObserver() {
+            currentX += (targetX - currentX) * 0.1;
+            currentY += (targetY - currentY) * 0.1;
+            document.documentElement.style.setProperty('--mouse-x', `${currentX}%`);
+            document.documentElement.style.setProperty('--mouse-y', `${currentY}%`);
+            requestAnimationFrame(animateObserver);
+        }
+
+        window.onload = () => {
+            buildMap();
+            resetView();
+            animateObserver();
+        };
     </script>
 </body>
 </html>

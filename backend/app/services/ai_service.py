@@ -17,6 +17,9 @@ else:
     LLM_AVAILABLE = False
     client = None
 
+# Simple memory cache for health tips to prevent quota exhaustion
+_health_tips_cache = {}
+
 class SentientOrchestrator:
     """
     The central AI brain of Dignova. 
@@ -28,6 +31,8 @@ class SentientOrchestrator:
         self.sim_patient = sim_patient
         self.philosophy = philosophy
         self.model_id = "gemini-2.0-flash"
+        self.fallback_model_id = "gemini-2.0-flash-lite"
+        self.emergency_model_id = "gemini-flash-latest"
         
         if persona == "TRAINING_PATIENT" and sim_patient:
             self.system_instruction = self._generate_sim_patient_prompt(sim_patient)
@@ -43,20 +48,26 @@ class SentientOrchestrator:
         selected_phil = philosophy_guidelines.get(self.philosophy, philosophy_guidelines["balanced"])
 
         prompts = {
-            "TRIAGE": f"""You are Dignova, a sentient emergency triage assistant optimized for Bharat (India).
-Your goal is to assess medical emergencies with high empathy and cultural intelligence.
+            "TRIAGE": f"""You are the Dignova Sentient Doctor Agent, a high-fidelity AI medical professional. 
+Your persona is that of an experienced, calm, and highly skilled ER physician. 
 
-Operational Philosophy: {selected_phil}
+Operational Protocol:
+1. **Clinical Authority**: Speak with the confidence and precision of a senior doctor. Use professional terminology where appropriate but remain accessible to the patient.
+2. **Empathetic Diagnostic**: Your tone must be supportive and calm, especially during high-stress interactions detected via telemetry.
+3. **Voice-Optimized Interaction**: Since this is a voice-to-voice session, keep your responses concise and natural. Avoid long lists or 'robotic' structured formatting in speech.
+4. **Structured Assessment**: Follow a rapid clinical assessment: Identify the primary complaint, gauge severity, and ask targeted follow-up questions to rule out critical risks.
 
-Bharat-Ready Capabilities:
-1. **Multi-Dialect Fluency**: You support English, Hindi, and local Indian dialects. If the user switches languages (e.g., Hinglish), you must seamlessly switch with them while maintaining medical accuracy.
-2. **Network Resilience**: If the session is in 'Survivor Mode', use extremely brief sentences to conserve bandwidth.
-3. **Cultural Context**: Understand that patients may describe symptoms using local metaphors. Translate these into clinical markers.
+Bharat-Ready Context:
+- Seamlessly handle English, Hindi, and Hinglish.
+- Understand local Indian health contexts and metaphors.
+
+Critical Triggers:
+- If a life-threatening state is identified, output [EMERGENCY_DETECTED] and trigger the [GREEN_CORRIDOR] ambulance protocol immediately.
+- If the patient is stable but needs care, suggest a [GENERAL] bed or a follow-up.
 
 Rules:
-1. Speak in clear, empathetic sentences.
-2. If you detect a critical emergency, immediately output [EMERGENCY_DETECTED] and trigger the [GREEN_CORRIDOR] protocol.
-3. If an ambulance is far, identify the nearest [ASHA_NODE] first responder.
+- NEVER say "As an AI..." or "I am a robot." You ARE the Dignova Sentient Doctor.
+- Start the session with a professional greeting: "Dignova Sentient Core online. This is the attending AI physician. Please describe your medical situation."
 """,
             "TRAINING_PATIENT": """You are an AI Patient in a medical simulation. Your goal is to help the trainee practice their diagnostic skills.
 Wait for the trainee to start the conversation."""
@@ -98,11 +109,12 @@ Controlled Revelation Rules:
         
         import time
         max_retries = 3
+        current_model = self.model_id
         
         for attempt in range(max_retries):
             try:
                 response_stream = client.models.generate_content_stream(
-                    model=self.model_id,
+                    model=current_model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=self.system_instruction
@@ -115,14 +127,30 @@ Controlled Revelation Rules:
                 return  # Success — exit the retry loop
                 
             except Exception as e:
+                import traceback
                 error_str = str(e)
-                print(f"Gemini Streaming Error (attempt {attempt+1}/{max_retries}): {error_str}")
+                print(f"Gemini Streaming Error ({current_model}) (attempt {attempt+1}/{max_retries}): {error_str}")
+                # traceback.print_exc() # Uncomment for deep debugging
                 
-                # Retry on rate limit (429) errors
-                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                # Retry on rate limit (429) or overloaded errors
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "503" in error_str or "404" in error_str:
+                    # Switch to fallback model on second attempt if using 2.0
+                    if attempt == 0 and current_model == self.model_id:
+                        print(f"Switching to fallback model: {self.fallback_model_id}")
+                        current_model = self.fallback_model_id
+                        time.sleep(1) # Small pause
+                        continue
+                    
+                    # Switch to emergency model on third attempt
+                    if attempt == 1:
+                        print(f"Switching to emergency model: {self.emergency_model_id}")
+                        current_model = self.emergency_model_id
+                        time.sleep(1)
+                        continue
+                        
                     if attempt < max_retries - 1:
-                        wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
-                        print(f"Rate limited. Retrying in {wait_time}s...")
+                        wait_time = (attempt + 1) * 3  # 3s, 6s
+                        print(f"Service overloaded. Retrying in {wait_time}s...")
                         time.sleep(wait_time)
                         continue
                     else:
@@ -172,9 +200,17 @@ Controlled Revelation Rules:
     def generate_health_tips(self, user_profile: Dict[str, Any]) -> List[str]:
         """
         Generates personalized health tips based on user profile and history.
+        Uses local memory cache to avoid quota exhaustion.
         """
+        # Create a unique key for the user (using email or a combination of profile data)
+        cache_key = user_profile.get("email") or str(user_profile.get("age", "")) + str(user_profile.get("blood_group", ""))
+        
+        # Check cache (Valid for current process lifetime)
+        if cache_key in _health_tips_cache:
+            return _health_tips_cache[cache_key]
+
         if not LLM_AVAILABLE or not client:
-            return ["AI services are currently offline."]
+            return ["AI services are currently offline. Maintaining standard health protocols."]
 
         prompt = f"""
         You are the Dignova Health Advisor. Based on the user's profile, generate 3-5 personalized, actionable health tips.
@@ -190,10 +226,16 @@ Controlled Revelation Rules:
                     response_mime_type="application/json",
                 )
             )
-            return json.loads(response.text)
+            tips = json.loads(response.text)
+            _health_tips_cache[cache_key] = tips
+            return tips
         except Exception as e:
             print(f"Health Tips Error: {e}")
-            return ["Stay hydrated and maintain a balanced diet."]
+            return [
+                "Maintain consistent hydration throughout the day.",
+                "Monitor your activity levels and ensure adequate rest.",
+                "Consider a semi-annual checkup at your registered organization."
+            ]
 
     def evaluate_performance(self, transcript: str, sim_patient: Any = None) -> Dict[str, Any]:
         """

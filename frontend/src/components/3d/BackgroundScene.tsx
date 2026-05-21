@@ -11,50 +11,68 @@ export function DashboardMonolith() {
     const pathname = usePathname();
     const monolithRef = useRef<THREE.Mesh>(null!);
     const ringGroupRef = useRef<THREE.Group>(null!);
-    const cameraRef = useRef(new THREE.Vector3());
     const [severity, setSeverity] = React.useState('NORMAL');
+    const [loginState, setLoginState] = React.useState({ isRegistering: false, isTransitioning: false, role: 'user' as 'user' | 'doctor' });
+
+    React.useEffect(() => {
+        const handleState = (e: any) => setLoginState(e.detail);
+        window.addEventListener('dignova_login_state', handleState);
+        
+        const handleTriageUpdate = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail && detail.severity) {
+                setSeverity(detail.severity);
+                if (detail.severity === 'CRITICAL') setTimeout(() => setSeverity('NORMAL'), 10000);
+            }
+        };
+        
+        window.addEventListener('dignova-triage-update', handleTriageUpdate);
+        return () => {
+            window.removeEventListener('dignova_login_state', handleState);
+            window.removeEventListener('dignova-triage-update', handleTriageUpdate);
+        };
+    }, []);
 
     // Dynamic position based on route
     const scenePosition = useMemo(() => {
-        if (pathname === '/') return [0, 0, 0] as [number, number, number];
+        if (pathname === '/' || pathname === '/login') return [0, 0, 0] as [number, number, number];
         return [8, 0, -10] as [number, number, number];
     }, [pathname]);
 
     // Deep, calm cyan/blue for the dashboard interior
     const glowColor = useMemo(() => {
+        if (pathname === '/login') {
+            if (loginState.role === 'doctor') return new THREE.Color('#10b981'); // Emerald
+            return new THREE.Color('#a855f7'); // Purple
+        }
         if (severity === 'CRITICAL') return new THREE.Color('#ef4444');
         if (severity === 'ELEVATED') return new THREE.Color('#f59e0b');
         return new THREE.Color('#0ea5e9');
-    }, [severity]);
+    }, [severity, loginState, pathname]);
     
-    const ringColor = severity === 'CRITICAL' ? '#f87171' : severity === 'ELEVATED' ? '#fbbf24' : '#38bdf8';
-
-    React.useEffect(() => {
-        const handleTriageUpdate = (e: Event) => {
-            const detail = (e as CustomEvent).detail;
-            if (detail && detail.severity) {
-                setSeverity(detail.severity);
-                // Reset after 10s if critical
-                if (detail.severity === 'CRITICAL') {
-                    setTimeout(() => setSeverity('NORMAL'), 10000);
-                }
-            }
-        };
-        window.addEventListener('dignova-triage-update', handleTriageUpdate);
-        return () => window.removeEventListener('dignova-triage-update', handleTriageUpdate);
-    }, []);
+    const ringColor = pathname === '/login' 
+        ? (loginState.role === 'doctor' ? '#34d399' : '#c084fc')
+        : (severity === 'CRITICAL' ? '#f87171' : severity === 'ELEVATED' ? '#fbbf24' : '#38bdf8');
 
     useFrame((state, delta) => {
         // 1. Slow, majestic monolith rotation
         if (monolithRef.current) {
-            monolithRef.current.rotation.y += delta * 0.05;
+            monolithRef.current.rotation.y += delta * (loginState.isRegistering ? 0.3 : 0.05);
             monolithRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.2) * 0.05;
+            
+            const targetScale = loginState.isRegistering ? 1.2 : 1.0;
+            monolithRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 2);
         }
 
         // 2. Slow Ring rotation
         if (ringGroupRef.current) {
             ringGroupRef.current.rotation.z -= delta * 0.02;
-            ringGroupRef.current.rotation.x += delta * 0.01;
+            ringGroupRef.current.rotation.x += delta * (loginState.isRegistering ? 0.1 : 0.01);
+        }
+
+        // 3. Login Transitions (Camera Dive)
+        if (pathname === '/login' && loginState.isTransitioning) {
+            state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, -10, delta * 2);
         }
     });
 

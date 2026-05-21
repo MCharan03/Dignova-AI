@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Activity, Users, Clock, Shield, AlertTriangle, ChevronRight, Search, Bell, UserCircle, Zap, CheckCircle, Calendar, Sparkles, Stethoscope } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import SecurityStatus from '@/components/dashboard/SecurityStatus';
 
 interface DoctorStats {
     triage_volume: { date: string; count: number }[];
@@ -38,24 +39,65 @@ export default function DoctorDashboard() {
     const [loading, setLoading] = useState(true);
     const [appointments, setAppointments] = useState<any[]>([]);
     const [escalations, setEscalations] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'overview' | 'queue' | 'schedule'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'queue' | 'schedule' | 'ward'>('overview');
+    const [admittedPatients, setAdmittedPatients] = useState<any[]>([]);
+    const [selectedAdmission, setSelectedAdmission] = useState<number | null>(null);
+    const [ehrHistory, setEhrHistory] = useState<any[]>([]);
+    const [newEhr, setNewEhr] = useState({ note_type: 'clinical_note', content: '' });
+    const [showEhrModal, setShowEhrModal] = useState(false);
 
     const fetchDoctorData = async () => {
         const token = localStorage.getItem('access_token');
         try {
-            const [statsRes, apptsRes, escRes] = await Promise.all([
+            const [statsRes, apptsRes, escRes, wardRes] = await Promise.all([
                 fetch('/api/stats/doctor', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/appointments/me', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/hospital/escalations/active', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch('/api/hospital/escalations/active', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/api/doctor/ward/admitted', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (statsRes.ok) setStats(await statsRes.json());
             if (apptsRes.ok) setAppointments(await apptsRes.json());
             if (escRes.ok) setEscalations(await escRes.json());
+            if (wardRes.ok) setAdmittedPatients(await wardRes.json());
         } catch (err) {
             console.error('Failed to fetch doctor data:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchEhrHistory = async (admissionId: number) => {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/doctor/ward/ehr/${admissionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setEhrHistory(await res.json());
+        } catch (err) {
+            console.error('EHR fetch error:', err);
+        }
+    };
+
+    const handleAddEhr = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedAdmission) return;
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/doctor/ward/ehr/${selectedAdmission}`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newEhr)
+            });
+            if (res.ok) {
+                setNewEhr({ note_type: 'clinical_note', content: '' });
+                fetchEhrHistory(selectedAdmission);
+            }
+        } catch (err) {
+            console.error('EHR add error:', err);
         }
     };
 
@@ -127,6 +169,12 @@ export default function DoctorDashboard() {
                             className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'schedule' ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-white'}`}
                         >
                             SCHEDULE
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('ward')}
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'ward' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            WARD ({admittedPatients.length})
                         </button>
                     </div>
                 </BlurIn>
@@ -260,6 +308,10 @@ export default function DoctorDashboard() {
                         {/* RIGHT: Status & Schedule Preview */}
                         <div className="col-span-4 space-y-6">
                             <BlurIn delay={0.6}>
+                                <SecurityStatus />
+                            </BlurIn>
+
+                            <BlurIn delay={0.7}>
                                 <GlassCard>
                                     <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                                         <Calendar className="text-purple-400" size={18} />
@@ -403,7 +455,127 @@ export default function DoctorDashboard() {
                         </GlassCard>
                     </motion.div>
                 )}
+
+                {activeTab === 'ward' && (
+                    <motion.div key="ward" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {admittedPatients.map((patient) => (
+                            <GlassCard key={patient.admission_id} className="p-6 flex flex-col gap-4 group hover:border-emerald-500/30 transition-all border-white/5">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                            <Users size={18} className="text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-white uppercase">{patient.patient_name}</h4>
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase">Room {patient.room_number || '??'} // Bed {patient.bed_number || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[8px] font-black text-emerald-400 uppercase tracking-widest">Active_Admit</div>
+                                </div>
+
+                                <div className="flex flex-col gap-2 py-4 border-y border-white/5">
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-white/20 uppercase">Admitted_At</span>
+                                        <span className="text-white/60">{new Date(patient.admitted_at).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[10px] font-mono">
+                                        <span className="text-white/20 uppercase">Vitals_Status</span>
+                                        <span className="text-emerald-400 animate-pulse flex items-center gap-1"><Activity size={10} /> STABLE</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            setSelectedAdmission(patient.admission_id);
+                                            fetchEhrHistory(patient.admission_id);
+                                            setShowEhrModal(true);
+                                        }}
+                                        className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-[10px] font-bold uppercase hover:bg-white/10 transition-all"
+                                    >
+                                        View EHR
+                                    </button>
+                                    <button className="px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-2">
+                                        <Zap size={12} /> Live
+                                    </button>
+                                </div>
+                            </GlassCard>
+                        ))}
+                        {admittedPatients.length === 0 && (
+                            <div className="col-span-full py-20 text-center border border-dashed border-white/5 rounded-2xl">
+                                <Activity className="mx-auto mb-2 text-white/10" size={32} />
+                                <p className="text-xs font-mono text-white/20 uppercase tracking-[0.2em]">No patients currently in ward</p>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </AnimatePresence>
+
+            {/* EHR MODAL */}
+            {showEhrModal && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-2xl h-[80vh] flex flex-col">
+                        <GlassCard className="!p-0 relative flex-1 flex flex-col overflow-hidden">
+                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                                <div>
+                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Electronic Health Record</h3>
+                                    <p className="text-[10px] font-mono text-gray-500 uppercase">Secure Clinical Matrix // Encryption Active</p>
+                                </div>
+                                <button onClick={() => setShowEhrModal(false)} className="text-white/40 hover:text-white"><X size={24} /></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {/* New Entry Form */}
+                                <form onSubmit={handleAddEhr} className="bg-black/40 border border-white/10 rounded-2xl p-4 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-[10px] font-mono text-accent-cyan uppercase tracking-[0.2em]">New_Clinical_Entry</h4>
+                                        <select 
+                                            value={newEhr.note_type} 
+                                            onChange={e => setNewEhr({...newEhr, note_type: e.target.value})}
+                                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1 text-[10px] text-white uppercase focus:outline-none"
+                                        >
+                                            <option value="clinical_note">Clinical Note</option>
+                                            <option value="lab_result">Lab Result</option>
+                                            <option value="procedure">Procedure</option>
+                                            <option value="daily_round">Daily Round</option>
+                                        </select>
+                                    </div>
+                                    <textarea 
+                                        required
+                                        value={newEhr.content}
+                                        onChange={e => setNewEhr({...newEhr, content: e.target.value})}
+                                        placeholder="Enter clinical observations, treatment progress, or lab data..."
+                                        className="w-full bg-transparent border-none text-sm text-white focus:ring-0 resize-none h-24"
+                                    />
+                                    <div className="flex justify-end">
+                                        <button type="submit" className="px-4 py-1.5 rounded-lg bg-accent-cyan/20 border border-accent-cyan/30 text-accent-cyan text-[10px] font-bold uppercase hover:bg-accent-cyan hover:text-black transition-all">Commit Entry</button>
+                                    </div>
+                                </form>
+
+                                {/* EHR History */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-mono text-white/20 uppercase tracking-[0.2em]">Neural_History_Chain</h4>
+                                    {ehrHistory.map((entry) => (
+                                        <div key={entry.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="px-2 py-0.5 rounded bg-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest">{entry.note_type}</span>
+                                                <span className="text-[9px] font-mono text-white/20">{new Date(entry.created_at).toLocaleString()}</span>
+                                            </div>
+                                            <p className="text-xs text-white/80 leading-relaxed italic">&quot;{entry.content}&quot;</p>
+                                            <p className="text-[9px] font-mono text-accent-blue/60 uppercase">— Signed: Dr. {entry.created_by_name}</p>
+                                        </div>
+                                    ))}
+                                    {ehrHistory.length === 0 && (
+                                        <div className="py-10 text-center border border-dashed border-white/5 rounded-xl">
+                                            <p className="text-[10px] font-mono text-white/10 uppercase">No prior clinical records found for this admission</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </GlassCard>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

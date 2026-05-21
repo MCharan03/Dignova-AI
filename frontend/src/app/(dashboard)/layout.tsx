@@ -108,6 +108,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const isShared = pathname.startsWith('/user/messages') || isProfilePage;
             if (user.tier === 'intern') { if (!isInternPath && !isShared) router.push('/intern'); }
             else { if (!pathname.startsWith('/doctor') && !isShared) router.push('/doctor'); }
+        } else if (user.role === 'org_admin' || user.role === 'receptionist') {
+            if (!pathname.startsWith('/org-admin') && !isProfilePage) router.push('/org-admin');
         } else { if (!pathname.startsWith('/user') && !isProfilePage) router.push('/user'); }
     }, [pathname, user, loading, router]);
 
@@ -124,13 +126,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             { name: 'Audit Log', path: '/admin/history', icon: <History size={20} /> },
             { name: 'Settings', path: '/admin/settings', icon: <Settings size={20} /> },
         ];
-        if (user.role === 'org_admin') return [
+        if (user.role === 'org_admin' || user.role === 'receptionist') return [
             { name: 'Hospital HQ', path: '/org-admin', icon: <Building2 size={20} /> },
+            { name: 'Admissions', path: '/org-admin/admissions', icon: <Users size={20} /> },
+            { name: 'Billing', path: '/org-admin/billing', icon: <FileText size={20} /> },
             { name: 'Departments', path: '/org-admin/departments', icon: <ClipboardList size={20} /> },
-            { name: 'Schedules', path: '/org-admin/schedules', icon: <Calendar size={20} /> },
-            { name: 'Patients', path: '/org-admin/patients', icon: <Users size={20} /> },
             { name: 'Staff', path: '/org-admin/staff', icon: <Stethoscope size={20} /> },
             { name: 'Settings', path: '/org-admin/settings', icon: <Settings size={20} /> },
+            { name: 'Profile', path: '/user/profile', icon: <UserCircle size={20} /> },
         ];
         if (user.role === 'doctor') {
             if (user.tier === 'intern') return [
@@ -251,25 +254,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
             </AnimatePresence>
 
-            <main ref={scrollContainerRef} className="main-content-area">
+            <main ref={scrollContainerRef} className={`main-content-area ${pathname.includes('triage') ? 'no-dock' : ''}`}>
                 <div className="page-content animate-in">{!loading && children}</div>
             </main>
 
             {/* Desktop bottom dock */}
-            <nav className="bottom-dock hidden md:flex">
-                {navItems.map(item => {
-                    const isActive = pathname === item.path || (!['/admin', '/org-admin', '/doctor', '/user'].includes(item.path) && pathname.startsWith(item.path));
-                    return (
-                        <button key={item.name} className={`dock-item ${isActive ? 'active' : ''}`} onClick={() => router.push(item.path)}>
-                            {item.icon}<span className="dock-tooltip">{item.name}</span>
-                        </button>
-                    );
-                })}
-                <div className="w-[1px] h-6 bg-white/10 mx-2" />
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="dock-item hover:text-rose-500" onClick={handleLogout}>
-                    <LogOut size={20} /><span className="dock-tooltip">Shutdown</span>
-                </motion.button>
-            </nav>
+            {!pathname.includes('triage') && (
+                <nav className="bottom-dock hidden md:flex">
+                    {navItems.map(item => {
+                        const isActive = pathname === item.path || (!['/admin', '/org-admin', '/doctor', '/user'].includes(item.path) && pathname.startsWith(item.path));
+                        return (
+                            <button key={item.name} className={`dock-item ${isActive ? 'active' : ''}`} onClick={() => router.push(item.path)}>
+                                {item.icon}<span className="dock-tooltip">{item.name}</span>
+                            </button>
+                        );
+                    })}
+                    <div className="w-[1px] h-6 bg-white/10 mx-2" />
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="dock-item hover:text-rose-500" onClick={handleLogout}>
+                        <LogOut size={20} /><span className="dock-tooltip">Shutdown</span>
+                    </motion.button>
+                </nav>
+            )}
         </div>
     );
 }

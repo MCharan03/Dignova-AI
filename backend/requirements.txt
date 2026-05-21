@@ -23,3 +23,5 @@ httpx
 reportlab
 audioop-lts
 legacy-cgi
+cryptography
+slowapi

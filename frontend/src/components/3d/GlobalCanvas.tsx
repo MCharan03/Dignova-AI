@@ -44,7 +44,7 @@ export function GlobalCanvas() {
         depth: true
       }}
     >
-      <color attach="background" args={['#020205']} />
+      <color attach="background" args={['#0A0A0B']} />
       <ambientLight intensity={1.5} />
       <pointLight position={[10, 10, 10]} intensity={2.5} />
       <Suspense fallback={null}>

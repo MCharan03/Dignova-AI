@@ -34,6 +34,10 @@
     z-index: 1;
 }
 
+.main-content-area.no-dock {
+    padding-bottom: 0;
+}
+
 /* Remove all scrollbars for the OS feel */
 .main-content-area::-webkit-scrollbar {
     display: none;

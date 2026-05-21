@@ -18,13 +18,21 @@ from ..utils.auth import (
 from ..utils.auth_utils import (
     generate_verification_token, confirm_verification_token,
     generate_reset_token, confirm_reset_token,
+    generate_sync_token, confirm_sync_token,
     check_rate_limit, record_failed_attempt, clear_login_attempts
 )
+
 from ..utils.email_utils import send_email, send_welcome_email
 from ..services.n8n_services import N8nService
 from pydantic import BaseModel, EmailStr
 
 router = APIRouter()
+
+@router.get("/telegram-sync-token")
+async def get_telegram_sync_token(current_user: User = Depends(get_current_user)):
+    """Generates a secure, short-lived token to link the user to Telegram."""
+    token = generate_sync_token(current_user.id)
+    return {"sync_token": token}
 
 # --- Schemas ---
 class UserCreate(BaseModel):
@@ -242,6 +250,7 @@ async def resend_verification(email: EmailStr, db: AsyncSession = Depends(get_db
 
 @router.post("/login", response_model=Token)
 async def login_access_token(
+    request: Request,
     db: AsyncSession = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     email = form_data.username
@@ -260,6 +269,7 @@ async def login_access_token(
     return {
         "access_token": create_access_token(
             data={"sub": user.email, "role": user.role.value, "user_id": user.id},
+            request=request,
             expires_delta=access_token_expires
         ),
         "token_type": "bearer",

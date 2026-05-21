@@ -8,6 +8,7 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { User, Lock, ArrowRight, Shield, Mail, Edit3, AlertCircle, Phone, Calendar, HeartPulse, MapPin, Contact2, Stethoscope, Eye, EyeOff } from 'lucide-react';
 import { DoctorTriageExam } from '@/components/auth/DoctorTriageExam';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import './login.css';
 
 function LoginContent() {
@@ -41,11 +42,58 @@ function LoginContent() {
     const [address, setAddress] = useState('');
     const [emergencyContact, setEmergencyContact] = useState('');
     const [orgCode, setOrgCode] = useState('');
+
+    // Validation States
+    const validateEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    const validateOrgCode = (val: string) => /^[A-Z]{3,8}-\d{4}$/.test(val);
+    const validatePhone = (val: string) => {
+        try {
+            return isValidPhoneNumber(val, 'IN') || isValidPhoneNumber(val); // Default to India but support international
+        } catch { return false; }
+    };
+    const validateAge = (val: string) => {
+        const num = parseInt(val);
+        return !isNaN(num) && num > 0 && num < 120;
+    };
+
+    const getPhoneRegion = (val: string) => {
+        try {
+            const parsed = parsePhoneNumber(val, 'IN');
+            return parsed && parsed.country ? `Region Identified: ${parsed.country}` : '';
+        } catch { return ''; }
+    };
     
     // UI State
     const [errorMsg, setErrorMsg] = useState('');
     const [loading, setLoading] = useState(false);
     const [showExam, setShowExam] = useState(false);
+
+    const isFormValid = () => {
+        if (isLogin) return validateEmail(email) && password.length >= 6;
+        
+        const basic = validateEmail(email) && password.length >= 6 && name.trim().length > 2;
+        if (registerRole === 'doctor') return basic && validateOrgCode(orgCode);
+        return basic && validatePhone(phoneNumber) && validateAge(age) && bloodGroup !== '';
+    };
+
+    // Masking Handlers
+    const handleNameChange = (val: string) => {
+        const masked = val.replace(/[0-9]/g, ''); // Strip numbers
+        setName(masked);
+    };
+
+    const handlePhoneChange = (val: string) => {
+        const digits = val.replace(/\D/g, '');
+        let formatted = digits;
+        if (digits.length > 3 && digits.length <= 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+        else if (digits.length > 6) formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+        setPhoneNumber(formatted);
+    };
+
+    const handleAgeChange = (val: string) => {
+        const digits = val.replace(/\D/g, '');
+        if (digits.length <= 3) setAge(digits);
+    };
 
     // Sync state with 3D Canvas
     useEffect(() => {
@@ -272,17 +320,30 @@ function LoginContent() {
                                                 className="space-y-4 overflow-hidden"
                                             >
                                                 <motion.div variants={formItemVariants}>
-                                                    <GlassInput type="text" placeholder="Full Name / Medical Prefix" icon={<Edit3 size={16} />} value={name} onChange={e => setName(e.target.value)} required />
+                                                    <GlassInput 
+                                                        type="text" 
+                                                        placeholder="Full Name (Alphabetical only)" 
+                                                        icon={<Edit3 size={16} />} 
+                                                        value={name} 
+                                                        onChange={e => handleNameChange(e.target.value)} 
+                                                        isValid={name.length > 2}
+                                                        isInvalid={name.length > 0 && name.length <= 2}
+                                                        errorText="Name must be at least 3 characters"
+                                                        required 
+                                                    />
                                                 </motion.div>
 
                                                 {registerRole === 'doctor' && (
                                                     <motion.div variants={formItemVariants}>
                                                         <GlassInput 
                                                             type="text" 
-                                                            placeholder="Organization Code (e.g. MANIPAL-2026)" 
+                                                            placeholder="Org Code (e.g. HOSP-2026)" 
                                                             icon={<Shield size={16} />} 
                                                             value={orgCode} 
-                                                            onChange={e => setOrgCode(e.target.value)} 
+                                                            onChange={e => setOrgCode(e.target.value.toUpperCase())} 
+                                                            isValid={validateOrgCode(orgCode)}
+                                                            isInvalid={orgCode.length > 0 && !validateOrgCode(orgCode)}
+                                                            errorText="Format: 3-8 uppercase letters followed by 4 digits (e.g. AI-9999)"
                                                             required 
                                                         />
                                                     </motion.div>
@@ -291,14 +352,54 @@ function LoginContent() {
                                                 {registerRole === 'user' && ( 
                                                     <>
                                                         <motion.div variants={formItemVariants}>
-                                                            <GlassInput type="text" placeholder="Phone Number" icon={<Phone size={16} />} value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required />
+                                                            <GlassInput 
+                                                                type="text" 
+                                                                placeholder="Phone Number (e.g. +91 ...)" 
+                                                                icon={<Phone size={16} />} 
+                                                                value={phoneNumber} 
+                                                                onChange={e => handlePhoneChange(e.target.value)} 
+                                                                isValid={validatePhone(phoneNumber)}
+                                                                isInvalid={phoneNumber.length > 5 && !validatePhone(phoneNumber)}
+                                                                errorText={phoneNumber.length > 5 && !validatePhone(phoneNumber) ? "Invalid International Format" : getPhoneRegion(phoneNumber)}
+                                                                required 
+                                                            />
                                                         </motion.div>
                                                         <motion.div variants={formItemVariants} className="grid grid-cols-2 gap-4">
-                                                            <GlassInput type="number" placeholder="Age" icon={<Calendar size={16} />} value={age} onChange={e => setAge(e.target.value)} />
-                                                            <GlassInput type="text" placeholder="Blood Group" icon={<HeartPulse size={16} />} value={bloodGroup} onChange={e => setBloodGroup(e.target.value)} />
+                                                            <GlassInput 
+                                                                type="text" 
+                                                                placeholder="Age" 
+                                                                icon={<Calendar size={16} />} 
+                                                                value={age} 
+                                                                onChange={e => handleAgeChange(e.target.value)} 
+                                                                isValid={validateAge(age)}
+                                                                isInvalid={age.length > 0 && !validateAge(age)}
+                                                                errorText="Invalid age (1-119)"
+                                                            />
+                                                            <div className="relative">
+                                                                <HeartPulse size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
+                                                                <select 
+                                                                    className={`glass-input pl-12 w-full appearance-none transition-all duration-300 ${bloodGroup ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}
+                                                                    value={bloodGroup}
+                                                                    onChange={e => setBloodGroup(e.target.value)}
+                                                                >
+                                                                    <option value="" disabled className="bg-black text-gray-500">Blood Group</option>
+                                                                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(type => (
+                                                                        <option key={type} value={type} className="bg-black text-white">{type}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
                                                         </motion.div>
                                                         <motion.div variants={formItemVariants}>
-                                                            <GlassInput type="text" placeholder="Emergency Contact" icon={<Contact2 size={16} />} value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} />
+                                                            <GlassInput 
+                                                                type="text" 
+                                                                placeholder="Emergency Contact" 
+                                                                icon={<Contact2 size={16} />} 
+                                                                value={emergencyContact} 
+                                                                onChange={e => handlePhoneChange(e.target.value)} 
+                                                                isValid={validatePhone(emergencyContact)}
+                                                                isInvalid={emergencyContact.length > 5 && !validatePhone(emergencyContact)}
+                                                                errorText={getPhoneRegion(emergencyContact)}
+                                                            />
                                                         </motion.div>
                                                         <motion.div variants={formItemVariants}>
                                                             <GlassInput type="text" placeholder="Current Address" icon={<MapPin size={16} />} value={address} onChange={e => setAddress(e.target.value)} />
@@ -309,15 +410,28 @@ function LoginContent() {
                                         )}
                                     </AnimatePresence>
 
-                                    <GlassInput type="email" placeholder="Email Address" icon={<Mail size={16} />} value={email} onChange={e => setEmail(e.target.value)} required />
+                                    <GlassInput 
+                                        type="email" 
+                                        placeholder="Email Address" 
+                                        icon={<Mail size={16} />} 
+                                        value={email} 
+                                        onChange={e => setEmail(e.target.value)} 
+                                        isValid={validateEmail(email)}
+                                        isInvalid={email.length > 0 && !validateEmail(email)}
+                                        errorText="Please enter a valid email address"
+                                        required 
+                                    />
                                     
                                     <div className="relative">
                                         <GlassInput 
                                             type={showPassword ? "text" : "password"} 
-                                            placeholder="Password" 
+                                            placeholder="Password (Min. 6 chars)" 
                                             icon={<Lock size={16} />} 
                                             value={password} 
                                             onChange={e => setPassword(e.target.value)} 
+                                            isValid={password.length >= 6}
+                                            isInvalid={password.length > 0 && password.length < 6}
+                                            errorText="Password must be at least 6 characters"
                                             required 
                                             endIcon={showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                             onEndIconClick={() => setShowPassword(!showPassword)}
@@ -331,7 +445,12 @@ function LoginContent() {
                                         )}
                                     </div>
 
-                                    <GlassButton type="submit" variant="primary" className="w-full mt-6 justify-center bg-white text-black font-semibold hover:bg-gray-200" disabled={loading}>
+                                    <GlassButton 
+                                        type="submit" 
+                                        variant="primary" 
+                                        className={`w-full mt-6 justify-center transition-all duration-500 ${isFormValid() ? 'bg-white text-black' : 'bg-white/5 text-white/20 border-white/5 cursor-not-allowed'}`} 
+                                        disabled={loading || !isFormValid()}
+                                    >
                                         <span>
                                             {loading ? 'Processing...' : (
                                                 isLogin ? 'Access Terminal' : (
@@ -339,7 +458,7 @@ function LoginContent() {
                                                 )
                                             )}
                                         </span>
-                                        {!loading && <ArrowRight size={16} className="ml-2 opacity-50" />}
+                                        {!loading && <ArrowRight size={16} className={`ml-2 transition-opacity ${isFormValid() ? 'opacity-50' : 'opacity-0'}`} />}
                                     </GlassButton>
                                 </form>
                             </GlassCard>

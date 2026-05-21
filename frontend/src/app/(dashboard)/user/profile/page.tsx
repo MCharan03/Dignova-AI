@@ -51,6 +51,27 @@ export default function UserProfilePage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+    const [syncLoading, setSyncLoading] = useState(false);
+
+    const handleLaunchBot = async () => {
+        setSyncLoading(true);
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/auth/telegram-sync-token', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to generate sync token');
+            const { sync_token } = await res.json();
+            
+            // Launch bot with deep-link token
+            window.open(`https://t.me/dignovaai_bot?start=${sync_token}`, '_blank');
+        } catch (err: any) {
+            setMessage({ text: 'Neural Link generation failed. Please try again.', type: 'error' });
+        } finally {
+            setSyncLoading(false);
+        }
+    };
+
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('access_token');
@@ -242,10 +263,12 @@ export default function UserProfilePage() {
                                         </p>
                                         <button 
                                             type="button"
-                                            onClick={() => window.open('https://t.me/dignovaai_bot', '_blank')}
-                                            className="w-full py-2 bg-[#229ED9] hover:bg-[#229ED9]/80 text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
+                                            onClick={handleLaunchBot}
+                                            disabled={syncLoading}
+                                            className="w-full py-2 bg-[#229ED9] hover:bg-[#229ED9]/80 text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
-                                            <Send size={12} /> Launch Bot
+                                            {syncLoading ? <Activity className="animate-spin" size={12} /> : <Send size={12} />}
+                                            {syncLoading ? 'SECURIING...' : 'Launch Bot'}
                                         </button>
                                         <div className="text-[9px] text-gray-600 font-mono italic text-center">
                                             "Send /start to the bot to sync"

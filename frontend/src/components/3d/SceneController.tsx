@@ -49,13 +49,9 @@ export function SceneController() {
 
   return (
     <>
-      {pathname === '/' && <BackgroundScene />}
+      {pathname === '/' && <AntiGravityNodes />}
       {pathname === '/login' && (
-        <LoginScene 
-          isRegistering={loginState.isRegistering} 
-          isTransitioning={loginState.isTransitioning} 
-          role={loginState.role} 
-        />
+        <BackgroundScene />
       )}
       {(isDashboard || isAuthMisc) && (
         <BackgroundScene /> 

@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Activity, Heart, Search, Bell, Droplets, Wind, Shield, UserCircle, Calendar, ShieldCheck, ArrowUpRight, Star, Clock, Briefcase, Stethoscope, CreditCard, Sparkles, History, Droplet } from 'lucide-react';
+import { Activity, Heart, Search, Bell, Droplets, Wind, Shield, UserCircle, Calendar, ShieldCheck, ArrowUpRight, Star, Clock, Briefcase, Stethoscope, CreditCard, Sparkles, History, Droplet, Thermometer, Zap } from 'lucide-react';
 import { MedicalTimeline } from '@/components/dashboard/MedicalTimeline';
 import { AppointmentBooking as DoctorBooking } from '@/components/dashboard/DoctorBooking';
-import { AshaLocationNode } from '@/components/dashboard/AshaLocationNode';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import EmotionalTelemetry from '@/components/dashboard/EmotionalTelemetry';
+import BeaconStatus from '@/components/dashboard/BeaconStatus';
+import IntentActionNode from '@/components/dashboard/IntentActionNode';
 
 interface UserStats {
     vitals: {
@@ -38,6 +40,7 @@ export default function UserDashboard() {
     const [timeline, setTimeline] = useState<any[]>([]);
     const [healthTips, setHealthTips] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'booking'>('overview');
+    const [admission, setAdmission] = useState<any>(null);
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -48,10 +51,11 @@ export default function UserDashboard() {
             }
 
             try {
-                const [statsRes, timelineRes, tipsRes] = await Promise.all([
+                const [statsRes, timelineRes, tipsRes, admRes] = await Promise.all([
                     fetch('/api/stats/user', { headers: { 'Authorization': `Bearer ${token}` } }),
                     fetch('/api/user/timeline', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/user/health-tips', { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch('/api/user/health-tips', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('/api/user/admission/current', { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 
                 if (statsRes.status === 401) {
@@ -71,6 +75,7 @@ export default function UserDashboard() {
                     const tipsData = await tipsRes.json();
                     setHealthTips(tipsData.tips);
                 }
+                if (admRes.ok) setAdmission(await admRes.json());
             } catch (err) {
                 console.error('Critical failure during neural sync:', err);
             } finally {
@@ -126,10 +131,11 @@ export default function UserDashboard() {
     return (
         <div className="flex flex-col h-full space-y-8 pb-20">
             <header className="flex flex-col gap-2">
-                <SplitText text="IDENTITY DASHBOARD" className="text-3xl font-black text-white tracking-[0.2em]" />
+                <SplitText text={admission?.active ? "PATIENT CARE MATRIX" : "IDENTITY DASHBOARD"} className="text-3xl font-black text-white tracking-[0.2em]" />
                 <BlurIn delay={0.2}>
                     <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.1em] flex items-center gap-2">
-                        <Activity className="text-accent-cyan" size={14} /> Neural_Sync_Established // Node_44_Active
+                        <Activity className={admission?.active ? "text-emerald-400" : "text-accent-cyan"} size={14} /> 
+                        {admission?.active ? `Status: Inpatient_Active // Room: ${admission.room_number}` : "Neural_Sync_Established // Node_44_Active"}
                     </p>
                 </BlurIn>
             </header>
@@ -139,7 +145,7 @@ export default function UserDashboard() {
                     <div className="flex bg-black/40 border border-white/10 rounded-full p-1">
                         <button onClick={() => setActiveTab('overview')} className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'overview' ? 'bg-accent-cyan text-black' : 'text-gray-400 hover:text-white'}`}>OVERVIEW</button>
                         <button onClick={() => setActiveTab('timeline')} className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'timeline' ? 'bg-accent-blue text-white' : 'text-gray-400 hover:text-white'}`}>TIMELINE</button>
-                        <button onClick={() => setActiveTab('booking')} className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'booking' ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-white'}`}>BOOKING</button>
+                        <button onClick={() => setActiveTab('booking')} className={`px-4 py-1.5 rounded-full text-[10px] font-mono transition-all ${activeTab === 'booking' ? 'bg-purple-500 text-white' : 'text-gray-400 hover:text-white'}`}>APPOINTMENTS</button>
                     </div>
                 </BlurIn>
                 <div className="w-10 h-10 rounded-full bg-accent-blue/20 border border-accent-blue/30 flex items-center justify-center overflow-hidden">
@@ -150,27 +156,51 @@ export default function UserDashboard() {
             <AnimatePresence mode="wait">
                 {activeTab === 'overview' && (
                     <div className="grid grid-cols-12 gap-6">
-                        <div className="col-span-8 space-y-6">
-                            <BlurIn delay={0.4}>
-                                <GlassCard className="border-accent-cyan/20 bg-accent-cyan/5">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-2 rounded-lg bg-accent-cyan/20">
-                                            <Sparkles className="text-accent-cyan" size={20} />
+                        {/* ADMISSION BANNER IF ACTIVE */}
+                        {admission?.active && (
+                            <BlurIn delay={0.35} className="col-span-12">
+                                <GlassCard className="border-emerald-500/30 bg-emerald-500/5 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4">
+                                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest animate-pulse">
+                                            <Zap size={12} /> Live_Telemetry_Active
                                         </div>
-                                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Sentient Health Insights</h3>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {healthTips.map((tip, i) => (
-                                            <div key={i} className="flex gap-3 items-start p-3 rounded-lg bg-black/40 border border-white/5">
-                                                <div className="mt-1 w-1.5 h-1.5 rounded-full bg-accent-cyan animate-pulse shrink-0" />
-                                                <p className="text-xs text-gray-300 leading-relaxed">{tip}</p>
-                                            </div>
-                                        ))}
+                                    <div className="grid grid-cols-3 gap-8 p-4">
+                                        <div>
+                                            <p className="text-[10px] font-mono text-emerald-400/60 uppercase mb-2">Treating Physician</p>
+                                            <h3 className="text-xl font-bold text-white uppercase tracking-tight">Dr. {admission.doctor_name}</h3>
+                                            <p className="text-xs text-gray-500 font-mono">{admission.doctor_specialty}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-mono text-emerald-400/60 uppercase mb-2">Location</p>
+                                            <h3 className="text-xl font-bold text-white uppercase tracking-tight">Room {admission.room_number}</h3>
+                                            <p className="text-xs text-gray-500 font-mono">Bed {admission.bed_number || 'N/A'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-mono text-amber-400 uppercase mb-2">Accrued Expenses</p>
+                                            <h3 className="text-2xl font-black text-white tracking-tighter">₹{admission.billing?.total.toLocaleString()}</h3>
+                                            <p className="text-[9px] text-gray-500 font-mono uppercase tracking-[0.2em] mt-1 italic">Transparency_Protocol_Active</p>
+                                        </div>
                                     </div>
                                 </GlassCard>
                             </BlurIn>
+                        )}
 
-                            <BlurIn delay={0.5}>
+                        {/* LEFT: Sentient Modules & Vitals */}
+                        <div className="col-span-8 space-y-6">
+                            {!admission?.active && (
+                                <BlurIn delay={0.35}>
+                                    <IntentActionNode />
+                                </BlurIn>
+                            )}
+
+                            <div className="grid grid-cols-1">
+                                <BlurIn delay={0.4}>
+                                    <EmotionalTelemetry />
+                                </BlurIn>
+                            </div>
+
+                            <BlurIn delay={0.6}>
                                 <div className="grid grid-cols-3 gap-4">
                                     <GlassCard className="flex flex-col items-center justify-center p-6 group hover:border-accent-cyan/40 transition-all">
                                         <Heart className="text-accent-cyan mb-2 group-hover:scale-110 transition-transform" size={32} />
@@ -190,7 +220,7 @@ export default function UserDashboard() {
                                 </div>
                             </BlurIn>
 
-                            <BlurIn delay={0.6}>
+                            <BlurIn delay={0.7}>
                                 <GlassCard className="p-6">
                                     <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                                         <Heart className="text-danger" size={18} /> PULSE_HISTORY
@@ -212,8 +242,13 @@ export default function UserDashboard() {
                             </BlurIn>
                         </div>
 
+                        {/* RIGHT: Profile & Protocol Status */}
                         <div className="col-span-4 space-y-6">
-                            <BlurIn delay={0.7}>
+                            <BlurIn delay={0.85}>
+                                <BeaconStatus />
+                            </BlurIn>
+
+                            <BlurIn delay={0.9}>
                                 <GlassCard className="p-6">
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
@@ -233,17 +268,7 @@ export default function UserDashboard() {
                                 </GlassCard>
                             </BlurIn>
 
-                            <BlurIn delay={0.8}>
-                                <GlassCard>
-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2"><ShieldCheck className="text-accent-blue" size={18} /> SECURITY_STATUS</h3>
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center p-3 rounded-lg bg-black/40 border border-white/5"><span className="text-[10px] font-mono text-gray-400">ENCRYPTION</span><span className="text-[10px] font-mono text-accent-cyan">AES-256_ACTIVE</span></div>
-                                        <div className="flex justify-between items-center p-3 rounded-lg bg-black/40 border border-white/5"><span className="text-[10px] font-mono text-gray-400">IDENTITY_LOCK</span><span className="text-[10px] font-mono text-accent-blue">VERIFIED</span></div>
-                                    </div>
-                                </GlassCard>
-                            </BlurIn>
-
-                            <BlurIn delay={0.9}>
+                            <BlurIn delay={1.0}>
                                 <GlassCard>
                                     <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2"><Stethoscope className="text-accent-cyan" size={18} /> MEDICAL_GRID</h3>
                                     <div className="space-y-3">
@@ -272,9 +297,6 @@ export default function UserDashboard() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* ASHA LOCATION NODE (Level 06 Geofencing) */}
-            <AshaLocationNode />
         </div>
     );
 }

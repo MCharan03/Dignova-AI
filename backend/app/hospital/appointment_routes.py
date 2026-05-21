@@ -82,10 +82,15 @@ async def get_bookable_doctors(
                     "end": s.end_time,
                 }
                 for s in schedules
-            ]
+            ],
+            "available_hours": ", ".join([f"{DAY_NAMES[s.day_of_week]}: {s.start_time}-{s.end_time}" for s in schedules]) if schedules else "No availability"
         })
 
     return doctor_list
+
+
+# Helper for display
+DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 @router.post("/book", response_model=AppointmentResponse)
@@ -131,6 +136,17 @@ async def book_appointment(
         type="info",
         category="appointment",
         link="/doctor/appointments"
+    ))
+
+    # Notify patient
+    db.add(Notification(
+        user_id=current_user.id,
+        organization_id=current_user.organization_id,
+        title="Appointment Requested",
+        message=f"Your appointment request with Dr. {doctor.name} for {payload.slot_time.strftime('%b %d at %H:%M')} has been sent.",
+        type="success",
+        category="appointment",
+        link="/user/history"
     ))
 
     db.add(AuditLog(

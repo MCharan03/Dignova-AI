@@ -18,7 +18,7 @@ router = APIRouter()
 
 # Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1alpha'})
-MODEL_ID = "gemini-2.0-flash"
+MODEL_ID = "gemini-3.1-flash-live-preview"
 
 @router.websocket("/ws/internal-call")
 async def internal_call_ws_handler(websocket: WebSocket):
@@ -26,8 +26,13 @@ async def internal_call_ws_handler(websocket: WebSocket):
     Generic WebSocket handler for in-app 'Sentient' calling.
     Handles bidirectional audio streaming via Gemini Live API.
     """
-    await websocket.accept()
-    print("In-app Call WebSocket connected.")
+    print(f"WebSocket connection attempt from: {websocket.client}")
+    try:
+        await websocket.accept()
+        print("In-app Call WebSocket accepted.")
+    except Exception as e:
+        print(f"WebSocket Accept Error: {e}")
+        return
 
     db_id = None
     persona = "TRIAGE" # Default
@@ -88,7 +93,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
     
     config = {
         "system_instruction": system_instruction,
-        "response_modalities": ["AUDIO"]
+        "response_modalities": ["AUDIO", "TEXT"]
     }
 
     # 3. Define helper for DB updates with buffering
@@ -124,6 +129,14 @@ async def internal_call_ws_handler(websocket: WebSocket):
         print(f"Attempting Gemini Live connection with model: {MODEL_ID}")
         async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
             print(f"CONNECTED to Gemini Live API with persona: {persona}")
+            
+            # 🛠 NEW: Trigger initial greeting so the AI speaks first
+            try:
+                greeting_trigger = "The patient has connected. Please introduce yourself as Attending MD and ask how you can help with their triage today."
+                await session.send(greeting_trigger, end_of_turn=True)
+                print("Greeting trigger sent to Gemini.")
+            except Exception as ge:
+                print(f"Failed to send initial greeting: {ge}")
 
             async def app_to_gemini():
                 try:
@@ -159,10 +172,15 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                 if part.text:
                                     print(f"Gemini [{persona}]: {part.text}")
                                     await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
+                                    # Send transcript to frontend for UI
+                                    await websocket.send_json({
+                                        "event": "transcript",
+                                        "role": "ai",
+                                        "text": part.text
+                                    })
                                 
                                 if part.inline_data:
                                     pcm_chunk = part.inline_data.data
-                                    # Convert Gemini PCM to app-friendly WAV/WebM
                                     audio_payload = pcm_to_audio(pcm_chunk)
                                     await websocket.send_json({
                                         "event": "audio",

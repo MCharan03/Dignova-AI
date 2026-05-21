@@ -11,6 +11,11 @@ export function useSentientObserver() {
 
     const mouseLog = useRef<{ x: number, y: number, t: number }[]>([]);
     const lastKeyTime = useRef<number>(Date.now());
+    const lastUpdate = useRef<number>(0);
+    
+    // Internal smoothing values
+    const smoothJitter = useRef(0);
+    const smoothCadence = useRef(0);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -20,7 +25,7 @@ export function useSentientObserver() {
             if (mouseLog.current.length > 50) {
                 mouseLog.current.shift();
                 
-                // Calculate Jitter (erratic movement)
+                // Calculate raw Jitter
                 let totalDeviance = 0;
                 for (let i = 2; i < mouseLog.current.length; i++) {
                     const prev = mouseLog.current[i-1];
@@ -29,8 +34,14 @@ export function useSentientObserver() {
                     totalDeviance += dist;
                 }
                 
-                const jitter = Math.min(totalDeviance / 1000, 1);
-                setTelemetry(prev => ({ ...prev, jitter }));
+                const rawJitter = Math.min(totalDeviance / 1500, 1);
+                // Apply Exponential Moving Average (EMA) for smoothing
+                smoothJitter.current = (smoothJitter.current * 0.9) + (rawJitter * 0.1);
+            }
+
+            // Throttle updates to ~60fps
+            if (now - lastUpdate.current > 16) {
+                updateTelemetry(now);
             }
         };
 
@@ -39,10 +50,40 @@ export function useSentientObserver() {
             const diff = now - lastKeyTime.current;
             lastKeyTime.current = now;
             
-            // Cadence (speed of thought/typing)
-            const cadence = Math.max(0, 1 - (diff / 1000));
-            setTelemetry(prev => ({ ...prev, cadence }));
+            const rawCadence = Math.max(0, 1 - (diff / 1000));
+            smoothCadence.current = (smoothCadence.current * 0.8) + (rawCadence * 0.2);
+            
+            updateTelemetry(now);
         };
+
+        const updateTelemetry = (now: number) => {
+            lastUpdate.current = now;
+            
+            // Gradually decay cadence if no typing
+            if (now - lastKeyTime.current > 2000) {
+                smoothCadence.current *= 0.95;
+            }
+
+            const stress = (smoothJitter.current * 0.7) + (smoothCadence.current * 0.3);
+            
+            setTelemetry({
+                jitter: smoothJitter.current,
+                cadence: smoothCadence.current,
+                stress: stress
+            });
+
+            // Push to Global CSS for hardware-accelerated reactions
+            document.documentElement.style.setProperty('--sentient-stress', stress.toString());
+        };
+
+        // Periodic decay check
+        const decayInterval = setInterval(() => {
+            const now = Date.now();
+            if (now - lastUpdate.current > 100) {
+                smoothJitter.current *= 0.98;
+                updateTelemetry(now);
+            }
+        }, 100);
 
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('keydown', handleKeyDown);
@@ -50,17 +91,9 @@ export function useSentientObserver() {
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('keydown', handleKeyDown);
+            clearInterval(decayInterval);
         };
     }, []);
-
-    // Derived Stress Level
-    useEffect(() => {
-        const stress = (telemetry.jitter * 0.7) + (telemetry.cadence * 0.3);
-        setTelemetry(prev => ({ ...prev, stress }));
-        
-        // Push to Global Canvas via CSS variable for shader reaction
-        document.documentElement.style.setProperty('--sentient-stress', stress.toString());
-    }, [telemetry.jitter, telemetry.cadence]);
 
     return telemetry;
 }

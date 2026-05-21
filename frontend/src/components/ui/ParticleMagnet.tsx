@@ -47,6 +47,11 @@ export function ParticleMagnet() {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const p = particles.current;
+      
+      // Get sentient stress from CSS variable
+      const stressStr = getComputedStyle(document.documentElement).getPropertyValue('--sentient-stress') || '0';
+      const stress = parseFloat(stressStr);
+      const isTargeting = stress > 0.7;
 
       // Update positions
       for (const pt of p) {
@@ -54,19 +59,24 @@ export function ParticleMagnet() {
         const dy = pt.y - mouse.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < REPULSE_RADIUS) {
+        if (isTargeting && dist < 300) {
+            // "Intention Stabilization": Particles act as magnetic targeting grid
+            const force = (300 - dist) / 300;
+            pt.vx -= (dx / dist) * force * 1.5; // Attract instead of repulse
+            pt.vy -= (dy / dist) * force * 1.5;
+        } else if (dist < REPULSE_RADIUS) {
           const force = (REPULSE_RADIUS - dist) / REPULSE_RADIUS;
           pt.vx += (dx / dist) * force * 3;
           pt.vy += (dy / dist) * force * 3;
         }
 
         // Spring back
-        pt.vx += (pt.ox - pt.x) * 0.04;
-        pt.vy += (pt.oy - pt.y) * 0.04;
+        pt.vx += (pt.ox - pt.x) * (isTargeting ? 0.08 : 0.04);
+        pt.vy += (pt.oy - pt.y) * (isTargeting ? 0.08 : 0.04);
 
         // Dampen
-        pt.vx *= 0.85;
-        pt.vy *= 0.85;
+        pt.vx *= (isTargeting ? 0.7 : 0.85);
+        pt.vy *= (isTargeting ? 0.7 : 0.85);
 
         pt.x += pt.vx;
         pt.y += pt.vy;
@@ -78,13 +88,13 @@ export function ParticleMagnet() {
           const dx = p[i].x - p[j].x;
           const dy = p[i].y - p[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < CONNECT_DIST) {
-            const alpha = (1 - dist / CONNECT_DIST) * 0.15;
+          if (dist < (isTargeting ? 200 : CONNECT_DIST)) {
+            const alpha = (1 - dist / (isTargeting ? 200 : CONNECT_DIST)) * (isTargeting ? 0.3 : 0.15);
             ctx.beginPath();
             ctx.moveTo(p[i].x, p[i].y);
             ctx.lineTo(p[j].x, p[j].y);
-            ctx.strokeStyle = `rgba(6, 182, 212, ${alpha})`;
-            ctx.lineWidth = 0.8;
+            ctx.strokeStyle = isTargeting ? `rgba(239, 68, 68, ${alpha})` : `rgba(6, 182, 212, ${alpha})`;
+            ctx.lineWidth = isTargeting ? 1.2 : 0.8;
             ctx.stroke();
           }
         }
@@ -94,7 +104,7 @@ export function ParticleMagnet() {
       for (const pt of p) {
         ctx.save();
         ctx.translate(pt.x, pt.y);
-        ctx.rotate(performance.now() * 0.0003);
+        ctx.rotate(performance.now() * (isTargeting ? 0.001 : 0.0003));
         ctx.beginPath();
         for (let k = 0; k < 6; k++) {
           const angle = (k / 6) * Math.PI * 2;
@@ -103,14 +113,14 @@ export function ParticleMagnet() {
           k === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
         }
         ctx.closePath();
-        ctx.strokeStyle = `rgba(6, 182, 212, ${pt.alpha})`;
-        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = isTargeting ? `rgba(239, 68, 68, ${pt.alpha})` : `rgba(6, 182, 212, ${pt.alpha})`;
+        ctx.lineWidth = isTargeting ? 1.5 : 0.8;
         ctx.stroke();
 
         // Central dot
         ctx.beginPath();
         ctx.arc(0, 0, 1, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(6, 182, 212, ${pt.alpha * 2})`;
+        ctx.fillStyle = isTargeting ? `rgba(239, 68, 68, ${pt.alpha * 2})` : `rgba(6, 182, 212, ${pt.alpha * 2})`;
         ctx.fill();
         ctx.restore();
       }

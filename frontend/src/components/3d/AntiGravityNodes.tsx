@@ -48,7 +48,7 @@ function GlassCoreOrb() {
           chromaticAberration={0.08}
           attenuationColor="#06b6d4"
           attenuationDistance={0.6}
-          color="#020818"
+          color="#080808"
           temporalDistortion={0.1}
           distortionScale={0.2}
         />

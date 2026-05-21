@@ -8,14 +8,17 @@ export const BlurIn = ({
   children, 
   delay = 0, 
   duration = 0.6,
-  y = 20 
+  y = 20,
+  className = ""
 }: { 
   children: React.ReactNode, 
   delay?: number, 
   duration?: number,
-  y?: number 
+  y?: number,
+  className?: string
 }) => (
   <motion.div
+    className={className}
     initial={{ opacity: 0, filter: 'blur(10px)', y }}
     animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
     transition={{ duration, delay, ease: [0.2, 0.8, 0.2, 1] }}

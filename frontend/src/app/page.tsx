@@ -130,7 +130,7 @@ export default function LandingPage() {
                 viewport={{ once: true, margin: '-40px' }}
               >
                 <TiltCard intensity={8}>
-                  <div className="rounded-[20px] border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl p-7 md:p-8 flex items-center gap-6">
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl p-7 md:p-8 flex items-center gap-6">
                     <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                       <feat.icon color={c.text} size={28} />
                     </div>
@@ -243,7 +243,7 @@ export default function LandingPage() {
           className="w-full max-w-[680px]"
         >
           <TiltCard intensity={5}>
-            <div className="rounded-[28px] border border-cyan-500/20 bg-black/60 backdrop-blur-3xl shadow-2xl overflow-hidden">
+            <div className="rounded-[28px] border border-cyan-500/20 bg-zinc-900/60 backdrop-blur-3xl shadow-2xl overflow-hidden">
               {/* Terminal bar */}
               <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 bg-white/[0.02]">
                 {['#ef4444','#f59e0b','#10b981'].map((c, i) => <div key={i} className="w-2.5 h-2.5 rounded-full opacity-70" style={{ background: c }} />)}

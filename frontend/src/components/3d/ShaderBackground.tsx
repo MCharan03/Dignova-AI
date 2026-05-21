@@ -30,7 +30,7 @@ const fragmentShader = `
     float blob1 = sin(p.x * 2.0 + t) * cos(p.y * 1.5 - t * 0.8) * 0.5 + 0.5;
     float blob2 = sin(p.y * 2.5 - t * 1.2) * cos(p.x * 1.8 + t * 0.5) * 0.5 + 0.5;
     
-    vec3 color1 = vec3(0.02, 0.04, 0.1); // Deep Navy
+    vec3 color1 = vec3(0.04, 0.04, 0.05); // Matte Grey
     vec3 calmColor = vec3(0.05, 0.7, 0.8); // Cyan
     vec3 stressColor = vec3(0.9, 0.1, 0.1); // Alert Red
     

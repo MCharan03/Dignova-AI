@@ -39,7 +39,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://exhaustively-overaggressive-kathrine.ngrok-free.dev/api/n8n/webhook/aftercare-response",
+        "url": "http://localhost:8000/api/n8n/webhook/aftercare-response",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

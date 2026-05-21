@@ -1,11 +1,32 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean, Text, JSON, Float, Date
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean, Text, JSON, Float, Date, TypeDecorator
 from .extensions import Base
 import enum
 from datetime import datetime
+from .utils.crypto import encrypt_data, decrypt_data
+
+# --- Military Grade Security: Encrypted Column Type ---
+class EncryptedText(TypeDecorator):
+    """
+    Symmetrically encrypts sensitive text before storing in the database.
+    Decrypts automatically when queried.
+    """
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return encrypt_data(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return decrypt_data(value)
+        return value
 
 class UserRole(enum.Enum):
     super_admin = "super_admin" # Dignova Global Admin
     org_admin = "org_admin"     # Hospital Admin (Manipal/Apollo)
+    receptionist = "receptionist" # Front desk operations
     doctor = "doctor"
     user = "user"
 
@@ -62,7 +83,7 @@ class User(Base):
     phone_number = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.user)
-    address = Column(String, nullable=True)
+    address = Column(EncryptedText, nullable=True)
 
     # Doctor specific
     tier = Column(Enum(DoctorTier), nullable=True)
@@ -72,7 +93,7 @@ class User(Base):
     license_number = Column(String, nullable=True)
     department = Column(String, nullable=True)
     experience_years = Column(Integer, nullable=True)
-    bio = Column(Text, nullable=True)
+    bio = Column(EncryptedText, nullable=True)
     consultation_fee = Column(Integer, nullable=True)
     
     # Emotional Telemetry & Performance
@@ -82,16 +103,16 @@ class User(Base):
     # Bharat-Ready Telemetry
     age = Column(Integer, nullable=True)
     blood_group = Column(String, nullable=True)
-    emergency_contact = Column(String, nullable=True)
+    emergency_contact = Column(EncryptedText, nullable=True)
     preferred_language = Column(String, default="English") # Hindi, Kannada, Tamil, etc.
     lat = Column(Float, nullable=True) # Real-time position for Asha Node
     lon = Column(Float, nullable=True)
     
     # Patient health telemetry
     height_cm = Column(Float, nullable=True)
-    allergies = Column(Text, nullable=True)
-    medications = Column(Text, nullable=True)
-    chronic_conditions = Column(Text, nullable=True)
+    allergies = Column(EncryptedText, nullable=True)
+    medications = Column(EncryptedText, nullable=True)
+    chronic_conditions = Column(EncryptedText, nullable=True)
 
     telegram_chat_id = Column(String, nullable=True, index=True)
     telegram_username = Column(String, nullable=True)
@@ -114,7 +135,7 @@ class Call(Base):
     end_time = Column(DateTime, nullable=True)
     state = Column(String, default="active") # active | history | training_replay
     diagnosis_given = Column(String, nullable=True)
-    transcript = Column(Text, nullable=True)
+    transcript = Column(EncryptedText, nullable=True)
     severity = Column(String, default="UNKNOWN")
     source = Column(String, default="web")
     
@@ -155,7 +176,7 @@ class TrainingReport(Base):
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
     intern_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     scenario_id = Column(Integer, ForeignKey("training_scenarios.id", ondelete="CASCADE"), nullable=True)
-    transcript = Column(Text, nullable=True) # To track intern performance
+    transcript = Column(EncryptedText, nullable=True) # To track intern performance
     score = Column(Integer)
     alignment_with_expert = Column(Float) # How close to the "Ghost Replay" they were
     feedback = Column(Text)
@@ -179,8 +200,8 @@ class Prescription(Base):
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     medications = Column(JSON)
     pdf_path = Column(String, nullable=True)
-    diagnosis = Column(Text, nullable=True)
-    notes = Column(Text, nullable=True)
+    diagnosis = Column(EncryptedText, nullable=True)
+    notes = Column(EncryptedText, nullable=True)
     is_auto_generated = Column(Boolean, default=False)
     approved_by_doctor = Column(Boolean, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -203,7 +224,7 @@ class AppointmentSlot(Base):
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     slot_time = Column(DateTime, nullable=False)
     status = Column(String, default="pending") # pending | confirmed | cancelled
-    notes = Column(Text, nullable=True)
+    notes = Column(EncryptedText, nullable=True)
     google_event_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -305,7 +326,7 @@ class UserVitals(Base):
     blood_glucose = Column(Float, nullable=True)      # mg/dL
     weight_kg = Column(Float, nullable=True)
     source = Column(String, default="manual")          # manual | wearable | iot | clinic
-    notes = Column(Text, nullable=True)
+    notes = Column(EncryptedText, nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow)
 
 class CaseStudy(Base):
@@ -321,4 +342,49 @@ class CaseStudy(Base):
     diagnostics = Column(Text, nullable=False)
     treatment_plan = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# ============================================================
+# === NEW: ADMISSION & EHR MATRIX MODELS ===
+# ============================================================
+
+class Admission(Base):
+    """Tracks a patient's formal stay in a hospital."""
+    __tablename__ = "admissions"
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True) # Primary physician
+    
+    status = Column(String, default="active") # active | discharged
+    room_number = Column(String, nullable=True)
+    bed_number = Column(String, nullable=True)
+    
+    admitted_at = Column(DateTime, default=datetime.utcnow)
+    discharged_at = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class EHREntry(Base):
+    """Electronic Health Record entries associated with an admission."""
+    __tablename__ = "ehr_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    admission_id = Column(Integer, ForeignKey("admissions.id", ondelete="CASCADE"), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    
+    note_type = Column(String, default="clinical_note") # clinical_note | lab_result | procedure | daily_round
+    content = Column(EncryptedText, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class BillingItem(Base):
+    """Itemized charges for a specific admission."""
+    __tablename__ = "billing_items"
+    id = Column(Integer, primary_key=True, index=True)
+    admission_id = Column(Integer, ForeignKey("admissions.id", ondelete="CASCADE"), nullable=False)
+    
+    category = Column(String, nullable=False) # room | medication | procedure | consultation | other
+    description = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    quantity = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)

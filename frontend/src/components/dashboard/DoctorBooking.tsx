@@ -55,7 +55,7 @@ export function AppointmentBooking({ doctors, onBooked }: { doctors?: Doctor[]; 
     const availableSlots: TimeSlot[] = (() => {
         if (!selectedDate || !selectedDoc) return [];
         const dow = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
-        const sched = selectedDoc.available_days.find(d => d.day === dow);
+        const sched = (selectedDoc.available_days || []).find(d => d.day === dow);
         if (!sched) return [];
         return generateSlots(sched.start, sched.end);
     })();
@@ -63,7 +63,7 @@ export function AppointmentBooking({ doctors, onBooked }: { doctors?: Doctor[]; 
     const isDayAvailable = (date: Date) => {
         if (!selectedDoc) return false;
         const dow = date.getDay() === 0 ? 6 : date.getDay() - 1;
-        return selectedDoc.available_days.some(d => d.day === dow);
+        return (selectedDoc.available_days || []).some(d => d.day === dow);
     };
 
     const handleBook = async () => {
@@ -112,7 +112,7 @@ export function AppointmentBooking({ doctors, onBooked }: { doctors?: Doctor[]; 
                                     <div className={`w-2 h-2 rounded-full mt-1 ${doc.is_online ? 'bg-emerald-400' : 'bg-white/20'}`} />
                                 </div>
                                 {doc.consultation_fee && <p className="text-[10px] font-mono text-accent-cyan">₹{doc.consultation_fee} / session</p>}
-                                <p className="text-[10px] text-white/30 mt-1">{doc.available_days.length} days available</p>
+                                <p className="text-[10px] text-white/30 mt-1">{(doc.available_days?.length || 0)} days available</p>
                             </button>
                         ))}
                     </div>

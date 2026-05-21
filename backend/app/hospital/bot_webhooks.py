@@ -45,6 +45,7 @@ class RegisterTelegramRequest(BaseModel):
     telegram_username: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    sync_token: Optional[str] = None
 
 class BotMessageRequest(BaseModel):
     session_id: str          # telegram_chat_id
@@ -223,18 +224,23 @@ async def register_telegram(
 ):
     """
     Links a Telegram chat_id to an existing Dignova user.
-    Called when user clicks 'Connect Telegram' inside the app, or
-    when n8n receives /start from the bot.
     """
     user = None
+    from ..utils.auth_utils import confirm_sync_token
 
-    # Try email lookup first
-    if request.email:
+    # 1. Try Sync Token lookup (One-Click)
+    if request.sync_token:
+        user_id = confirm_sync_token(request.sync_token)
+        if user_id:
+            user = await db.scalar(select(domain.User).where(domain.User.id == user_id))
+
+    # 2. Try email lookup
+    if not user and request.email:
         user = await db.scalar(
             select(domain.User).where(domain.User.email == request.email)
         )
 
-    # Try phone lookup
+    # 3. Try phone lookup
     if not user and request.phone:
         user = await db.scalar(
             select(domain.User).where(domain.User.phone_number == request.phone)
@@ -314,8 +320,10 @@ async def bot_triage_webhook(
             }
 
         # Run AI triage (async — awaited here)
-        ai_result = await GeminiService.triage_message(
-            message=request.message,
+        from ..services.openrouter_service import OpenRouterService
+        ai_result = await OpenRouterService.triage_message(
+            conversation_history=db_call.transcript or "",
+            new_message=request.message,
             patient_info=patient_info
         )
 

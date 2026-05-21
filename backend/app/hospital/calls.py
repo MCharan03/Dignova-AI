@@ -3,8 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime
+import asyncio
 
-from ..extensions import get_db
+from ..extensions import get_db, AsyncSessionLocal
 from .. import models as domain
 from ..utils.auth import get_current_user
 from ..schemas.call_schema import Call, CallStartRequest
@@ -71,6 +72,7 @@ async def start_call(request: CallStartRequest, db: AsyncSession = Depends(get_d
     """
     Initializes a new triage call and links it to the user's organization.
     """
+    print(f"DEBUG: start_call hit by user {current_user.id}")
     new_call = domain.Call(
         user_id=current_user.id, 
         organization_id=current_user.organization_id,

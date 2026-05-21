@@ -105,3 +105,49 @@ async def summarize_medical_report(
         return summary_data
     except Exception as e:
         return {"error": "Summarization service unavailable", "detail": str(e)}
+
+# --- NEW: Admission tracking for patients ---
+
+@router.get("/admission/current")
+async def get_current_admission(
+    db: AsyncSession = Depends(get_db),
+    current_user: domain.User = Depends(get_current_user)
+):
+    """Fetch active admission details for the current user."""
+    from ..models import Admission, User, BillingItem
+    from sqlalchemy import func
+    
+    stmt = select(Admission).where(Admission.patient_id == current_user.id, Admission.status == "active")
+    admission = await db.scalar(stmt)
+    
+    if not admission:
+        return {"active": False}
+        
+    doctor = await db.scalar(select(User).where(User.id == admission.doctor_id))
+    
+    # Fetch billing summary
+    bill_stmt = select(BillingItem).where(BillingItem.admission_id == admission.id)
+    items = (await db.execute(bill_stmt)).scalars().all()
+    total_bill = sum(item.amount * item.quantity for item in items)
+    
+    return {
+        "active": True,
+        "admission_id": admission.id,
+        "doctor_name": doctor.name if doctor else "Unassigned",
+        "doctor_specialty": doctor.specialty if doctor else "General",
+        "room_number": admission.room_number,
+        "bed_number": admission.bed_number,
+        "admitted_at": admission.admitted_at.isoformat(),
+        "billing": {
+            "items": [
+                {
+                    "category": item.category,
+                    "description": item.description,
+                    "amount": item.amount,
+                    "quantity": item.quantity,
+                    "date": item.created_at.isoformat()
+                } for item in items
+            ],
+            "total": total_bill
+        }
+    }
