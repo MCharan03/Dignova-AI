@@ -6,7 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { 
     Building2, Users, Plus, Search, Activity, CheckCircle, 
-    X, DollarSign, Map
+    X, DollarSign, Map as MapIcon
 } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { useFetchAdmissions } from '@/hooks/useFetchAdmissions';
@@ -69,7 +69,7 @@ export default function UnifiedAdmissionsDashboard() {
                 
                 <div className="flex gap-3">
                     <GlassButton onClick={() => window.location.href = '/org-admin/ward'} className="gap-2 text-[10px]">
-                        <Map size={14} /> WARD_VIEW
+                        <MapIcon size={14} /> WARD_VIEW
                     </GlassButton>
                     <GlassButton onClick={() => setShowAdmitModal(true)} className="gap-2 text-[10px] !bg-accent-cyan !text-black">
                         <Plus size={14} /> NEW_ADMISSION

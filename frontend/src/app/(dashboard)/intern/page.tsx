@@ -118,6 +118,12 @@ export default function InternTrainingPage() {
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [activeTab, setActiveTab] = useState<string>('training');
 
+    // Simulation States
+    const [activeScenario, setActiveScenario] = useState<TrainingScenario | null>(null);
+    const [diagnosis, setDiagnosis] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [result, setResult] = useState<any>(null);
+
     // Case Study Form States
     const [showCaseForm, setShowCaseForm] = useState(false);
     const [caseTitle, setCaseTitle] = useState('');
@@ -307,7 +313,139 @@ export default function InternTrainingPage() {
                 {activeScenario ? (
                     /* SIMULATION VIEW */
                     <div className="flex flex-col gap-8 h-full">
-                        {/* ... existing simulation view code ... */}
+                        <header className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <button 
+                                    onClick={() => setActiveScenario(null)}
+                                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:text-white transition-all"
+                                >
+                                    <ChevronRight className="rotate-180" size={20} />
+                                </button>
+                                <div>
+                                    <h1 className="text-2xl font-black text-white uppercase tracking-wider">{activeScenario.title}</h1>
+                                    <p className="text-[10px] font-mono text-accent-cyan uppercase tracking-[0.2em]">Live_Simulation // Session_Active</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-[9px] font-black px-3 py-1 rounded-full border ${difficultyColors[activeScenario.difficulty.toLowerCase()]}`}>
+                                    {activeScenario.difficulty.toUpperCase()}
+                                </span>
+                                <div className="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[9px] font-black animate-pulse">
+                                    REC_00:42
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-12 gap-8 flex-1">
+                            <div className="col-span-8 flex flex-col gap-6">
+                                <GlassCard className="p-8 border-white/10 bg-[#0f1320]">
+                                    <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                        <Activity size={14} className="text-accent-cyan" /> Patient_Presentation
+                                    </h3>
+                                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 mb-8">
+                                        <p className="text-white/90 leading-relaxed italic text-lg font-light">
+                                            "{activeScenario.initial_symptoms}"
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Diagnostic Verdict</h4>
+                                            <span className="text-[9px] font-mono text-white/30 uppercase">Min_100_Characters</span>
+                                        </div>
+                                        <textarea 
+                                            value={diagnosis}
+                                            onChange={(e) => setDiagnosis(e.target.value)}
+                                            placeholder="Analyze symptoms, provide differential diagnosis, and define immediate action plan..."
+                                            className="w-full h-48 bg-black/40 border border-white/10 rounded-2xl p-6 text-white text-sm focus:border-accent-cyan/50 outline-none transition-all resize-none"
+                                        />
+                                        <div className="flex justify-end pt-4">
+                                            <GlassButton 
+                                                onClick={handleSubmitDiagnosis}
+                                                disabled={submitting || diagnosis.length < 10}
+                                                className="gap-3 px-12"
+                                            >
+                                                {submitting ? 'CALCULATING...' : 'SUBMIT_FOR_EVALUATION'}
+                                                <Send size={14} />
+                                            </GlassButton>
+                                        </div>
+                                    </div>
+                                </GlassCard>
+
+                                <AnimatePresence>
+                                    {result && (
+                                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                                            <GlassCard className="p-8 border-accent-cyan/30 bg-accent-cyan/[0.02]">
+                                                <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-full bg-accent-cyan/10 flex items-center justify-center border border-accent-cyan/20">
+                                                            <Trophy className="text-accent-cyan" size={24} />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-xl font-black text-white uppercase">Evaluation Complete</h3>
+                                                            <p className="text-[10px] font-mono text-white/30 uppercase">Dignova_Expert_Standard_Alignment</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-4xl font-black text-white">{result.score}%</p>
+                                                        <p className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">Composite_Score</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-8 mb-8">
+                                                    <div>
+                                                        <h4 className="text-[10px] font-bold text-accent-cyan uppercase tracking-widest mb-3">AI Analysis</h4>
+                                                        <p className="text-xs text-white/70 leading-relaxed">{result.feedback}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-3">Expert Standard</h4>
+                                                        <p className="text-xs text-white/70 leading-relaxed italic opacity-60">"{activeScenario.expert_diagnosis}"</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-center gap-4">
+                                                    <GlassButton onClick={() => setActiveScenario(null)} className="px-8 !bg-white !text-black border-none">EXIT_SIMULATION</GlassButton>
+                                                    <GlassButton onClick={() => {setResult(null); setDiagnosis('');}} className="px-8 bg-transparent border-white/10">RETRY_CASE</GlassButton>
+                                                </div>
+                                            </GlassCard>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <div className="col-span-4 flex flex-col gap-6">
+                                <GlassCard className="p-6 border-white/5 bg-[#0f1320]">
+                                    <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-5">Patient Context</h4>
+                                    <div className="space-y-4">
+                                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                                            <p className="text-[9px] font-mono text-accent-cyan uppercase mb-1">Personality</p>
+                                            <p className="text-xs text-white font-medium capitalize">{activeScenario.patient_personality}</p>
+                                        </div>
+                                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                                            <p className="text-[9px] font-mono text-accent-cyan uppercase mb-1">Specialty</p>
+                                            <p className="text-xs text-white font-medium">{activeScenario.category}</p>
+                                        </div>
+                                    </div>
+                                </GlassCard>
+
+                                <GlassCard className="p-6 border-white/5 bg-[#0f1320]">
+                                    <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-5">Simulator Status</h4>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-white/40 font-mono">Neural_Engine</span>
+                                            <span className="text-emerald-400 font-bold uppercase">Active</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-white/40 font-mono">Telemetry_Sync</span>
+                                            <span className="text-emerald-400 font-bold uppercase">Locked</span>
+                                        </div>
+                                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-2">
+                                            <motion.div animate={{ x: [-100, 300] }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="w-20 h-full bg-accent-cyan/40 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+                                        </div>
+                                    </div>
+                                </GlassCard>
+                            </div>
+                        </div>
                     </div>
                 ) : activeTab === 'cases' ? (
                     /* CASES VIEW */

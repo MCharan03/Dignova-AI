@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { 
-    Activity, Users, Map, Info, AlertTriangle, 
+    Activity, Users, Map as MapIcon, Info, AlertTriangle, 
     CheckCircle, Home, Layout, Box, Zap, Search,
     ChevronRight, X, User
 } from 'lucide-react';
@@ -89,7 +89,7 @@ export default function SentientWardDashboard() {
                     <SplitText text="SENTIENT WARD MATRIX" className="text-3xl font-black text-white tracking-[0.2em]" />
                     <BlurIn delay={0.2}>
                         <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.1em] flex items-center gap-2">
-                            <Map className="text-accent-cyan" size={14} /> Node: Spatial_Orchestrator_01 // Status: Mapping_Active
+                            <MapIcon className="text-accent-cyan" size={14} /> Node: Spatial_Orchestrator_01 // Status: Mapping_Active
                         </p>
                     </BlurIn>
                 </div>
@@ -272,7 +272,7 @@ export default function SentientWardDashboard() {
                                         <div className="w-32 h-32 rounded-full border border-accent-cyan/20 animate-ping absolute inset-0" />
                                         <div className="w-32 h-32 rounded-full border border-accent-cyan/10 animate-pulse absolute inset-0" />
                                         <div className="w-32 h-32 rounded-full bg-accent-cyan/5 border border-white/10 flex items-center justify-center relative z-10">
-                                            <Map size={48} className="text-accent-cyan/40" />
+                                            <MapIcon size={48} className="text-accent-cyan/40" />
                                         </div>
                                     </div>
                                     <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2 italic">Select_Room_to_Sync</h3>
