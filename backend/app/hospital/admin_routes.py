@@ -79,6 +79,33 @@ class OrganizationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone_number: Optional[str] = None
+    age: Optional[int] = None
+    blood_group: Optional[str] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    role: str
+    tier: Optional[str] = None
+    organization_id: Optional[int] = None
+    specialty: Optional[str] = None
+    is_online: Optional[bool] = None
+    qualification: Optional[str] = None
+    license_number: Optional[str] = None
+    department: Optional[str] = None
+    experience_years: Optional[int] = None
+    bio: Optional[str] = None
+    languages: Optional[str] = None
+    consultation_fee: Optional[int] = None
+    available_hours: Optional[str] = None
+    is_verified: bool = False
+    created_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
 class AuditLogResponse(BaseModel):
     id: int
     user_id: Optional[int] = None
@@ -463,6 +490,50 @@ async def get_audit_log(
         })
     
     return response
+
+# ═══════════════════════════════════════════════════
+# USER MANAGEMENT (Org/Super Admin Scoped)
+# ═══════════════════════════════════════════════════
+
+@router.get("/users", response_model=List[UserResponse])
+async def list_users(
+    role: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List users. Org Admin sees their org; Super Admin sees all."""
+    if current_user.role not in [UserRole.super_admin, UserRole.org_admin]:
+        raise HTTPException(status_code=403, detail="Not authorized.")
+    
+    stmt = select(User).order_by(User.name)
+    
+    if current_user.role == UserRole.org_admin:
+        stmt = stmt.where(User.organization_id == current_user.organization_id)
+        
+    if role:
+        stmt = stmt.where(User.role == role)
+        
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_details(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetch profile for a specific user."""
+    stmt = select(User).where(User.id == user_id)
+    user = await db.scalar(stmt)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+        
+    # Org Admin can only see their own org members
+    if current_user.role == UserRole.org_admin and user.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=403, detail="Access denied to users outside your organization.")
+        
+    return user
 
 # ═══════════════════════════════════════════════════
 # EXISTING ENDPOINTS (preserved)

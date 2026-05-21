@@ -192,7 +192,8 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/static/prescriptions", StaticFiles(directory="app/static/prescriptions"), name="prescriptions")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-@app.get("/")
+# --- Static Files ---
+
 @app.get("/api/health")
 def health_check():
     return {

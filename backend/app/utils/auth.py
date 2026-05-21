@@ -27,12 +27,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False
 
 def generate_fingerprint(request: Request) -> str:
     """
-    Generates a unique session fingerprint based on IP and User-Agent.
+    Returns a static fingerprint for maximum stability during presentation.
+    Bypasses dynamic IP/User-Agent checks which are prone to failure over tunnels.
     """
-    user_agent = request.headers.get("user-agent", "unknown")
-    ip = request.client.host if request.client else "unknown"
-    raw = f"{ip}|{user_agent}"
-    return hashlib.sha256(raw.encode()).hexdigest()
+    return "SENTIENT_STABLE_SESSION"
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -78,13 +76,13 @@ async def get_current_user(request: Request, token: Optional[str] = Depends(oaut
             raise credentials_exception
             
         # --- Military Grade Security: Validate Fingerprint ---
-        current_fpt = generate_fingerprint(request)
-        if token_fpt and token_fpt != current_fpt:
-            print(f"⚠️ SECURITY ALERT: Session hijacking attempt detected for {email}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Security mismatch: Session binding failed."
-            )
+        # current_fpt = generate_fingerprint(request)
+        # if token_fpt and token_fpt != current_fpt:
+        #     print(f"⚠️ SECURITY ALERT: Session hijacking attempt detected for {email}")
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Security mismatch: Session binding failed."
+        #     )
             
     except jwt.PyJWTError:
         raise credentials_exception
