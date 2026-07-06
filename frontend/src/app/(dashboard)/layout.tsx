@@ -10,6 +10,7 @@ import { useSentientObserver } from '@/hooks/useSentientObserver';
 import { useNetworkResilience } from '@/hooks/useNetworkResilience';
 import { useNotificationStream } from '@/hooks/useNotificationStream';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { CherryHUD } from '@/components/dashboard/CherryHUD';
 import './dashboard.css';
 
 interface UserState { id: number; name: string; email: string; role: string; tier?: string; organization_id?: number; is_verified: boolean; avg_stress_level: number; diagnostic_accuracy: number; }
@@ -210,6 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </AnimatePresence>
                             {survivorMode && <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-lg bg-rose-500/20 border border-rose-500/30 text-[10px] font-black text-rose-400 uppercase animate-pulse"><Zap size={12} /> Survivor</div>}
 
+                            <CherryHUD />
                             <ThemeToggle />
 
                             {/* Notification Bell */}

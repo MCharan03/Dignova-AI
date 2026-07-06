@@ -174,6 +174,7 @@ from .hospital.voice_routes import router as voice_router
 from .hospital.twilio_routes import router as twilio_router
 from .hospital.agency_routes import router as agency_router
 from .hospital.telemetry_routes import router as telemetry_router
+from .hospital.awareness_routes import router as awareness_router
 from .services.agency_service import homeostasis_loop
 
 # Core API Routes
@@ -184,6 +185,7 @@ app.include_router(hospital_router, prefix="/api/hospital", tags=["Hospital & Tr
 app.include_router(admin_router, prefix="/api")
 app.include_router(agency_router, prefix="/api")
 app.include_router(telemetry_router)
+app.include_router(awareness_router)
 app.include_router(org_router)
 app.include_router(notification_router)
 app.include_router(prescription_router)
