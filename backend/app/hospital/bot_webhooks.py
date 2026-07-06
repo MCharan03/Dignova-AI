@@ -32,6 +32,7 @@ from .. import models as domain
 from ..services.openrouter_service import OpenRouterService
 from ..services.gemini_service import GeminiService
 from ..services.n8n_services import N8nService
+from ..services.tts_service import tts_service
 from ..utils.pdf_generator import generate_prescription_pdf
 from ..utils.email_utils import send_diagnosis_receipt, send_appointment_reminder
 from ..utils.geofencing import GeofencingService
@@ -423,8 +424,14 @@ async def bot_triage_webhook(
 
         await db.commit()
 
+        # Generate Voice Response
+        audio_filename = f"triage_{db_call.call_id}_{int(datetime.utcnow().timestamp())}.mp3"
+        audio_url = await tts_service.generate_speech_file(ai_msg, audio_filename)
+        full_audio_url = f"{BACKEND_URL}{audio_url}" if audio_url else None
+
         return {
             "response":                   ai_msg,
+            "audio_url":                  full_audio_url,
             "call_id":                    db_call.call_id,
             "risk_level":                 ai_result.get("risk_level"),
             "auto_prescription_triggered":auto_prescription_triggered,
@@ -573,8 +580,14 @@ async def voice_triage_webhook(
 
     await db.commit()
 
+    # Generate Voice Response
+    audio_filename = f"voice_{db_call.call_id}_{int(datetime.utcnow().timestamp())}.mp3"
+    audio_url = await tts_service.generate_speech_file(ai_result.get("response", ""), audio_filename)
+    full_audio_url = f"{BACKEND_URL}{audio_url}" if audio_url else None
+
     return {
         "response":                    ai_result.get("response"),
+        "audio_url":                   full_audio_url,
         "transcribed":                 transcript_text,
         "call_id":                     db_call.call_id,
         "risk_level":                  ai_result.get("risk_level"),

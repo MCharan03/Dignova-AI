@@ -1,165 +1,204 @@
-# Dignova AI — Sentient OS Layer for Healthcare
+# 🧠 Dignova AI — Sentient Medical OS
 
-Dignova AI is a high-fidelity, autonomous healthcare intelligence system designed to act as a **"Sentient Layer"** between patients and medical institutions. Operating as an OS for healthcare, it passively observes, orchestrates, and automates the entire clinical lifecycle—from initial triage to autonomous logistics and proactive aftercare.
+> *The first AI that thinks, listens, and heals — before you even know you need it.*
 
----
-
-## 📖 Table of Contents
-- [Project Overview](#-project-overview)
-- [Core Features](#-core-features)
-- [Architecture & Data Flow](#-architecture--data-flow)
-- [Tech Stack](#-tech-stack)
-- [Installation & Setup](#-installation--setup)
-- [Environment Variables](#-environment-variables)
-- [Security & Privacy](#-security--privacy)
-- [Visual Language](#-visual-language)
-- [Notes & Assumptions](#-notes--assumptions)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Frontend](https://img.shields.io/badge/Frontend-Next.js-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![AI](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev/)
+[![Voice](https://img.shields.io/badge/Voice-Twilio%20+%20Gemini%20Live-F22F46?style=flat-square&logo=twilio)](https://www.twilio.com/)
 
 ---
 
-## 🏥 Project Overview
-Dignova AI solves the "Clinical Bottleneck" by introducing an autonomous intelligence layer that handles repetitive medical logistics, allowing doctors to focus on critical care.
+## What Is Dignova AI?
 
-### User Roles & Workflows
-- **Super Admin:** Global platform management, organization bootstrapping, and multi-tenant performance monitoring.
-- **Organization Admin:** Hospital-specific management, staff registry, department orchestration, and "AI Philosophy" configuration (Aggressive vs. Balanced triage).
-- **Doctor (Experienced/Mid-range):** Real-time triage intervention, case review, and authoring "Ghost Replay" scenarios for training.
-- **Intern:** Practices clinical reasoning in the **Neural Training Lab**, simulating triage against expert-authored scenarios with AI-powered performance evaluations.
-- **Patient:** Onboards via a "Sentient Welcome" flow, reports symptoms via text/voice, receives autonomous prescriptions, and experiences proactive aftercare.
+Dignova AI is a **Sentient Medical Operating System** that triages patients via text, voice browser sessions, or real phone calls — all powered by Gemini Live. It routes critical cases, writes prescriptions, and runs a full hospital management layer underneath.
 
 ---
 
-## ✨ Core Features
+## Architecture
 
-### 1. Sentient Triage Matrix
-- **Multimodal Ingestion:** Supports text and **Voice Notes** (OpenAI Whisper) via Web or Telegram.
-- **Real-time AI Assessment:** Powered by Gemini 2.0, analyzing symptoms, extracting "Red Flags," and assigning clinical risk levels (Low, Elevated, Critical).
-- **Autonomous Routing:** Low-risk cases trigger auto-prescriptions; high-risk cases escalate to online doctors with interactive Telegram "Inline Approval" cards.
-
-### 2. Neural Ghost Replay (Intern Training)
-- **Clinical Simulation:** Interns "play back" real historical cases, chatting with an AI-driven patient persona.
-- **AI Evaluation Engine:** Intern diagnoses are analyzed for alignment with the "Expert Gold Standard" using keyword-based NLP similarity.
-- **Skill Matrix Tracking:** Tracks diagnostic accuracy, clinical reasoning, and treatment planning across levels (Novice to Expert).
-
-### 3. Asha Geofencing & Logistics
-- **Queue Bypass:** Detects when a patient enters a 500m radius of the hospital via live location telemetry and automatically prepares the clinic for arrival.
-- **Smart Reminders:** Autonomous Google Calendar synchronization and smart Telegram reminders for appointments.
-
-### 4. Zero-Touch Prescription & Aftercare
-- **Automated Delivery:** Secure PDF prescription generation and delivery via encrypted digital vaults.
-- **The Empathy Loop:** Automated "Aftercare Pings" on Day 3 post-consultation to track recovery and flag potential complications back to doctors.
-
----
-
-## 🏗 Architecture & Data Flow
-
-Dignova operates through a **Unified Sentient Core** that connects the Frontend (Identity), Backend (Reasoning), and n8n (Agency).
-
-```mermaid
-flowchart TD
-    %% User Interfaces
-    User[Patient / Doctor / Admin] <--> Frontend[Next.js 14 Sentient UI]
-    
-    %% API & Reasoning Layer
-    Frontend <--> FastAPI[FastAPI Backend]
-    FastAPI <--> DB[(PostgreSQL / SQLite)]
-    FastAPI <--> AI[OpenRouter / Gemini 2.0]
-    
-    %% Nervous System (n8n)
-    FastAPI -- Webhooks --> n8n[n8n Nervous System]
-    n8n --> Telegram[Telegram Bot]
-    n8n --> Email[Resend SMTP]
-    n8n --> Calendar[Google Calendar API]
-    
-    %% Core Engines
-    subgraph "Sentient Core"
-        direction LR
-        Triage[Triage Engine]
-        Training[Ghost Replay Lab]
-        Geo[Asha Geofence]
-    end
-    FastAPI --- SentientCore
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        PATIENT / DOCTOR                         │
+└──────────────┬──────────────┬──────────────┬───────────────────┘
+               │ Text Chat    │ Browser Voice │ Phone Call (Twilio)
+               ▼              ▼               ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   Next.js Frontend (Vercel)                   │
+│  /user/chat-triage   /user/voice-triage   /user/call         │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ HTTPS / WS
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│              FastAPI Backend (Render / Gunicorn)              │
+│                                                               │
+│  /api/calls        — CRUD, streaming chat                     │
+│  /api/twilio/*     — Inbound bot, outbound dial, callbacks    │
+│  /ws/twilio-media  — Gemini Live ↔ Twilio audio bridge       │
+│  /api/hospital/*   — Appointments, prescriptions, alerts      │
+│  /api/auth/*       — JWT authentication                       │
+│  /api/admin/*      — Super admin, org management             │
+└──────┬───────────────────────────────────────────────┬───────┘
+       │ SQLAlchemy async                               │ Twilio REST
+       ▼                                               ▼
+┌────────────┐                               ┌──────────────────┐
+│ SQLite /   │                               │  Twilio Platform │
+│ PostgreSQL │                               │  (voice calls)   │
+└────────────┘                               └──────────────────┘
+       │ Gemini Live API
+       ▼
+┌──────────────────────────────────┐
+│  Google Gemini 2.0 Flash Live    │
+│  Real-time audio ↔ AI doctor     │
+└──────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Tech Stack
+## Triage Modes
 
-- **Frontend:** Next.js 14, React Three Fiber (3D Monolith), GSAP & Framer Motion (Sentient Animations), Tailwind CSS.
-- **Backend:** FastAPI, SQLAlchemy (Async), PostgreSQL/SQLite, Pydantic.
-- **Automation:** n8n (Production Grade Workflow Engine).
-- **AI Brain:** OpenRouter (Gemini 2.0 Flash), OpenAI Whisper (Audio).
-- **Security:** AES-256 Symmetric Encryption, JWT Auth, SlowAPI (Rate Limiting).
-- **Logistics:** Resend API (Email), Google Calendar API, Telegram Bot API.
+| Mode | How It Works | Latency |
+|------|-------------|---------|
+| **Neural Chat** | Text chat → streaming AI → auto-booking | ~100ms |
+| **Browser Voice** | Browser mic → STT → AI text → TTS | ~500ms |
+| **Gemini Live WS** | Browser mic → direct Gemini Live socket | ~50ms |
+| **Twilio Phone Call** | Patient's phone ↔ Twilio ↔ Gemini Live | ~200ms |
 
 ---
 
-## 🛠️ Installation & Setup
+## Quick Start
 
-### 1. Prerequisites
-- **Node.js:** v18+
-- **Python:** 3.10+
-- **n8n:** Self-hosted or Cloud (exposed via Ngrok/Localtunnel if local).
+### Backend
 
-### 2. Backend Setup
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-cp app/env.example .env   # Update with your API keys
-python seed.py            # Bootstrap Organizations and Super Admin
-python run.py             # Starts Backend on Port 8000
+python run.py
+# → http://localhost:8000
 ```
 
-### 3. Frontend Setup
+### Frontend
+
 ```bash
 cd frontend
 npm install
-npm run dev               # Starts Frontend on Port 3000
-```
-
-### 4. n8n Nervous System
-1. Import all JSON workflows from `n8n_workflows/`.
-2. Configure credentials for Telegram, Resend, and Google.
-3. Update webhook URLs to match your local tunnel (Ngrok) or production domain.
-
----
-
-## 🔑 Environment Variables
-
-Required variables in `backend/.env`:
-```env
-DATABASE_URL=sqlite+aiosqlite:///app/app.db
-JWT_SECRET_KEY=your_secret_key
-GEMINI_API_KEY=your_openrouter_key
-RESEND_API_KEY=your_resend_key
-N8N_BASE_URL=https://your-n8n-instance.com
-ADMIN_EMAIL=admin@dignova.ai
-ADMIN_PASSWORD=admin123
-HOSPITAL_LAT=17.4486
-HOSPITAL_LON=78.3908
+npm run dev
+# → http://localhost:3000
 ```
 
 ---
 
-## 🔒 Security & Privacy
-- **HIPAA-Inspired Encryption:** Sensitive fields (`address`, `medical_notes`, `transcripts`) are symmetrically encrypted using AES-256 before storage.
-- **Zero-Trust Auditing:** Every sensitive clinical or admin action is logged in the `audit_logs` table with IP and User metadata.
-- **Rate Limiting:** Protects sensitive routes (Login/Triage) from brute-force and DDoS attacks.
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | SQLite or PostgreSQL connection string |
+| `JWT_SECRET_KEY` | JWT signing secret |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `TWILIO_PHONE_NUMBER` | Your Twilio phone number (E.164) |
+| `BACKEND_URL` | Public HTTPS URL of this backend |
+| `BACKEND_URL_WS` | Public WSS URL of this backend |
+| `OPENROUTER_API_KEY` | OpenRouter for fallback LLM |
+| `N8N_BASE_URL` | n8n webhook base URL |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot for alerts |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Backend base URL |
 
 ---
 
-## 🎨 Visual Language
-- **The Monolith:** A majestic 3D octahedron representing the AI brain, reacting to system state.
-- **Sentient Motion:** GSAP-driven transitions that simulate a living OS layer.
-- **Glassmorphism:** High-fidelity UI cards with noise overlays for a cinematic feel.
+## Twilio Call Bot Setup
+
+1. Buy a Twilio phone number
+2. Set **Voice webhook** → `POST https://your-backend.com/api/twilio/incoming`
+3. Set **Status callback** → `POST https://your-backend.com/api/twilio/status-callback`
+4. Fill `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` in `.env`
+5. Set `BACKEND_URL_WS=wss://your-backend.com`
+
+Patient calls your Twilio number → AI picks up → Gemini Live conversation → transcript saved → auto-escalation on CRITICAL.
+
+**Outbound calling** (we call the patient):
+```bash
+POST /api/twilio/outbound
+{ "phone_number": "+919876543210", "patient_name": "Ravi" }
+```
 
 ---
 
-## 📝 Notes & Assumptions
-- **Connectivity:** Assumes stable internet for AI reasoning; features "Survivor Mode" for optimized low-bandwidth Telegram interactions.
-- **Tunnels:** For local development, use `ngrok` to expose both the Backend (8000) and n8n (5678) to receive Telegram and Resend webhooks.
+## Directory Structure
+
+```
+Dignova-AI/
+├── backend/
+│   ├── app/
+│   │   ├── auth/           # JWT auth routes
+│   │   ├── hospital/       # All clinical routes
+│   │   │   ├── twilio_routes.py   # Twilio call bot
+│   │   │   ├── calls.py           # Call CRUD + chat
+│   │   │   ├── voice_routes.py    # Browser voice triage
+│   │   │   └── ...
+│   │   ├── services/
+│   │   │   ├── ai_service.py      # SentientOrchestrator
+│   │   │   ├── tts_service.py     # OpenAI TTS
+│   │   │   └── ...
+│   │   ├── ws/
+│   │   │   └── twilio_media.py    # Gemini Live ↔ Twilio bridge
+│   │   ├── models.py      # All SQLAlchemy models
+│   │   └── main.py        # FastAPI app entry
+│   ├── scripts/           # One-off admin/debug scripts
+│   ├── tests/             # Test suite
+│   ├── migrations/        # DB migration scripts
+│   ├── run.py             # Dev server entry
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── app/
+│       │   ├── (dashboard)/user/call/    # Triage mode selection
+│       │   ├── (dashboard)/user/voice-triage/
+│       │   └── (dashboard)/user/chat-triage/
+│       └── components/
+│           ├── ui/         # GlassCard, SentientMotion, etc.
+│           └── dashboard/
+├── .gemini/skills/ponytail/   # Ponytail lazy-dev skill (project-local)
+└── README.md
+```
 
 ---
-© 2026 Dignova AI — Autonomous Healthcare Intelligence.
+
+## Key API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/login` | JWT login |
+| `POST` | `/api/calls/start` | Start a triage call |
+| `POST` | `/api/calls/{id}/chat` | Stream text chat with AI |
+| `POST` | `/api/calls/{id}/voice-text` | Voice triage (text→audio) |
+| `GET` | `/api/calls/{id}/summary` | Post-call AI summary |
+| `POST` | `/api/twilio/incoming` | Twilio inbound webhook |
+| `POST` | `/api/twilio/outbound` | Trigger outbound call |
+| `POST` | `/api/twilio/status-callback` | Twilio call end callback |
+| `WS` | `/ws/twilio-media` | Gemini Live ↔ Twilio bridge |
+| `GET` | `/api/health` | Health check |
+
+---
+
+## Security
+
+- JWT auth on all protected endpoints
+- Rate limiting via `slowapi` (100 req/min default)
+- Security headers: HSTS, X-Frame-Options, X-XSS-Protection
+- Zero-trust audit logging for all write operations
+- Encrypted call transcripts (`EncryptedText` column type)
+
+---
+
+*Built with 🔥 by the Dignova AI team*

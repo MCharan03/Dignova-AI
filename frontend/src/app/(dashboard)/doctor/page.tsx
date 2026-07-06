@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Activity, Users, Clock, Shield, AlertTriangle, ChevronRight, Search, Bell, UserCircle, Zap, CheckCircle, Calendar, Sparkles, Stethoscope } from 'lucide-react';
+import { Activity, Users, Clock, Shield, AlertTriangle, ChevronRight, Search, Bell, UserCircle, Zap, CheckCircle, Calendar, Sparkles, Stethoscope, X } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import SecurityStatus from '@/components/dashboard/SecurityStatus';
 

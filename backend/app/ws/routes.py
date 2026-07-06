@@ -9,7 +9,7 @@ from ..extensions import AsyncSessionLocal
 from .. import models as domain
 from sqlalchemy import select, update
 from ..services.ai_service import SentientOrchestrator
-from ..utils.audio_utils import audio_to_pcm, pcm_to_audio
+from ..utils.audio_utils import audio_to_pcm, pcm_to_audio, pcm_to_b64
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +17,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 router = APIRouter()
 
-# Initialize Gemini Client
-client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1alpha'})
-MODEL_ID = "gemini-2.0-flash-exp" # High-velocity model for presentation
+# Initialize Gemini Client (with placeholder check)
+client = None
+if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1alpha'})
+else:
+    print("⚠️  GEMINI_API_KEY is missing or using placeholder. Gemini Live will be disabled.")
+
+MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" 
 
 @router.websocket("/ws/internal-call")
 async def internal_call_ws_handler(websocket: WebSocket):
@@ -30,6 +35,16 @@ async def internal_call_ws_handler(websocket: WebSocket):
     print(f"WebSocket connection attempt from: {websocket.client}")
     try:
         await websocket.accept()
+        
+        if not client:
+            print("WS REJECT: Gemini Client not initialized (API Key issue)")
+            await websocket.send_json({
+                "event": "error",
+                "message": "Gemini API Key missing or invalid in backend. Please check .env file."
+            })
+            await websocket.close()
+            return
+            
         print("In-app Call WebSocket accepted.")
     except Exception as e:
         print(f"WebSocket Accept Error: {e}")
@@ -95,7 +110,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
         system_instruction=types.Content(
             parts=[types.Part(text=orchestrator.system_instruction)]
         ),
-        response_modalities=["AUDIO", "TEXT"]
+        response_modalities=["AUDIO"]
     )
 
     # 3. Define helper for DB updates with buffering
@@ -129,78 +144,94 @@ async def internal_call_ws_handler(websocket: WebSocket):
 
     try:
         print(f"Attempting Gemini Live connection with model: {MODEL_ID}")
-        async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
-            print(f"CONNECTED to Gemini Live API with persona: {persona}")
-            
-            # 🛠 Initial greeting
-            try:
-                await session.send(
-                    input="Hello! I am ready to help the patient. Please greet them warmly and ask how you can help.",
-                    end_of_turn=True
+        try:
+            async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
+                print(f"CONNECTED to Gemini Live API with persona: {persona}")
+                
+                # 🛠 Wait for connection to be stable
+                await asyncio.sleep(1)
+
+                # Initial greeting
+                greeting_text = (
+                    "Hello! This is Dr. Dignova AI. I am your autonomous medical assistant. "
+                    "I'm here to help you right now. Please tell me — what symptoms are you experiencing?"
                 )
-                print("Greeting trigger sent to Gemini.")
-            except Exception as ge:
-                print(f"Failed to send initial greeting: {ge}")
+                # Use send_client_content as send is deprecated
+                await session.send(input=greeting_text, end_of_turn=True)
+                print("[WS] Greeting trigger sent.")
 
-            async def app_to_gemini():
-                try:
-                    while True:
-                        message = await websocket.receive_text()
-                        data = json.loads(message)
-                        
-                        if data['event'] == 'audio':
-                            payload = data['payload']
-                            pcm_data = audio_to_pcm(payload)
-                            await session.send({
-                                "realtime_input": {
-                                    "media_chunks": [{
-                                        "data": base64.b64encode(pcm_data).decode("utf-8"),
-                                        "mime_type": "audio/pcm;rate=16000"
-                                    }]
-                                }
-                            })
-                        elif data['event'] == 'stop':
-                            print("Internal Stream stopped.")
-                            await flush_transcript(db_id)
-                            break
-                except Exception as e:
-                    print(f"App to Gemini Error: {e}")
-                    await flush_transcript(db_id)
 
-            async def gemini_to_app():
-                try:
-                    async for message in session.receive():
-                        if message.server_content and message.server_content.model_turn:
-                            parts = message.server_content.model_turn.parts
-                            for part in parts:
-                                if part.text:
-                                    print(f"Gemini [{persona}]: {part.text}")
-                                    await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
-                                    # Send transcript to frontend for UI
-                                    await websocket.send_json({
-                                        "event": "transcript",
-                                        "role": "ai",
-                                        "text": part.text
-                                    })
-                                
-                                if part.inline_data:
-                                    pcm_chunk = part.inline_data.data
-                                    audio_payload = pcm_to_audio(pcm_chunk)
-                                    await websocket.send_json({
-                                        "event": "audio",
-                                        "payload": audio_payload
-                                    })
-                except Exception as e:
-                    print(f"Gemini to App Error: {e}")
+                async def app_to_gemini():
+                    try:
+                        while True:
+                            message = await websocket.receive_text()
+                            data = json.loads(message)
+                            
+                            if data['event'] == 'audio':
+                                payload = data['payload']
+                                pcm_data = audio_to_pcm(payload)
+                                await session.send({
+                                    "realtime_input": {
+                                        "media_chunks": [{
+                                            "data": base64.b64encode(pcm_data).decode("utf-8"),
+                                            "mime_type": "audio/pcm;rate=16000"
+                                        }]
+                                    }
+                                })
+                            elif data['event'] == 'stop':
+                                print("Internal Stream stopped.")
+                                await flush_transcript(db_id)
+                                break
+                    except Exception as e:
+                        print(f"App to Gemini Error: {e}")
+                        await flush_transcript(db_id)
 
-            # Run both directions concurrently
-            done, pending = await asyncio.wait(
-                [asyncio.create_task(app_to_gemini()), 
-                 asyncio.create_task(gemini_to_app())],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-            for task in pending:
-                task.cancel()
+                async def gemini_to_app():
+                    try:
+                        async for message in session.receive():
+                            if message.server_content and message.server_content.model_turn:
+                                parts = message.server_content.model_turn.parts
+                                for part in parts:
+                                    if part.text:
+                                        print(f"[WS] Gemini Text: {part.text}")
+                                        await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
+                                        # Send transcript to frontend for UI
+                                        await websocket.send_json({
+                                            "event": "transcript",
+                                            "role": "ai",
+                                            "text": part.text
+                                        })
+                                    
+                                    if part.inline_data:
+                                        pcm_chunk = part.inline_data.data
+                                        print(f"[WS] Audio Chunk Received: {len(pcm_chunk)} bytes")
+                                        audio_payload = pcm_to_b64(pcm_chunk)
+                                        await websocket.send_json({
+                                            "event": "audio",
+                                            "payload": audio_payload
+                                        })
+                    except Exception as e:
+                        print(f"[WS] Gemini to App Error: {e}")
+
+                # Run both directions concurrently
+                done, pending = await asyncio.wait(
+                    [asyncio.create_task(app_to_gemini()), 
+                     asyncio.create_task(gemini_to_app())],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in pending:
+                    task.cancel()
+        except Exception as live_err:
+            print(f"Gemini Live Connection/Session Error: {live_err}")
+            try:
+                await websocket.send_json({
+                    "event": "error",
+                    "message": f"Gemini Live API error: {str(live_err)}. Falling back to Voice-Text mode."
+                })
+                await websocket.close(code=4000, reason="Gemini Live failure")
+            except Exception:
+                pass
+            return
 
     except WebSocketDisconnect:
         print("App WebSocket disconnected.")

@@ -115,6 +115,7 @@ async def chat_with_agent(call_id: int, request: ChatRequest, db: AsyncSession =
     await db.commit()
 
     async def stream_generator():
+        import asyncio
         full_response = ""
         # The agent returns a synchronous generator, we iterate it
         for chunk in agent.process_message_stream(db_call.transcript or "", request.message):

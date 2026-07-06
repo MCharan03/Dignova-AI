@@ -138,7 +138,8 @@ class Call(Base):
     transcript = Column(EncryptedText, nullable=True)
     severity = Column(String, default="UNKNOWN")
     source = Column(String, default="web")
-    
+    twilio_call_sid = Column(String, nullable=True, index=True)  # Twilio CallSid for phone calls
+
     # Bharat-Ready Context
     network_acuity = Column(String, default="high") # low (survivor) | mid | high
     language_mode = Column(String, default="auto") 
@@ -387,4 +388,26 @@ class BillingItem(Base):
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     quantity = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# ============================================================
+# === NEW: SENTIENT OS AGENCY MODELS ===
+# ============================================================
+
+class AgencyEvent(Base):
+    """
+    Tracks autonomous 'Sentient OS' actions, system healing, and emotional telemetry pings.
+    Replaces mocked logs in the frontend AgencyLog.
+    """
+    __tablename__ = "agency_events"
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
+    
+    event_type = Column(String, nullable=False) # e.g., 'system_healing', 'telemetry', 'resource_optimization', 'security_audit'
+    message = Column(String, nullable=False)
+    severity = Column(String, default="info") # info | warning | critical
+    
+    # Payload for the frontend to render specific UI components
+    metadata_json = Column(JSON, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)

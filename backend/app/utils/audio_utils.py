@@ -38,3 +38,10 @@ def pcm_to_audio(pcm_bytes: bytes, format: str = "wav") -> str:
     audio.export(out, format=format)
     
     return base64.b64encode(out.getvalue()).decode("utf-8")
+
+def pcm_to_b64(pcm_bytes: bytes) -> str:
+    """
+    Returns raw PCM bytes as a base64 string without any file headers.
+    Highest performance for modern web audio consumers.
+    """
+    return base64.b64encode(pcm_bytes).decode("utf-8")

@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from .extensions import engine, Base, AsyncSessionLocal
@@ -19,7 +20,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
-        print(f"⚠️ Table Creation Warning: {e}")
+        print(f"[WARN] Table Creation Warning: {e}")
         
     try:
         async with AsyncSessionLocal() as session:
@@ -33,7 +34,7 @@ async def lifespan(app: FastAPI):
             await session.execute(stmt)
             await session.commit()
     except Exception as e:
-        print(f"⚠️ Session Cleanup Skip: {e}")
+        print(f"[WARN] Session Cleanup Skip: {e}")
     
     try:
         async with AsyncSessionLocal() as session:
@@ -50,7 +51,10 @@ async def lifespan(app: FastAPI):
                     session.add(domain.SystemSetting(key=key, value=value))
             await session.commit()
     except Exception as e:
-        print(f"⚠️ Seeding Skip: {e}")
+        print(f"[WARN] Seeding Skip: {e}")
+    
+    # Start Homeostasis Loop
+    asyncio.create_task(homeostasis_loop())
         
     yield
 
@@ -66,27 +70,27 @@ app.add_middleware(SlowAPIMiddleware)
 # --- Military Grade Security Middleware: Headers & Shield ---
 @app.middleware("http")
 async def security_shield_middleware(request: Request, call_next):
-    # 1. Inject Strict Security Headers
-    response: Response = await call_next(request)
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.openrouter.ai;"
-    response.headers["X-Dignova-Secure-Node"] = "ACTIVE"
-    return response
+    try:
+        response: Response = await call_next(request)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["X-Dignova-Secure-Node"] = "ACTIVE"
+        return response
+    except Exception as e:
+        print(f"[WARN] Security Shield Error: {e}")
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error", "error": str(e)})
 
 # --- Audit Log Middleware (Zero-Trust Auditing) ---
 @app.middleware("http")
 async def audit_log_middleware(request: Request, call_next):
-    # We only audit state-changing or sensitive operations
     sensitive_methods = ["POST", "PUT", "DELETE", "PATCH"]
     if request.method in sensitive_methods:
-        # Extract metadata
         path = request.url.path
         ip = request.client.host if request.client else "unknown"
         
-        # We try to get user_id from token if present (Peek into JWT)
         user_id = None
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
@@ -99,26 +103,33 @@ async def audit_log_middleware(request: Request, call_next):
             except:
                 pass
 
-        # Call next to get response
-        response = await call_next(request)
-        
-        # Record to DB (async)
-        if response.status_code < 400: # Only log successful sensitive actions for now
-            try:
-                async with AsyncSessionLocal() as session:
-                    from .models import AuditLog
-                    log_entry = AuditLog(
-                        user_id=user_id,
-                        action=f"{request.method} {path}",
-                        ip_address=ip,
-                        details={"status_code": response.status_code}
-                    )
-                    session.add(log_entry)
-                    await session.commit()
-            except Exception as e:
-                print(f"⚠️ Audit Log Error: {e}")
-        
-        return response
+        try:
+            response = await call_next(request)
+            
+            if response.status_code < 400:
+                # Background task for audit logging to prevent latency
+                async def log_action():
+                    try:
+                        async with AsyncSessionLocal() as session:
+                            from .models import AuditLog
+                            log_entry = AuditLog(
+                                user_id=user_id,
+                                action=f"{request.method} {path}",
+                                ip_address=ip,
+                                details={"status_code": response.status_code}
+                            )
+                            session.add(log_entry)
+                            await session.commit()
+                    except Exception as le:
+                        print(f"[WARN] Audit Logging Failed: {le}")
+                
+                asyncio.create_task(log_action())
+            
+            return response
+        except Exception as e:
+            print(f"[WARN] Audit Middleware Error: {e}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=500, content={"detail": "Internal Server Error", "error": str(e)})
     
     return await call_next(request)
 
@@ -159,6 +170,10 @@ from .hospital.alert_routes import router as alert_router
 from .hospital.security_routes import router as security_router
 from .hospital.reception_routes import router as reception_router
 from .hospital.doctor_routes import router as doctor_router
+from .hospital.voice_routes import router as voice_router
+from .hospital.twilio_routes import router as twilio_router
+from .hospital.agency_routes import router as agency_router
+from .services.agency_service import homeostasis_loop
 
 # Core API Routes
 from .hospital.clinical_core import router as clinical_core_router
@@ -166,6 +181,7 @@ app.include_router(clinical_core_router)
 
 app.include_router(hospital_router, prefix="/api/hospital", tags=["Hospital & Training"])
 app.include_router(admin_router, prefix="/api")
+app.include_router(agency_router, prefix="/api")
 app.include_router(org_router)
 app.include_router(notification_router)
 app.include_router(prescription_router)
@@ -174,6 +190,12 @@ app.include_router(calls_router)
 app.include_router(bot_webhooks_router)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(ws_router) 
+
+# Twilio Media Bridge
+from .ws.twilio_media import router as twilio_ws_router
+app.include_router(twilio_ws_router)
+
+app.include_router(twilio_router)
 app.include_router(stats_router) 
 app.include_router(ai_router)
 app.include_router(message_router)
@@ -185,6 +207,7 @@ app.include_router(alert_router)
 app.include_router(security_router)
 app.include_router(reception_router)
 app.include_router(doctor_router)
+app.include_router(voice_router)
 
 # --- Static Files ---
 os.makedirs("app/static/prescriptions", exist_ok=True)

@@ -38,7 +38,7 @@
   --radius-2xl: 24px;
 }
 
-/* ── Light Theme Override ──────────────────────────────────────────────────── */
+/* --- Light Theme Override --- */
 [data-theme="light"] {
   --background: #F0F4FF;
   --foreground: #0B0F19;
@@ -70,7 +70,7 @@
 [data-theme="light"] .bg-white\/5 { background: rgba(0,0,0,0.04) !important; }
 [data-theme="light"] .bg-white\/\[0\.02\] { background: rgba(0,0,0,0.02) !important; }
 
-/* ── Mobile Responsive Utilities ─────────────────────────────────────────── */
+/* --- Mobile Responsive Utilities --- */
 @media (max-width: 768px) {
   .dashboard-layout {
     padding-bottom: 80px;
@@ -448,7 +448,7 @@ button:active, .dock-item:active {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* ─── GLITCH TEXT ──────────────────────────────────────────────────────────── */
+/* --- GLITCH TEXT --- */
 .glitch-wrapper {
   position: relative;
   display: inline-block;
@@ -493,7 +493,7 @@ button:active, .dock-item:active {
   93% { transform: translate(2px, 1px); }
 }
 
-/* ─── GRADIENT ANIMATION ───────────────────────────────────────────────────── */
+/* --- GRADIENT ANIMATION --- */
 @keyframes gradient-x {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
@@ -505,7 +505,7 @@ button:active, .dock-item:active {
   animation: gradient-x 4s ease infinite;
 }
 
-/* ─── NEON BORDER TRACE ─────────────────────────────────────────────────────── */
+/* --- NEON BORDER TRACE --- */
 .neon-trace {
   border: 1.5px solid transparent;
   background:
@@ -524,7 +524,7 @@ button:active, .dock-item:active {
   to { --neon-angle: 360deg; }
 }
 
-/* ─── SCROLLING TICKER ──────────────────────────────────────────────────────── */
+/* --- SCROLLING TICKER --- */
 .ticker-track {
   animation: ticker-scroll 30s linear infinite;
   width: max-content;
@@ -535,7 +535,7 @@ button:active, .dock-item:active {
   100% { transform: translateX(-50%); }
 }
 
-/* ─── SCAN SWEEP ─────────────────────────────────────────────────────────────── */
+/* --- SCAN SWEEP --- */
 .scan-sweep::after {
   content: '';
   position: absolute;
@@ -554,7 +554,7 @@ button:active, .dock-item:active {
   100% { top: 100%; opacity: 0; }
 }
 
-/* ─── NEURAL CURSOR GLOW ─────────────────────────────────────────────────── */
+/* --- NEURAL CURSOR GLOW --- */
 .neural-glow {
   position: fixed;
   width: 400px;
@@ -567,7 +567,7 @@ button:active, .dock-item:active {
   mix-blend-mode: screen;
 }
 
-/* ─── INTENTION STABILIZATION ─────────────────────────────────────────────── */
+/* --- INTENTION STABILIZATION --- */
 .stabilize-aim {
   cursor: crosshair;
   transition: transform 0.4s var(--apple-ease) !important;
@@ -577,7 +577,7 @@ button:active, .dock-item:active {
   transform: scale(1.02) translateZ(0);
 }
 
-/* ─── SPATIAL PAGE MORPHING ───────────────────────────────────────────────── */
+/* --- SPATIAL PAGE MORPHING --- */
 .spatial-morph-enter {
   opacity: 0;
   transform: scale(0.95) translateY(20px);

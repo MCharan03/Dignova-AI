@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "httpUrl": "http://localhost:5678/mcp-server/http",
+      "authProviderType": "dynamic_discovery",
+      "trust": true
+    }
+  }
+}

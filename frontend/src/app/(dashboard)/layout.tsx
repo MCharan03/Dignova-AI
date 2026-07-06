@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userFetchedRef = useRef(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // ─── GPU MOUSE TRACKING ─────────────────────────────────────────────────────
+    // --- GPU MOUSE TRACKING ---
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
-    // ─── APPLE PHYSICS SCROLL ───────────────────────────────────────────────────
+    // --- APPLE PHYSICS SCROLL ---
     const { scrollY } = useScroll({ container: scrollContainerRef });
     const islandWidth = useTransform(scrollY, [0, 100], ['92%', '40%']);
     const islandHeight = useTransform(scrollY, [0, 100], ['64px', '40px']);
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const smoothY = useSpring(islandY, { stiffness: 300, damping: 30 });
     const smoothOpacity = useSpring(islandOpacity, { stiffness: 300, damping: 30 });
 
-    // ─── SSE Notifications ──────────────────────────────────────────────────────
+    // --- SSE Notifications ---
     const handleNotification = useCallback((payload: any) => {
         setNotifToast(payload.type === 'SOS' ? `🚨 SOS from ${payload.patient}` : payload.title || 'New notification');
         setTimeout(() => setNotifToast(null), 4000);
@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onCountUpdate: setUnreadCount,
     });
 
-    // ─── DATA FETCH ─────────────────────────────────────────────────────────────
+    // --- DATA FETCH ---
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         if (!token) { router.push('/login'); return; }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { GlobalCanvas } from "@/components/3d/GlobalCanvas";
+import SentientObserverWrapper from "@/components/utils/SentientObserverWrapper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -17,9 +19,6 @@ export const metadata: Metadata = {
   title: "Dignova AI - Admin Dashboard",
   description: "AI Emergency Call Simulation & Hospital Admin Platform",
 };
-
-import { GlobalCanvas } from "@/components/3d/GlobalCanvas";
-import SentientObserverWrapper from "@/components/utils/SentientObserverWrapper";
 
 export default function RootLayout({
   children,
