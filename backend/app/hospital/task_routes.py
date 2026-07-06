@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import select
@@ -16,6 +16,7 @@ class TaskCreatePayload(BaseModel):
     description: Optional[str] = None
 
 class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     title: str
     description: Optional[str]
@@ -24,9 +25,6 @@ class TaskResponse(BaseModel):
     progress: int
     created_at: datetime
     completed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 @router.post("/create", response_model=TaskResponse)
 async def create_background_task(

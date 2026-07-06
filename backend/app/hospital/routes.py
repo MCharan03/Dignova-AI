@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from ..extensions import get_db, AsyncSessionLocal
 from ..models import Organization, TrainingScenario, TrainingReport, User, UserRole, DoctorTier, CaseStudy
 from ..utils.auth import get_current_user
@@ -16,6 +16,7 @@ router = APIRouter()
 
 # --- Schemas ---
 class OrganizationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     org_code: str
@@ -23,10 +24,8 @@ class OrganizationResponse(BaseModel):
     primary_color: str
     accent_color: str
 
-    class Config:
-        from_attributes = True
-
 class ScenarioResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     title: str
     difficulty: str
@@ -38,9 +37,6 @@ class ScenarioResponse(BaseModel):
     created_by: Optional[int] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 class CreateScenarioRequest(BaseModel):
     title: str
@@ -66,6 +62,7 @@ class TrainingStartResponse(BaseModel):
     scenario: ScenarioResponse
 
 class CaseStudyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     title: str
     symptoms: str
@@ -74,9 +71,6 @@ class CaseStudyResponse(BaseModel):
     notes: Optional[str] = None
     intern_id: int
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class CreateCaseStudyRequest(BaseModel):
     title: str

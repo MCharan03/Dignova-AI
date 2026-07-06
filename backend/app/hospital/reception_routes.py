@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..extensions import get_db
 from ..models import User, UserRole, Admission, EHREntry, BillingItem, Notification, AuditLog
@@ -39,6 +39,7 @@ class AddBillingItemRequest(BaseModel):
     quantity: int = 1
 
 class BillingItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     category: str
     description: str
@@ -46,10 +47,8 @@ class BillingItemResponse(BaseModel):
     quantity: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 class AdmissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     patient_id: int
     patient_name: str
@@ -60,9 +59,6 @@ class AdmissionResponse(BaseModel):
     bed_number: Optional[str]
     admitted_at: datetime
     total_bill: float = 0.0
-
-    class Config:
-        from_attributes = True
 
 # --- Guards ---
 

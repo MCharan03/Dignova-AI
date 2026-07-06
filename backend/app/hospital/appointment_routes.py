@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -19,6 +19,7 @@ class BookAppointmentRequest(BaseModel):
     notes: Optional[str] = None
 
 class AppointmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     patient_id: int
     doctor_id: int
@@ -26,9 +27,6 @@ class AppointmentResponse(BaseModel):
     status: str
     notes: Optional[str]
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class ScheduleSlotRequest(BaseModel):
     day_of_week: int   # 0=Mon … 6=Sun

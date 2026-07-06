@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Set, Dict
 from fastapi import Request, HTTPException
 
@@ -25,7 +25,7 @@ SIGNATURES = {
 class SecurityShieldService:
     @staticmethod
     def jail_ip(ip_address: str, minutes: int = 10):
-        expiry = datetime.utcnow() + timedelta(minutes=minutes)
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=minutes)
         _jailed_ips[ip_address] = expiry
         print(f"[SECURITY ALERT] Jailed IP: {ip_address} until {expiry}")
 
@@ -33,10 +33,14 @@ class SecurityShieldService:
     def is_ip_jailed(ip_address: str) -> bool:
         if ip_address in _jailed_ips:
             expiry = _jailed_ips[ip_address]
-            if datetime.utcnow() < expiry:
+            now = datetime.now(timezone.utc)
+            # Support both naive and aware datetimes stored
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if now < expiry:
                 return True
             else:
-                del _jailed_ips[ip_address] # Expired
+                del _jailed_ips[ip_address]  # Expired
         return False
 
     @classmethod

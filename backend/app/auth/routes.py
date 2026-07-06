@@ -5,6 +5,7 @@ from sqlalchemy import select, delete
 from typing import Any, List, Optional
 from datetime import timedelta, datetime
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import ConfigDict
 
 from ..extensions import get_db
 from ..models import User, UserRole, DoctorTier
@@ -110,8 +111,7 @@ class UserResponse(BaseModel):
     chronic_conditions: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str

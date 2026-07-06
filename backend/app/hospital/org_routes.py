@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..extensions import get_db
 from ..models import (
@@ -34,6 +34,7 @@ class DepartmentUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class DepartmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     organization_id: int
     name: str
@@ -45,8 +46,6 @@ class DepartmentResponse(BaseModel):
     is_active: bool
     doctor_count: int = 0
     created_at: datetime
-    class Config:
-        from_attributes = True
 
 class ScheduleCreate(BaseModel):
     doctor_id: int
@@ -56,6 +55,7 @@ class ScheduleCreate(BaseModel):
     end_time: str     # "17:00"
 
 class ScheduleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     doctor_id: int
     doctor_name: Optional[str] = None
@@ -66,8 +66,6 @@ class ScheduleResponse(BaseModel):
     start_time: str
     end_time: str
     is_active: bool
-    class Config:
-        from_attributes = True
 
 class OrgSettingsUpdate(BaseModel):
     name: Optional[str] = None
@@ -82,6 +80,7 @@ class OrgSettingsUpdate(BaseModel):
     max_doctors: Optional[int] = None
 
 class PatientListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     email: str
@@ -92,8 +91,6 @@ class PatientListResponse(BaseModel):
     last_visit: Optional[str] = None
     total_calls: int = 0
     status: str = "nominal"
-    class Config:
-        from_attributes = True
 
 # ═══════════════════════════════════════════════════
 # HELPERS

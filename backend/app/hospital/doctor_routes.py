@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..extensions import get_db
 from ..models import User, UserRole, Admission, EHREntry, BillingItem, Notification, AuditLog
@@ -19,14 +19,12 @@ class EHREntryRequest(BaseModel):
     content: str
 
 class EHREntryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     note_type: str
     content: str
     created_at: datetime
     created_by_name: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 class AdmittedPatientResponse(BaseModel):
     admission_id: int

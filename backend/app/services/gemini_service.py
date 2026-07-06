@@ -1,9 +1,11 @@
 import os
 import json
-import google.generativeai as genai
 from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
+
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class GeminiService:
     """
@@ -11,11 +13,7 @@ class GeminiService:
     Bypasses OpenRouter for core application logic (Triage, Evaluation, Escalation).
     """
     
-    API_KEY = os.getenv("GEMINI_API_KEY")
-    if API_KEY:
-        genai.configure(api_key=API_KEY)
-    
-    MODEL_NAME = "gemini-2.0-flash" # High-speed, high-fidelity multimodal model
+    MODEL_NAME = "gemini-2.0-flash"  # High-speed, high-fidelity multimodal model
     
     TRIAGE_SYSTEM = """
     You are the Dignova AI Sentient Triage Layer. Your goal is to analyze patient symptoms with extreme clinical precision and empathy.
@@ -53,22 +51,18 @@ class GeminiService:
     async def triage_message(message: str, patient_info: dict = None):
         """Analyzes symptoms using direct Gemini API with OpenRouter fallback."""
         try:
-            model = genai.GenerativeModel(
-                model_name=GeminiService.MODEL_NAME,
-                system_instruction=GeminiService.TRIAGE_SYSTEM
-            )
-            
-            prompt = f"Patient Info: {json.dumps(patient_info)}\nSymptoms: {message}"
-            
-            response = await model.generate_content_async(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+            prompt = f"{GeminiService.TRIAGE_SYSTEM}\n\nPatient Info: {json.dumps(patient_info)}\nSymptoms: {message}"
+            response = await _client.aio.models.generate_content(
+                model=GeminiService.MODEL_NAME,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
             )
             return json.loads(response.text)
         except Exception as e:
             print(f"⚠️ Direct Gemini Triage Failed: {e}. Falling back to OpenRouter...")
             from .openrouter_service import OpenRouterService
-            # OpenRouterService.triage_message(history, msg, info)
             return await OpenRouterService.triage_message(
                 conversation_history="",
                 new_message=message,
@@ -79,22 +73,17 @@ class GeminiService:
     async def evaluate_intern(intern_diagnosis: str, expert_diagnosis: str):
         """Directly evaluates intern performance using Gemini with OpenRouter fallback."""
         try:
-            model = genai.GenerativeModel(
-                model_name=GeminiService.MODEL_NAME,
-                system_instruction=GeminiService.EVALUATION_SYSTEM
-            )
-            
-            prompt = f"Intern Diagnosis: {intern_diagnosis}\nExpert Standard: {expert_diagnosis}"
-            
-            response = await model.generate_content_async(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+            prompt = f"{GeminiService.EVALUATION_SYSTEM}\n\nIntern Diagnosis: {intern_diagnosis}\nExpert Standard: {expert_diagnosis}"
+            response = await _client.aio.models.generate_content(
+                model=GeminiService.MODEL_NAME,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
             )
             return json.loads(response.text)
         except Exception as e:
             print(f"⚠️ Direct Gemini Evaluation Failed: {e}. Falling back to OpenRouter...")
-            from .openrouter_service import OpenRouterService
-            # We use a custom call to OpenRouter for evaluation since it doesn't have a dedicated method
             payload = {
                 "model": os.getenv("OPENROUTER_MODEL", "google/gemini-flash-1.5"),
                 "messages": [
@@ -116,5 +105,5 @@ class GeminiService:
                     )
                     data = resp.json()
                     return json.loads(data["choices"][0]["message"]["content"])
-            except:
+            except Exception:
                 return {"score": 0, "feedback": "Evaluation failed completely."}

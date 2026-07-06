@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import os, json
 
@@ -30,6 +30,7 @@ class CreatePrescriptionRequest(BaseModel):
     notes: Optional[str] = None
 
 class PrescriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     call_id: Optional[int]
     patient_id: int
@@ -41,9 +42,6 @@ class PrescriptionResponse(BaseModel):
     is_auto_generated: bool
     approved_by_doctor: Optional[bool]
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ─── PDF Generation ────────────────────────────────────────────────────────────

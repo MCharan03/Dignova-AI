@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -9,13 +9,12 @@ class CallBase(BaseModel):
     correctness: Optional[int] = None
 
 class Call(CallBase):
+    model_config = ConfigDict(from_attributes=True)
     call_id: int
     start_time: datetime
     end_time: Optional[datetime] = None
     state: str
     severity: str = "UNKNOWN"
-    class Config:
-        from_attributes = True
 
 class CallStartRequest(BaseModel):
     user_id: int

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from typing import List, Optional
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..extensions import get_db
 from ..models import (
@@ -19,18 +19,16 @@ router = APIRouter()
 # ═══════════════════════════════════════════════════
 
 class SettingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     key: str
     value: str
-    class Config:
-        from_attributes = True
 
 class ResourceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     type: str
     status: str
-    class Config:
-        from_attributes = True
 
 class OrganizationCreate(BaseModel):
     name: str
@@ -58,6 +56,7 @@ class OrganizationUpdate(BaseModel):
     max_doctors: Optional[int] = None
 
 class OrganizationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     org_code: str
@@ -76,10 +75,9 @@ class OrganizationResponse(BaseModel):
     patient_count: int = 0
     active_calls: int = 0
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     email: str
@@ -103,10 +101,9 @@ class UserResponse(BaseModel):
     available_hours: Optional[str] = None
     is_verified: bool = False
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
 
 class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: Optional[int] = None
     user_name: Optional[str] = None
@@ -116,8 +113,6 @@ class AuditLogResponse(BaseModel):
     target_id: Optional[int] = None
     details: Optional[dict] = None
     created_at: datetime
-    class Config:
-        from_attributes = True
 
 # ═══════════════════════════════════════════════════
 # HELPERS

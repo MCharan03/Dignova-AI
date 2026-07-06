@@ -1,6 +1,6 @@
 import os
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from passlib.context import CryptContext
 import jwt
@@ -14,9 +14,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-fallback")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dignova-fallback-key-change-in-production-32b")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+if len(SECRET_KEY.encode()) < 32:
+    import warnings
+    warnings.warn(
+        "JWT_SECRET_KEY is shorter than 32 bytes. Set a stronger secret in production.",
+        stacklevel=1
+    )
 
 pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"], 
@@ -41,14 +48,14 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, request: Optional[Request] = None, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+
     # --- Military Grade Security: Inject Fingerprint ---
     if request:
         to_encode["fpt"] = generate_fingerprint(request)
-        
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
