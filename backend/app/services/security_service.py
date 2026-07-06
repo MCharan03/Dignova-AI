@@ -44,9 +44,11 @@ class SecurityShieldService:
         """Scan a single string for security violations. Returns True if malicious."""
         if not content:
             return False
+        import urllib.parse
+        decoded_content = urllib.parse.unquote(content)
         for attack_type, pattern in SIGNATURES.items():
-            if pattern.search(content):
-                print(f"[SECURITY SHIELD DETECTED] Signature match: {attack_type} in '{content[:100]}'")
+            if pattern.search(decoded_content):
+                print(f"[SECURITY SHIELD DETECTED] Signature match: {attack_type} in '{decoded_content[:100]}'")
                 return True
         return False
 
