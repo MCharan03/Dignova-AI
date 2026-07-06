@@ -427,3 +427,19 @@ class TelemetrySession(Base):
     stress_score = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+class AgencyTask(Base):
+    """
+    Represents an asynchronous background task executed by Cherry OS while the user is away.
+    """
+    __tablename__ = "agency_tasks"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(String, default="pending") # pending | running | completed | failed
+    result_summary = Column(Text, nullable=True)
+    progress = Column(Integer, default=0) # 0 to 100
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
