@@ -70,7 +70,16 @@ app.add_middleware(SlowAPIMiddleware)
 # --- Military Grade Security Middleware: Headers & Shield ---
 @app.middleware("http")
 async def security_shield_middleware(request: Request, call_next):
+    from .services.security_service import SecurityShieldService
+    from fastapi.responses import JSONResponse
+    from fastapi import HTTPException
+    
     try:
+        try:
+            await SecurityShieldService.enforce_shield(request)
+        except HTTPException as he:
+            return JSONResponse(status_code=he.status_code, content={"detail": he.detail})
+            
         response: Response = await call_next(request)
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -80,7 +89,6 @@ async def security_shield_middleware(request: Request, call_next):
         return response
     except Exception as e:
         print(f"[WARN] Security Shield Error: {e}")
-        from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"detail": "Internal Server Error", "error": str(e)})
 
 # --- Audit Log Middleware (Zero-Trust Auditing) ---
