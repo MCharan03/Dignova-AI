@@ -411,3 +411,19 @@ class AgencyEvent(Base):
     metadata_json = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TelemetrySession(Base):
+    """
+    Keystroke dynamics and emotional telemetry logs for user stress evaluation.
+    """
+    __tablename__ = "telemetry_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    wpm = Column(Float, default=0.0)
+    avg_hold_time = Column(Float, default=0.0)
+    avg_flight_time = Column(Float, default=0.0)
+    backspace_ratio = Column(Float, default=0.0)
+    stress_score = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

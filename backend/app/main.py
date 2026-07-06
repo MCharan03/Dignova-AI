@@ -173,6 +173,7 @@ from .hospital.doctor_routes import router as doctor_router
 from .hospital.voice_routes import router as voice_router
 from .hospital.twilio_routes import router as twilio_router
 from .hospital.agency_routes import router as agency_router
+from .hospital.telemetry_routes import router as telemetry_router
 from .services.agency_service import homeostasis_loop
 
 # Core API Routes
@@ -182,6 +183,7 @@ app.include_router(clinical_core_router)
 app.include_router(hospital_router, prefix="/api/hospital", tags=["Hospital & Training"])
 app.include_router(admin_router, prefix="/api")
 app.include_router(agency_router, prefix="/api")
+app.include_router(telemetry_router)
 app.include_router(org_router)
 app.include_router(notification_router)
 app.include_router(prescription_router)
