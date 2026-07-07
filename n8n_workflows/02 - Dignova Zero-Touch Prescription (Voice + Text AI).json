@@ -39,7 +39,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/api/n8n/webhook/aftercare-response",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/aftercare-response",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

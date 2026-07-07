@@ -107,7 +107,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/api/n8n/webhook/aftercare-response",
+        "url": "https://dignova-ai.onrender.com/api/n8n/webhook/aftercare-response",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -193,7 +193,7 @@
           [
             {
               "text": "\ud83c\udfe5 Dashboard",
-              "url": "https://dignova-ai.vercel.app/doctor"
+              "url": "https://frontend-six-rouge-14.vercel.app/doctor"
             }
           ]
         ],
