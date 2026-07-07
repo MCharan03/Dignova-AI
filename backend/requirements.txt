@@ -17,7 +17,6 @@ slowapi==0.1.9
 itsdangerous==2.2.0
 
 # AI
-google-generativeai==0.8.5
 google-genai==1.19.0
 openai==1.95.0
 
@@ -27,8 +26,8 @@ python-dotenv==1.1.0
 python-multipart==0.0.20
 pydantic==2.11.7
 
-# Voice / Audio (Python 3.12+ compat)
-audioop-lts==0.2.1
+# Voice / Audio
+# audioop-lts: only needed on Python 3.13+ (audioop is built-in on 3.11)
 pydub==0.25.1
 
 # Email
