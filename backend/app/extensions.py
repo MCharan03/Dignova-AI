@@ -11,8 +11,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 1. Resolve Database URL
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{os.path.join(BASE_DIR, 'app.db')}")
+
+# Auto-fix common URL prefixes so the app works regardless of how the env var was set
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite:///"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
+elif SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    # Heroku/Render sometimes gives postgres:// instead of postgresql://
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    # Plain postgresql:// needs the asyncpg driver specified
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 # 2. Configure Engine Arguments
 # We use a robust configuration that works with Supabase pgbouncer (Transaction Pooling)
