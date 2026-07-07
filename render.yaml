@@ -102,3 +102,22 @@ services:
           property: host
       - key: NODE_VERSION
         value: "20"
+
+  # ── n8n Automation Engine (Docker) ──────────────────────────────
+  - type: web
+    name: dignova-n8n
+    runtime: docker
+    rootDir: n8n
+    plan: free
+    envVars:
+      - key: N8N_ENFORCE_SETTINGS_FILE_FOR_EVAL
+        value: "true"
+      # Expose standard credentials settings
+      - key: N8N_BASIC_AUTH_ACTIVE
+        value: "true"
+      - key: N8N_BASIC_AUTH_USER
+        value: admin
+      - key: N8N_BASIC_AUTH_PASSWORD
+        value: dignova2026admin
+      - key: N8N_PORT
+        value: "5678"
