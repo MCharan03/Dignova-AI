@@ -9,7 +9,7 @@ _jailed_ips: Dict[str, datetime] = {}
 # Intrusion Detection Signatures (Regexes)
 SIGNATURES = {
     "sql_injection": re.compile(
-        r"(\b(SELECT|INSERT|UPDATE|DELETE|UNION|DROP|ALTER|LIMIT)\b)|([\';\"#])|(--)",
+        r"(\b(SELECT|INSERT|UPDATE|DELETE|UNION|DROP|ALTER|LIMIT)\b)|(--)",
         re.IGNORECASE
     ),
     "path_traversal": re.compile(
