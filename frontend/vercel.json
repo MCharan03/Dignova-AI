@@ -4,6 +4,6 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://dignova-ai-backend.onrender.com"
+    "NEXT_PUBLIC_API_URL": "https://dignova-ai.onrender.com"
   }
 }
