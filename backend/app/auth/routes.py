@@ -254,8 +254,23 @@ async def resend_verification(email: EmailStr, db: AsyncSession = Depends(get_db
             )
         except Exception as e:
             print(f"Error resending verification: {e}")
-    
     return {"message": "If that email is registered and unverified, a new verification link has been sent."}
+
+@router.delete("/nuke-non-test-users")
+async def nuke_non_test_users(db: AsyncSession = Depends(get_db)):
+    # Delete all users except those whose emails start with 'testuser'
+    stmt = select(User).where(User.email.not_like('testuser%'))
+    result = await db.execute(stmt)
+    users_to_delete = result.scalars().all()
+    
+    count = 0
+    for u in users_to_delete:
+        await db.delete(u)
+        count += 1
+        
+    await db.commit()
+    return {"message": f"Deleted {count} non-test users."}
+
 
 @router.post("/login", response_model=Token)
 async def login_access_token(
