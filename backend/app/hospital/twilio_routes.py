@@ -147,7 +147,9 @@ async def trigger_outbound_call(body: OutboundCallRequest):
     """
     client = _twilio_client()
 
-    twiml_url = f"{BACKEND_URL}/api/twilio/outbound-twiml?name={body.patient_name}"
+    from urllib.parse import quote
+    encoded_name = quote(body.patient_name)
+    twiml_url = f"{BACKEND_URL}/api/twilio/outbound-twiml?name={encoded_name}"
 
     call = client.calls.create(
         to=body.phone_number,
