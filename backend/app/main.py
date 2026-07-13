@@ -67,6 +67,32 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 from slowapi.middleware import SlowAPIMiddleware
 app.add_middleware(SlowAPIMiddleware)
 
+# --- Enterprise Error Control (iOS-Grade Stability) ---
+from sqlalchemy.exc import IntegrityError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(IntegrityError)
+async def sqlalchemy_integrity_error_handler(request: Request, exc: IntegrityError):
+    print(f"[ERROR] DB Integrity Error: {exc}")
+    # Extract the detail message from asyncpg if possible
+    detail_msg = "A database constraint was violated (e.g., duplicate entry)."
+    if "duplicate key value violates unique constraint" in str(exc):
+        detail_msg = "This record already exists in our system. Please check your details (e.g., duplicate phone number or email) and try again."
+        
+    return JSONResponse(
+        status_code=400,
+        content={"detail": detail_msg, "error_type": "DataIntegrityError"}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"[CRITICAL ERROR] Unhandled Exception: {exc}")
+    # Catch any completely unexpected errors so the server never truly 'crashes' for the client
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected system error occurred. Our engineers have been notified.", "error_type": "SystemError"}
+    )
+
 # --- Military Grade Security Middleware: Headers & Shield ---
 @app.middleware("http")
 async def security_shield_middleware(request: Request, call_next):
