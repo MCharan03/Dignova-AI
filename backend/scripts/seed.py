@@ -20,166 +20,203 @@ async def seed_data():
 
     async with AsyncSessionLocal() as db:
         # 1. ORGANIZATIONS (The Brains)
-        manipal = domain.Organization(
-            name="Manipal Hospitals",
-            org_code="MANIPAL-2026",
-            address="98, HAL Old Airport Rd, Bengaluru",
-            contact_email="admin@manipal.edu",
-            subscription_tier="enterprise",
-            ai_philosophy="aggressive",
-            stress_threshold=0.7,
-            primary_color="#006400", # Manipal Green
-            accent_color="#ffffff"
-        )
-        apollo = domain.Organization(
-            name="Apollo Hospitals",
-            org_code="APOLLO-2026",
-            address="Bannerghatta Main Rd, Bengaluru",
-            contact_email="admin@apollohospitals.com",
-            subscription_tier="sentient",
-            ai_philosophy="balanced",
-            stress_threshold=0.8,
-            primary_color="#004d99", # Apollo Blue
-            accent_color="#f2f2f2"
-        )
-        db.add_all([manipal, apollo])
-        await db.commit()
-        await db.refresh(manipal)
-        await db.refresh(apollo)
-        print(f"Bootstrap: Organizations created ({manipal.org_code}, {apollo.org_code})")
+        # 1. ORGANIZATIONS (The Brains)
+        manipal_stmt = select(domain.Organization).where(domain.Organization.org_code == "MANIPAL-2026")
+        manipal = await db.scalar(manipal_stmt)
+        if not manipal:
+            manipal = domain.Organization(
+                name="Manipal Hospitals",
+                org_code="MANIPAL-2026",
+                address="98, HAL Old Airport Rd, Bengaluru",
+                contact_email="admin@manipal.edu",
+                subscription_tier="enterprise",
+                ai_philosophy="aggressive",
+                stress_threshold=0.7,
+                primary_color="#006400", # Manipal Green
+                accent_color="#ffffff"
+            )
+            db.add(manipal)
+            await db.commit()
+            await db.refresh(manipal)
+            print("Bootstrap: Created Manipal Organization")
+        else:
+            print("Bootstrap: Manipal Organization already exists")
+
+        apollo_stmt = select(domain.Organization).where(domain.Organization.org_code == "APOLLO-2026")
+        apollo = await db.scalar(apollo_stmt)
+        if not apollo:
+            apollo = domain.Organization(
+                name="Apollo Hospitals",
+                org_code="APOLLO-2026",
+                address="Bannerghatta Main Rd, Bengaluru",
+                contact_email="admin@apollohospitals.com",
+                subscription_tier="sentient",
+                ai_philosophy="balanced",
+                stress_threshold=0.8,
+                primary_color="#004d99", # Apollo Blue
+                accent_color="#f2f2f2"
+            )
+            db.add(apollo)
+            await db.commit()
+            await db.refresh(apollo)
+            print("Bootstrap: Created Apollo Organization")
+        else:
+            print("Bootstrap: Apollo Organization already exists")
 
         # 2. SUPER ADMIN
         admin_email = os.getenv("ADMIN_EMAIL", "cherrycostech@gmail.com")
         admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
 
-        super_admin = domain.User(
-            name="Dignova Core Admin", 
-            email=admin_email,
-            hashed_password=get_password_hash(admin_password),
-            role=domain.UserRole.super_admin,
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(super_admin)
-        print("Bootstrap: Super Admin created")
+        stmt = select(domain.User).where(domain.User.email == admin_email)
+        existing = await db.scalar(stmt)
+        if not existing:
+            super_admin = domain.User(
+                name="Dignova Core Admin", 
+                email=admin_email,
+                hashed_password=get_password_hash(admin_password),
+                role=domain.UserRole.super_admin,
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(super_admin)
+            print("Bootstrap: Super Admin created")
 
         # 3. ORG ADMIN
-        org_admin = domain.User(
-            name="Manipal Admin",
-            email="admin@manipal.ai",
-            hashed_password=get_password_hash("admin123"),
-            role=domain.UserRole.org_admin,
-            organization_id=manipal.id,
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(org_admin)
-        print("Bootstrap: Org Admin created")
+        stmt = select(domain.User).where(domain.User.email == "admin@manipal.ai")
+        existing = await db.scalar(stmt)
+        if not existing:
+            org_admin = domain.User(
+                name="Manipal Admin",
+                email="admin@manipal.ai",
+                hashed_password=get_password_hash("admin123"),
+                role=domain.UserRole.org_admin,
+                organization_id=manipal.id,
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(org_admin)
+            print("Bootstrap: Org Admin created")
 
         # 4. EXPERIENCED DOCTOR
-        exp_doctor = domain.User(
-            name="Dr. Sarah Smith",
-            email="sarah.manipal@dignova.ai",
-            hashed_password=get_password_hash("doctor123"),
-            role=domain.UserRole.doctor,
-            tier=domain.DoctorTier.experienced,
-            specialty="Cardiology",
-            organization_id=manipal.id,
-            is_online=True,
-            qualification="MD, DM Cardiology",
-            license_number="KA-MED-2018-4521",
-            department="Cardiology",
-            experience_years=12,
-            bio="Senior Interventional Cardiologist with 12 years of experience.",
-            consultation_fee=1500,
-            diagnostic_accuracy=94.5,
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(exp_doctor)
-        print("Bootstrap: Experienced Doctor created")
+        stmt = select(domain.User).where(domain.User.email == "sarah.manipal@dignova.ai")
+        existing = await db.scalar(stmt)
+        if not existing:
+            exp_doctor = domain.User(
+                name="Dr. Sarah Smith",
+                email="sarah.manipal@dignova.ai",
+                hashed_password=get_password_hash("doctor123"),
+                role=domain.UserRole.doctor,
+                tier=domain.DoctorTier.experienced,
+                specialty="Cardiology",
+                organization_id=manipal.id,
+                is_online=True,
+                qualification="MD, DM Cardiology",
+                license_number="KA-MED-2018-4521",
+                department="Cardiology",
+                experience_years=12,
+                bio="Senior Interventional Cardiologist with 12 years of experience.",
+                consultation_fee=1500,
+                diagnostic_accuracy=94.5,
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(exp_doctor)
+            print("Bootstrap: Experienced Doctor created")
 
         # 5. MID-RANGE DOCTOR
-        mid_doctor = domain.User(
-            name="Dr. Priya Nair",
-            email="priya.manipal@dignova.ai",
-            hashed_password=get_password_hash("doctor123"),
-            role=domain.UserRole.doctor,
-            tier=domain.DoctorTier.mid_range,
-            specialty="Neurology",
-            organization_id=manipal.id,
-            is_online=True,
-            qualification="MD, DM Neurology",
-            license_number="KA-MED-2021-7832",
-            department="Neurology",
-            experience_years=5,
-            bio="Neurologist specializing in stroke management and epilepsy.",
-            consultation_fee=1000,
-            diagnostic_accuracy=87.2,
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(mid_doctor)
-        print("Bootstrap: Mid-Range Doctor created")
+        stmt = select(domain.User).where(domain.User.email == "priya.manipal@dignova.ai")
+        existing = await db.scalar(stmt)
+        if not existing:
+            mid_doctor = domain.User(
+                name="Dr. Priya Nair",
+                email="priya.manipal@dignova.ai",
+                hashed_password=get_password_hash("doctor123"),
+                role=domain.UserRole.doctor,
+                tier=domain.DoctorTier.mid_range,
+                specialty="Neurology",
+                organization_id=manipal.id,
+                is_online=True,
+                qualification="MD, DM Neurology",
+                license_number="KA-MED-2021-7832",
+                department="Neurology",
+                experience_years=5,
+                bio="Neurologist specializing in stroke management and epilepsy.",
+                consultation_fee=1000,
+                diagnostic_accuracy=87.2,
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(mid_doctor)
+            print("Bootstrap: Mid-Range Doctor created")
 
         # 6. INTERN
-        intern = domain.User(
-            name="Intern Mike",
-            email="mike.intern@dignova.ai",
-            hashed_password=get_password_hash("doctor123"),
-            role=domain.UserRole.doctor,
-            tier=domain.DoctorTier.intern,
-            specialty="Emergency Medicine",
-            organization_id=manipal.id,
-            is_online=True,
-            qualification="MBBS (Final Year)",
-            department="Emergency",
-            experience_years=0,
-            bio="Final year MBBS intern rotating through Emergency Medicine.",
-            diagnostic_accuracy=45.0,
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(intern)
-        print("Bootstrap: Intern created")
+        stmt = select(domain.User).where(domain.User.email == "mike.intern@dignova.ai")
+        existing = await db.scalar(stmt)
+        if not existing:
+            intern = domain.User(
+                name="Intern Mike",
+                email="mike.intern@dignova.ai",
+                hashed_password=get_password_hash("doctor123"),
+                role=domain.UserRole.doctor,
+                tier=domain.DoctorTier.intern,
+                specialty="Emergency Medicine",
+                organization_id=manipal.id,
+                is_online=True,
+                qualification="MBBS (Final Year)",
+                department="Emergency",
+                experience_years=0,
+                bio="Final year MBBS intern rotating through Emergency Medicine.",
+                diagnostic_accuracy=45.0,
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(intern)
+            print("Bootstrap: Intern created")
 
-        # 7. NORMAL REGISTERED USER (no org — independent patient)
-        normal_user = domain.User(
-            name="Charan Kumar",
-            email="mallelacharankumar@gmail.com",
-            hashed_password=get_password_hash("user123"),
-            role=domain.UserRole.user,
-            age=20,
-            blood_group="A+",
-            emergency_contact="9036205526",
-            preferred_language="English",
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(normal_user)
-        print("Bootstrap: Normal User created (no org)")
+        # 7. NORMAL REGISTERED USER
+        stmt = select(domain.User).where(domain.User.email == "mallelacharankumar@gmail.com")
+        existing = await db.scalar(stmt)
+        if not existing:
+            normal_user = domain.User(
+                name="Charan Kumar",
+                email="mallelacharankumar@gmail.com",
+                hashed_password=get_password_hash("user123"),
+                role=domain.UserRole.user,
+                age=20,
+                blood_group="A+",
+                emergency_contact="9036205526",
+                preferred_language="English",
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(normal_user)
+            print("Bootstrap: Normal User created (no org)")
 
-        # 8. ORG-MONITORED PATIENT (linked to Manipal — under hospital care)
-        monitored_patient = domain.User(
-            name="Ramesh Gupta",
-            email="ramesh.gupta@test.com",
-            hashed_password=get_password_hash("user123"),
-            role=domain.UserRole.user,
-            organization_id=manipal.id,
-            age=58,
-            blood_group="B+",
-            emergency_contact="9876543210",
-            preferred_language="Hindi",
-            height_cm=170.0,
-            allergies="Penicillin, Sulfa drugs",
-            medications="Metformin 500mg BD, Amlodipine 5mg OD",
-            chronic_conditions="Type 2 Diabetes, Hypertension",
-            last_checkup_date=datetime.utcnow() - timedelta(days=180),
-            is_verified=True,
-            verified_at=datetime.utcnow()
-        )
-        db.add(monitored_patient)
-        
+        # 8. ORG-MONITORED PATIENT
+        stmt = select(domain.User).where(domain.User.email == "ramesh.gupta@test.com")
+        existing = await db.scalar(stmt)
+        if not existing:
+            monitored_patient = domain.User(
+                name="Ramesh Gupta",
+                email="ramesh.gupta@test.com",
+                hashed_password=get_password_hash("user123"),
+                role=domain.UserRole.user,
+                organization_id=manipal.id,
+                age=58,
+                blood_group="B+",
+                emergency_contact="9876543210",
+                preferred_language="Hindi",
+                height_cm=170.0,
+                allergies="Penicillin, Sulfa drugs",
+                medications="Metformin 500mg BD, Amlodipine 5mg OD",
+                chronic_conditions="Type 2 Diabetes, Hypertension",
+                last_checkup_date=datetime.utcnow() - timedelta(days=180),
+                is_verified=True,
+                verified_at=datetime.utcnow()
+            )
+            db.add(monitored_patient)
+            print("Bootstrap: Org-Monitored Patient created (Manipal)")
+            
         await db.commit()
         print("Bootstrap: Org-Monitored Patient created (Manipal)")
 
