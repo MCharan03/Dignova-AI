@@ -393,12 +393,7 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db), current_
     from sqlalchemy import update
     from ..models import TrainingReport, Call, Booking, UserVitals
 
-    # 1. Nullify forwarded_to_doctor_id on calls forwarded TO this user (if doctor)
-    await db.execute(
-        update(Call).where(Call.forwarded_to_doctor_id == user_id).values(forwarded_to_doctor_id=None)
-    )
-
-    # 2. Delete Training Reports where this user is the intern
+    # 1. Delete Training Reports where this user is the intern
     await db.execute(delete(TrainingReport).where(TrainingReport.intern_id == user_id))
 
     # 3. Delete Training Reports that reference this user's calls
