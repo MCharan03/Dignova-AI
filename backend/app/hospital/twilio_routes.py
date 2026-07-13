@@ -64,7 +64,7 @@ async def handle_incoming_call(request: Request):
     connect = Connect()
     connect.stream(
         url=f"{BACKEND_URL_WS}/ws/twilio-media",
-        track="both_tracks",
+        track="inbound_track",
     )
     response.append(connect)
 
@@ -185,7 +185,7 @@ async def outbound_twiml(name: str = "Patient"):
     connect = Connect()
     connect.stream(
         url=f"{BACKEND_URL_WS}/ws/twilio-media",
-        track="both_tracks",
+        track="inbound_track",
     )
     response.append(connect)
 
