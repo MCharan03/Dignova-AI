@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ConfigDict
 
-from ..extensions import get_db
+from ..extensions import get_db, limiter
 from ..models import User, UserRole, DoctorTier
 from ..utils.auth import (
     get_password_hash,
@@ -127,7 +127,8 @@ class ResetPasswordRequest(BaseModel):
 # --- Routes ---
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> Any:
+@limiter.limit("5/minute")
+async def register(request: Request, user_in: UserCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> Any:
     # 1. Resolve Organization
     org_id = None
     if user_in.role in ["doctor", "org_admin"]:
@@ -237,7 +238,8 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     return {"message": "Email verified successfully!"}
 
 @router.post("/resend-verification")
-async def resend_verification(email: EmailStr, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def resend_verification(request: Request, email: EmailStr, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.email == email)
     user = await db.scalar(stmt)
     if user and not user.is_verified:

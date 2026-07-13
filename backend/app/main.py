@@ -9,9 +9,9 @@ from sqlalchemy import select
 from fastapi.staticfiles import StaticFiles
 
 # --- Security Imports ---
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from .extensions import limiter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,7 +59,6 @@ async def lifespan(app: FastAPI):
     yield
 
 # --- Military Grade Security Initialization ---
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 app = FastAPI(title="Dignova AI Sentient API", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
