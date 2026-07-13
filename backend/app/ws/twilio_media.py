@@ -93,6 +93,15 @@ async def twilio_media_handler(websocket: WebSocket):
         system_instruction=types.Content(
             parts=[types.Part(text=orchestrator.system_instruction)]
         ),
+        generation_config=types.GenerateContentConfig(
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name="Aoede"  # Composed, authoritative professional doctor voice
+                    )
+                )
+            )
+        ),
         response_modalities=["AUDIO", "TEXT"],
     )
 

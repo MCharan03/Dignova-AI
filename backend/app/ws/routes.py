@@ -105,10 +105,19 @@ async def internal_call_ws_handler(websocket: WebSocket):
     # 2. Configure Gemini with the correct persona and dynamic patient data
     orchestrator = SentientOrchestrator(persona=persona, sim_patient=sim_patient, philosophy=philosophy)
     
-    # Standardize system instruction for Gemini Live API
+    # Standardize system instruction and composed voice for Gemini Live API
     config = types.LiveConnectConfig(
         system_instruction=types.Content(
             parts=[types.Part(text=orchestrator.system_instruction)]
+        ),
+        generation_config=types.GenerateContentConfig(
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name="Aoede"  # Composed, authoritative professional doctor voice
+                    )
+                )
+            )
         ),
         response_modalities=["AUDIO"]
     )
