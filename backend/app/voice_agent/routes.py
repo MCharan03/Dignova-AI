@@ -208,7 +208,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                     is_speaking = False
                             
                             if is_speaking:
-                                await session.send({
+                                await session.send(input={
                                     "realtime_input": {
                                         "media_chunks": [{
                                             "data": base64.b64encode(pcm_data).decode("utf-8"),
@@ -345,7 +345,7 @@ async def twilio_media_handler(websocket: WebSocket):
                                     is_speaking = False
                                     
                             if is_speaking:
-                                await gemini_session.send({
+                                await gemini_session.send(input={
                                     "realtime_input": {
                                         "media_chunks": [{
                                             "data": base64.b64encode(lin16k).decode(),
