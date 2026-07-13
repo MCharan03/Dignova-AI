@@ -30,7 +30,7 @@ else:
     print("⚠️ GEMINI_API_KEY is missing or using placeholder. Voice Agent Live API will be disabled.")
 
 MODEL_ID = "models/gemini-2.5-flash-native-audio-latest"
-TWILIO_MODEL_ID = "gemini-2.0-flash-exp" # Twilio compatible model
+TWILIO_MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" # Unified native audio model
 TRANSCRIPT_SAVE_INTERVAL = 3
 
 # ── Database Helpers ──────────────────────────────────────────────────
