@@ -391,16 +391,18 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db), current_
         raise HTTPException(status_code=403, detail="Not authorized to manage users outside your organization.")
 
     from sqlalchemy import update
-    from ..models import TrainingReport, Call, Booking, UserVitals
+    from ..models import TrainingReport, TrainingScenario, Call, Booking, UserVitals
 
     # 1. Delete Training Reports where this user is the intern
     await db.execute(delete(TrainingReport).where(TrainingReport.intern_id == user_id))
 
-    # 3. Delete Training Reports that reference this user's calls
+    # 2. Nullify source_call_id on TrainingScenarios that reference this user's calls
     subq = select(Call.call_id).where(Call.user_id == user_id)
-    await db.execute(delete(TrainingReport).where(TrainingReport.call_id.in_(subq)))
+    await db.execute(
+        update(TrainingScenario).where(TrainingScenario.source_call_id.in_(subq)).values(source_call_id=None)
+    )
 
-    # 4. Delete Bookings related to User's Calls
+    # 3. Delete Bookings related to User's Calls
     await db.execute(delete(Booking).where(Booking.call_id.in_(subq)))
 
     # 5. Delete Calls owned by this user
