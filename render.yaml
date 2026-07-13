@@ -30,7 +30,7 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: google/gemini-2.0-flash-001
+        value: google/gemini-2.5-flash
       - key: N8N_BASE_URL
         sync: false
       - key: TELEGRAM_BOT_TOKEN
@@ -53,33 +53,13 @@ services:
         value: Dignova AI
       - key: PYTHON_VERSION
         value: "3.11.9"
-      - key: SIMULATE_EMAIL
-        value: "False"
-      - key: MAIL_SERVER
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: "587"
-      - key: MAIL_USE_TLS
-        value: "True"
-      - key: MAIL_USERNAME
+      - key: RESEND_API_KEY
         sync: false
-      - key: MAIL_PASSWORD
-        sync: false
-      - key: MAIL_FROM
-        sync: false
-      - key: MAIL_FROM_NAME
-        value: Dignova AI
       # ── Sentient OS Layer ────────────────────────────────────────────
       - key: OLLAMA_BASE_URL
         value: ""              # leave blank on Render (no local LLM)
       - key: OLLAMA_MODEL
         value: llama3.2
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_PHONE_NUMBER
-        sync: false
 
   # ── Frontend (Next.js) ───────────────────────────────────────────
   - type: web
@@ -121,3 +101,17 @@ services:
         value: dignova2026admin
       - key: N8N_PORT
         value: "5678"
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+  # ── Keep-Alive Cron (prevents free tier sleep) ─────────────────
+  - type: cron
+    name: dignova-keepalive
+    runtime: python
+    rootDir: keepalive
+    schedule: "*/14 * * * *"
+    buildCommand: pip install requests
+    startCommand: python ping.py
+    plan: free

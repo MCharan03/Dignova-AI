@@ -194,17 +194,43 @@ def build_appointment_reminder_email(
 
 async def send_email_async(to: str, subject: str, body: str, html: str = None):
     """
-    Async SMTP dispatcher with deep diagnostics and simulation support.
+    Async SMTP or Resend API dispatcher with deep diagnostics and simulation support.
     """
     recipients = [to]
     content = html or body
     
     if SIMULATE_EMAIL:
-        print(f"🧪 SMTP SIMULATION: Email would be sent to {recipients}")
+        print(f"🧪 EMAIL SIMULATION: Email would be sent to {recipients}")
         print(f"Subject: {subject}")
         print(f"Body Preview: {content[:100]}...")
         return True
 
+    # 1. Try Resend HTTP API if key is present (Render Free tier friendly)
+    resend_key = os.getenv("RESEND_API_KEY")
+    if resend_key:
+        try:
+            print(f"📡 RESEND ATTEMPT: Sending to {to} via Resend HTTP API...")
+            import resend
+            resend.api_key = resend_key
+            
+            mail_from = os.getenv("MAIL_FROM") or "onboarding@resend.dev"
+            mail_from_name = os.getenv("MAIL_FROM_NAME") or "Dignova AI"
+            formatted_from = f"{mail_from_name} <{mail_from}>" if mail_from_name else mail_from
+            
+            params = {
+                "from": formatted_from,
+                "to": recipients,
+                "subject": subject,
+                "html": html or body
+            }
+            resend.Emails.send(params)
+            print(f"✅ RESEND SUCCESS: Email dispatched.")
+            return True
+        except Exception as re_err:
+            print(f"⚠️ RESEND FAILURE: {re_err}")
+            print("💡 Falling back to SMTP...")
+
+    # 2. SMTP Fallback
     try:
         print(f"📡 SMTP ATTEMPT: Sending to {recipients} via {conf.MAIL_SERVER}:{conf.MAIL_PORT}...")
         message = MessageSchema(
