@@ -304,7 +304,7 @@ async def twilio_media_handler(websocket: WebSocket):
                 )
             )
         ),
-        response_modalities=["AUDIO", "TEXT"],
+        response_modalities=["AUDIO"],
     )
 
     assistant_turn_count = 0
