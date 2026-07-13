@@ -258,6 +258,22 @@ async def resend_verification(request: Request, email: EmailStr, db: AsyncSessio
             print(f"Error resending verification: {e}")
     return {"message": "If that email is registered and unverified, a new verification link has been sent."}
 
+@router.get("/port-test")
+async def port_test():
+    import socket
+    results = {}
+    for port in [25, 465, 587, 2525]:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3.0)
+        try:
+            s.connect(("smtp.gmail.com", port))
+            results[port] = "OPEN"
+            s.close()
+        except Exception as e:
+            results[port] = f"BLOCKED/ERROR: {e}"
+    return results
+
+
 
 @router.post("/login", response_model=Token)
 async def login_access_token(
