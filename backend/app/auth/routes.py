@@ -191,21 +191,13 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     await db.commit()
     await db.refresh(user)
 
-    # Send verification email
+    
+    # Generate verification token and link for n8n
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
     token = generate_verification_token(user.email)
-    verify_url = f"{FRONTEND_URL}/verify?token={token}" 
-    
-    # Trigger branded Sentient email via robust Background Task
-    background_tasks.add_task(
-        send_welcome_email,
-        to=user.email,
-        user_name=user.name,
-        verify_url=verify_url,
-        role=user.role.value
-    )
-    
-    # Trigger n8n Onboarding (Sentient Orchestration) via Background Task
+    verify_url = f"{FRONTEND_URL}/verify?token={token}"
+
+    # Trigger n8n Onboarding (Sentient Orchestration) via Background Task (which sends the email via Gmail API)
     user_data = {
         "email": user.email,
         "name": user.name,
@@ -239,7 +231,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/resend-verification")
 @limiter.limit("3/minute")
-async def resend_verification(request: Request, email: EmailStr, db: AsyncSession = Depends(get_db)):
+async def resend_verification(request: Request, email: EmailStr, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.email == email)
     user = await db.scalar(stmt)
     if user and not user.is_verified:
@@ -248,12 +240,16 @@ async def resend_verification(request: Request, email: EmailStr, db: AsyncSessio
             token = generate_verification_token(user.email)
             verify_url = f"{FRONTEND_URL}/verify?token={token}"
             
-            send_welcome_email(
-                to=user.email,
-                user_name=user.name,
-                verify_url=verify_url,
-                role=user.role.value
-            )
+            # Delegate email sending to n8n onboarding webhook
+            user_data = {
+                "email": user.email,
+                "name": user.name,
+                "phone": user.phone_number,
+                "role": user.role.value,
+                "verify_url": verify_url,
+                "telegram_chat_id": user.telegram_chat_id
+            }
+            background_tasks.add_task(N8nService.trigger_onboarding, user_data)
         except Exception as e:
             print(f"Error resending verification: {e}")
     return {"message": "If that email is registered and unverified, a new verification link has been sent."}
