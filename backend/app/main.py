@@ -191,7 +191,7 @@ from .hospital.prescription_routes import router as prescription_router
 from .hospital.calls import router as calls_router
 from .hospital.bot_webhooks import router as bot_webhooks_router
 from .auth.routes import router as auth_router
-from .ws.routes import router as ws_router
+from .voice_agent import router as voice_agent_router
 from .stats.routes import router as stats_router
 from .hospital.ai_routes import router as ai_router
 from .hospital.message_routes import router as message_router
@@ -228,11 +228,7 @@ app.include_router(user_router)
 app.include_router(calls_router)
 app.include_router(bot_webhooks_router)
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(ws_router) 
-
-# Twilio Media Bridge
-from .ws.twilio_media import router as twilio_ws_router
-app.include_router(twilio_ws_router)
+app.include_router(voice_agent_router)
 
 app.include_router(twilio_router)
 app.include_router(stats_router) 
