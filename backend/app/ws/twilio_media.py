@@ -6,7 +6,28 @@ import json
 import base64
 import asyncio
 import os
-import audioop
+try:
+    import audioop
+except ImportError:
+    audioop = None
+
+import struct
+import math
+
+def calculate_rms(pcm_data: bytes) -> float:
+    """Calculate the Root Mean Square (RMS) of 16-bit PCM audio bytes to determine voice activity."""
+    if not pcm_data:
+        return 0.0
+    count = len(pcm_data) // 2
+    if count == 0:
+        return 0.0
+    try:
+        shorts = struct.unpack(f"<{count}h", pcm_data[:count * 2])
+        sum_squares = sum(s * s for s in shorts)
+        return math.sqrt(sum_squares / count)
+    except Exception:
+        return 0.0
+
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google import genai
@@ -65,6 +86,16 @@ async def twilio_media_handler(websocket: WebSocket):
     - Saves running transcript to DB every TRANSCRIPT_SAVE_INTERVAL turns
     - Auto-escalates on [EMERGENCY_DETECTED] signal
     """
+    if not audioop:
+        print("⚠️ WS REJECT: audioop module is not available on this Python version.")
+        await websocket.accept()
+        await websocket.send_json({
+            "event": "error",
+            "message": "Twilio Media Bridge is disabled due to missing audioop module (unsupported on Python 3.13+)."
+        })
+        await websocket.close()
+        return
+
     await websocket.accept()
 
     stream_sid = None
@@ -124,6 +155,12 @@ async def twilio_media_handler(websocket: WebSocket):
 
             # ── Twilio → Gemini (patient audio in) ────────────────────────
             async def twilio_to_gemini():
+                # VAD state variables for Intention Stabilization
+                RMS_THRESHOLD = 400
+                HANGOVER_FRAMES = 8
+                hangover_counter = 0
+                is_speaking = False
+                
                 try:
                     while True:
                         msg = json.loads(await websocket.receive_text())
@@ -131,14 +168,28 @@ async def twilio_media_handler(websocket: WebSocket):
                             mulaw  = base64.b64decode(msg["media"]["payload"])
                             lin8k  = audioop.ulaw2lin(mulaw, 2)
                             lin16k, _ = audioop.ratecv(lin8k, 2, 1, 8000, 16000, None)
-                            await gemini_session.send({
-                                "realtime_input": {
-                                    "media_chunks": [{
-                                        "data": base64.b64encode(lin16k).decode(),
-                                        "mime_type": "audio/pcm;rate=16000",
-                                    }]
-                                }
-                            })
+                            
+                            # Voice Activity & Intention Stabilization Gate
+                            rms = calculate_rms(lin16k)
+                            if rms > RMS_THRESHOLD:
+                                is_speaking = True
+                                hangover_counter = HANGOVER_FRAMES
+                            else:
+                                if hangover_counter > 0:
+                                    hangover_counter -= 1
+                                else:
+                                    is_speaking = False
+                                    
+                            # Only stream audio to Gemini if speaking (filters room noise / breaths / sighs)
+                            if is_speaking:
+                                await gemini_session.send({
+                                    "realtime_input": {
+                                        "media_chunks": [{
+                                            "data": base64.b64encode(lin16k).decode(),
+                                            "mime_type": "audio/pcm;rate=16000",
+                                        }]
+                                    }
+                                })
                         elif msg["event"] == "stop":
                             print("📞 Twilio stream stopped.")
                             break

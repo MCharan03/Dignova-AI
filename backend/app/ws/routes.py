@@ -26,6 +26,24 @@ else:
 
 MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" 
 
+import struct
+import math
+
+def calculate_rms(pcm_data: bytes) -> float:
+    """Calculate the Root Mean Square (RMS) of 16-bit PCM audio bytes to determine voice activity."""
+    if not pcm_data:
+        return 0.0
+    count = len(pcm_data) // 2
+    if count == 0:
+        return 0.0
+    try:
+        shorts = struct.unpack(f"<{count}h", pcm_data[:count * 2])
+        sum_squares = sum(s * s for s in shorts)
+        return math.sqrt(sum_squares / count)
+    except Exception:
+        return 0.0
+
+
 @router.websocket("/ws/internal-call")
 async def internal_call_ws_handler(websocket: WebSocket):
     """
@@ -171,6 +189,12 @@ async def internal_call_ws_handler(websocket: WebSocket):
 
 
                 async def app_to_gemini():
+                    # VAD state variables for Intention Stabilization
+                    RMS_THRESHOLD = 400
+                    HANGOVER_FRAMES = 8
+                    hangover_counter = 0
+                    is_speaking = False
+                    
                     try:
                         while True:
                             message = await websocket.receive_text()
@@ -179,14 +203,28 @@ async def internal_call_ws_handler(websocket: WebSocket):
                             if data['event'] == 'audio':
                                 payload = data['payload']
                                 pcm_data = audio_to_pcm(payload)
-                                await session.send({
-                                    "realtime_input": {
-                                        "media_chunks": [{
-                                            "data": base64.b64encode(pcm_data).decode("utf-8"),
-                                            "mime_type": "audio/pcm;rate=16000"
-                                        }]
-                                    }
-                                })
+                                
+                                # Voice Activity & Intention Stabilization Gate
+                                rms = calculate_rms(pcm_data)
+                                if rms > RMS_THRESHOLD:
+                                    is_speaking = True
+                                    hangover_counter = HANGOVER_FRAMES
+                                else:
+                                    if hangover_counter > 0:
+                                        hangover_counter -= 1
+                                    else:
+                                        is_speaking = False
+                                
+                                # Only stream audio to Gemini if speaking (filters room noise / breaths / sighs)
+                                if is_speaking:
+                                    await session.send({
+                                        "realtime_input": {
+                                            "media_chunks": [{
+                                                "data": base64.b64encode(pcm_data).decode("utf-8"),
+                                                "mime_type": "audio/pcm;rate=16000"
+                                            }]
+                                        }
+                                    })
                             elif data['event'] == 'stop':
                                 print("Internal Stream stopped.")
                                 await flush_transcript(db_id)
