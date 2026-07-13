@@ -223,7 +223,8 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
                 "subject": subject,
                 "html": html or body
             }
-            resend.Emails.send(params)
+            # Run the blocking Resend HTTP call in a background threadpool so it doesn't block the FastAPI event loop
+            await asyncio.to_thread(resend.Emails.send, params)
             print(f"✅ RESEND SUCCESS: Email dispatched.")
             return True
         except Exception as re_err:
