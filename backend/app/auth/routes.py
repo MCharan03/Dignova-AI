@@ -258,16 +258,6 @@ async def resend_verification(request: Request, email: EmailStr, db: AsyncSessio
             print(f"Error resending verification: {e}")
     return {"message": "If that email is registered and unverified, a new verification link has been sent."}
 
-@router.post("/seed-db")
-async def seed_db(db: AsyncSession = Depends(get_db)):
-    try:
-        from scripts.seed import seed_data
-        await seed_data()
-        return {"message": "Database seeded successfully!"}
-    except Exception as e:
-        import traceback
-        return {"message": "Failed to seed", "error": str(e), "trace": traceback.format_exc()}
-
 
 @router.post("/login", response_model=Token)
 async def login_access_token(
