@@ -143,11 +143,20 @@ async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: A
 
     # 2. Check if user exists
     stmt = select(User).where(User.email == user_in.email)
-    user = await db.scalar(stmt)
-    if user:
+    existing_user = await db.scalar(stmt)
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
+        )
+
+    # Check for existing phone number to prevent 500 IntegrityError
+    stmt_phone = select(User).where(User.phone_number == user_in.phone_number)
+    existing_phone = await db.scalar(stmt_phone)
+    if existing_phone:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this phone number already exists in the system.",
         )
 
     # 3. Resolve Role and Tier
