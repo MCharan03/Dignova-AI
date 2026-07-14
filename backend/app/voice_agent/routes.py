@@ -154,6 +154,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                 )
             )
         ),
+        thinking_config=types.ThinkingConfig(thinking_budget=0, include_thoughts=False),
         response_modalities=["AUDIO"]
     )
 
@@ -298,6 +299,7 @@ async def twilio_media_handler(websocket: WebSocket):
                 )
             )
         ),
+        thinking_config=types.ThinkingConfig(thinking_budget=0, include_thoughts=False),
         response_modalities=["AUDIO"],
     )
 
