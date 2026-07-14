@@ -107,6 +107,15 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # Memory & Execution optimizations for restricted free tier (512MB RAM)
+      - key: EXECUTIONS_PROCESS
+        value: main
+      - key: EXECUTIONS_DATA_PRUNE
+        value: "true"
+      - key: EXECUTIONS_DATA_MAX_AGE
+        value: "1"
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=350
 
   # ── Keep-Alive Cron (prevents free tier sleep) ─────────────────
   - type: cron
