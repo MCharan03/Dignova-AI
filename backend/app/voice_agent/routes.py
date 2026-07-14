@@ -203,17 +203,15 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                     is_speaking = False
                             
                             if is_speaking:
-                                await session.send(input={
-                                    "realtime_input": {
-                                        "media_chunks": [{
-                                            "data": base64.b64encode(pcm_data).decode("utf-8"),
-                                            "mime_type": "audio/pcm;rate=16000"
-                                        }]
-                                    }
-                                })
+                                await session.send_realtime_input(
+                                    media=types.Blob(
+                                        data=pcm_data,
+                                        mime_type="audio/pcm;rate=16000"
+                                    )
+                                )
                             elif was_speaking and not is_speaking:
                                 print("🎙️ User stopped speaking. Triggering Gemini response...")
-                                await session.send(input="", end_of_turn=True)
+                                await session.send(end_of_turn=True)
                         elif data['event'] == 'stop':
                             await flush_transcript(db_id)
                             break
@@ -352,17 +350,15 @@ async def twilio_media_handler(websocket: WebSocket):
                                     is_speaking = False
                                     
                             if is_speaking:
-                                await gemini_session.send(input={
-                                    "realtime_input": {
-                                        "media_chunks": [{
-                                            "data": base64.b64encode(lin16k).decode(),
-                                            "mime_type": "audio/pcm;rate=16000",
-                                        }]
-                                    }
-                                })
+                                await gemini_session.send_realtime_input(
+                                    media=types.Blob(
+                                        data=lin16k,
+                                        mime_type="audio/pcm;rate=16000"
+                                    )
+                                )
                             elif was_speaking and not is_speaking:
                                 print("🎙️ Twilio User stopped speaking. Triggering Gemini response...")
-                                await gemini_session.send(input="", end_of_turn=True)
+                                await gemini_session.send(end_of_turn=True)
                         elif msg["event"] == "stop":
                             print("📞 Twilio stream stopped.")
                             break
