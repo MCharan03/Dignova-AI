@@ -5,9 +5,8 @@ if [ -n "$PORT" ]; then
 fi
 
 if [ -n "$DATABASE_URL" ]; then
-  echo "DATABASE_URL detected. Setting postgres connection..."
-  export DB_TYPE=postgresdb
-  export DB_POSTGRESDB_CONNECTION_DATABASE_URL=$DATABASE_URL
+  echo "DATABASE_URL detected. Parsing postgres credentials..."
+  eval $(node /home/node/parse_db.js)
 fi
 
 if [ -f "/home/node/Dignova_Sentient_Master_Unified.json" ]; then
