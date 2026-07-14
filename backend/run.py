@@ -35,10 +35,15 @@ def start_backend():
         # Fallback to active interpreter if venv doesn't exist
         venv_python = sys.executable
     
+    # Set PYTHONIOENCODING to utf-8 to prevent Windows console charmap crashes
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    
     # Run uvicorn on port 8000. Frontend is served from /
     return subprocess.Popen(
         [venv_python, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
-        cwd=script_dir
+        cwd=script_dir,
+        env=env
     )
 
 if __name__ == "__main__":

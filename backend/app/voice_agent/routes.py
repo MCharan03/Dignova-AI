@@ -210,7 +210,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                     )
                                 )
                             elif was_speaking and not is_speaking:
-                                print("🎙️ User stopped speaking. Triggering Gemini response...")
+                                print("User stopped speaking. Triggering Gemini response...")
                                 await session.send(end_of_turn=True)
                         elif data['event'] == 'stop':
                             await flush_transcript(db_id)
@@ -335,7 +335,7 @@ async def twilio_media_handler(websocket: WebSocket):
 
     try:
         async with client.aio.live.connect(model=TWILIO_MODEL_ID, config=config) as gemini_session:
-            print("✅ Twilio media bridge connected to Gemini Live API")
+            print("Twilio media bridge connected to Gemini Live API")
             
             pass
 
@@ -372,15 +372,15 @@ async def twilio_media_handler(websocket: WebSocket):
                                     )
                                 )
                             elif was_speaking and not is_speaking:
-                                print("🎙️ Twilio User stopped speaking. Triggering Gemini response...")
+                                print("Twilio User stopped speaking. Triggering Gemini response...")
                                 await gemini_session.send(end_of_turn=True)
                         elif msg["event"] == "stop":
-                            print("📞 Twilio stream stopped.")
+                            print("Twilio stream stopped.")
                             break
                 except WebSocketDisconnect:
-                    print("📞 Twilio WebSocket disconnected.")
+                    print("Twilio WebSocket disconnected.")
                 except Exception as e:
-                    print(f"⚠️ twilio→gemini error: {e}")
+                    print(f"Twilio-to-Gemini error: {e}")
 
             async def gemini_to_twilio():
                 nonlocal assistant_turn_count, accumulated_transcript
