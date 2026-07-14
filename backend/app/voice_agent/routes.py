@@ -177,8 +177,8 @@ async def internal_call_ws_handler(websocket: WebSocket):
             await asyncio.sleep(1)
 
             greeting_text = (
-                "Hello, this is Dr. Dignova. I am here to conduct your medical triage. "
-                "Please describe your symptoms and their onset in detail."
+                "Please greet the patient, introduce yourself as Dr. Dignova, "
+                "and ask them to describe their symptoms and their onset in detail."
             )
             await session.send(input=greeting_text, end_of_turn=True)
 
@@ -315,8 +315,8 @@ async def twilio_media_handler(websocket: WebSocket):
             print("✅ Twilio media bridge connected to Gemini Live API")
             
             greeting_text = (
-                "Hello, this is Dr. Dignova. I am here to conduct your medical triage. "
-                "Please describe your symptoms and their onset in detail."
+                "Please greet the patient, introduce yourself as Dr. Dignova, "
+                "and ask them to describe their symptoms and their onset in detail."
             )
             await gemini_session.send(input=greeting_text, end_of_turn=True)
 
