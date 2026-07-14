@@ -176,11 +176,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
             print(f"CONNECTED to Gemini Live API with persona: {persona}")
             await asyncio.sleep(1)
 
-            greeting_text = (
-                "Please greet the patient, introduce yourself as Dr. Dignova, "
-                "and ask them to describe their symptoms and their onset in detail."
-            )
-            await session.send(input=greeting_text, end_of_turn=True)
+            await session.send(input="Hello", end_of_turn=True)
 
             async def app_to_gemini():
                 RMS_THRESHOLD = 400
@@ -314,11 +310,7 @@ async def twilio_media_handler(websocket: WebSocket):
         async with client.aio.live.connect(model=TWILIO_MODEL_ID, config=config) as gemini_session:
             print("✅ Twilio media bridge connected to Gemini Live API")
             
-            greeting_text = (
-                "Please greet the patient, introduce yourself as Dr. Dignova, "
-                "and ask them to describe their symptoms and their onset in detail."
-            )
-            await gemini_session.send(input=greeting_text, end_of_turn=True)
+            await gemini_session.send(input="Hello", end_of_turn=True)
 
             async def twilio_to_gemini():
                 RMS_THRESHOLD = 400
