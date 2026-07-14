@@ -209,8 +209,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                     )
                                 )
                             elif was_speaking and not is_speaking:
-                                print("User stopped speaking. Triggering Gemini response...")
-                                await session.send(end_of_turn=True)
+                                print("User stopped speaking. VAD triggering Gemini response...")
                         elif data['event'] == 'stop':
                             await flush_transcript(db_id)
                             break
