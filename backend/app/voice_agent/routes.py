@@ -181,15 +181,9 @@ async def internal_call_ws_handler(websocket: WebSocket):
                 HANGOVER_FRAMES = 8
                 hangover_counter = 0
                 is_speaking = False
-                
-                try:
-                    while True:
-                        message = await websocket.receive_text()
-                        data = json.loads(message)
-                        
-                        if data['event'] == 'audio':
+                             if data['event'] == 'audio':
                             payload = data['payload']
-                            pcm_data = audio_to_pcm(payload)
+                            pcm_data = base64.b64decode(payload)
                             
                             rms = calculate_rms(pcm_data)
                             was_speaking = is_speaking
@@ -206,7 +200,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                 await session.send_realtime_input(
                                     media=types.Blob(
                                         data=pcm_data,
-                                        mime_type="audio/pcm;rate=16000"
+                                        mime_type="audio/pcm"
                                     )
                                 )
                             elif was_speaking and not is_speaking:
@@ -215,14 +209,12 @@ async def internal_call_ws_handler(websocket: WebSocket):
                         elif data['event'] == 'stop':
                             await flush_transcript(db_id)
                             break
+                except (WebSocketDisconnect, asyncio.CancelledError):
+                    await flush_transcript(db_id)
                 except Exception as e:
                     import traceback
                     trace = traceback.format_exc()
                     print(f"App to Gemini Error: {e}\n{trace}")
-                    try:
-                        await websocket.send_json({"event": "error", "message": f"App to Gemini Error: {str(e)}\n{trace}"})
-                    except:
-                        pass
                     await flush_transcript(db_id)
 
             async def gemini_to_app():
