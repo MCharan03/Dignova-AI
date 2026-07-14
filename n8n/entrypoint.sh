@@ -6,17 +6,21 @@ fi
 
 if [ -f "/home/node/Dignova_Sentient_Master_Unified.json" ]; then
   (
-    echo "Starting robust background workflow import monitor..."
-    for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-      sleep 15
-      echo "Attempting to import master workflow (Attempt $i)..."
-      if n8n import:workflow --input=/home/node/Dignova_Sentient_Master_Unified.json; then
-        echo "Master workflow imported successfully!"
-        break
+    echo "Starting memory-optimized background workflow import monitor..."
+    # Wait for the main server to initialize fully and settle its memory
+    sleep 45
+    echo "Attempting to import master workflow..."
+    if NODE_OPTIONS="--max-old-space-size=128" n8n import:workflow --input=/home/node/Dignova_Sentient_Master_Unified.json; then
+      echo "Master workflow imported successfully!"
+    else
+      echo "First import attempt failed. Waiting 30s for retry..."
+      sleep 30
+      if NODE_OPTIONS="--max-old-space-size=128" n8n import:workflow --input=/home/node/Dignova_Sentient_Master_Unified.json; then
+        echo "Master workflow imported successfully on retry!"
       else
-        echo "Workflow import attempt $i failed. Retrying..."
+        echo "Workflow import failed. Skipping to avoid OOM."
       fi
-    done
+    fi
   ) &
 fi
 
