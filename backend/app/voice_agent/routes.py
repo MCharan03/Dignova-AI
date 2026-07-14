@@ -29,8 +29,8 @@ if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
 else:
     print("⚠️ GEMINI_API_KEY is missing or using placeholder. Voice Agent Live API will be disabled.")
 
-MODEL_ID = "models/gemini-2.5-flash-native-audio-latest"
-TWILIO_MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" # Unified native audio model
+MODEL_ID = "models/gemini-2.0-flash"
+TWILIO_MODEL_ID = "models/gemini-2.0-flash" # Unified stable 2.0 model
 TRANSCRIPT_SAVE_INTERVAL = 3
 
 # ── Database Helpers ──────────────────────────────────────────────────
