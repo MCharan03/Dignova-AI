@@ -42,6 +42,7 @@ function LoginContent() {
     const [address, setAddress] = useState('');
     const [emergencyContact, setEmergencyContact] = useState('');
     const [orgCode, setOrgCode] = useState('');
+    const [website, setWebsite] = useState('');
 
     // Validation States
     const validateEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
@@ -174,7 +175,7 @@ function LoginContent() {
                 age: age ? parseInt(age) : null, blood_group: bloodGroup, 
                 address, emergency_contact: emergencyContact, 
                 password, role: registerRole, tier: doctorTier,
-                org_code: orgCode
+                org_code: orgCode, website
             };
 
             const res = await fetch(`${apiBaseURL}/api/auth/register`, {
@@ -460,6 +461,16 @@ function LoginContent() {
                                         </span>
                                         {!loading && <ArrowRight size={16} className={`ml-2 transition-opacity ${isFormValid() ? 'opacity-50' : 'opacity-0'}`} />}
                                     </GlassButton>
+                                    {/* Honeypot field to trap spam bots */}
+                                    <input 
+                                        type="text" 
+                                        name="website" 
+                                        value={website} 
+                                        onChange={e => setWebsite(e.target.value)} 
+                                        style={{ display: 'none' }} 
+                                        tabIndex={-1} 
+                                        autoComplete="off" 
+                                    />
                                 </form>
                             </GlassCard>
                         </motion.div>

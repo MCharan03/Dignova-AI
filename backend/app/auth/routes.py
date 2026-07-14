@@ -48,6 +48,7 @@ class UserCreate(BaseModel):
     role: str = "user" # user, doctor, org_admin
     org_code: Optional[str] = None # Mandatory for doctors and org_admins
     tier: Optional[str] = None # intern, mid_range, experienced
+    website: Optional[str] = None # Honeypot field for bot protection
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -127,8 +128,21 @@ class ResetPasswordRequest(BaseModel):
 # --- Routes ---
 
 @router.post("/register", response_model=UserResponse)
-@limiter.limit("5/minute")
+@limiter.limit("3/minute")
 async def register(request: Request, user_in: UserCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> Any:
+    # 0. Honeypot check for spam bots
+    # Humans using the frontend submit website="" (empty string).
+    # Bots filling forms submit website="value" (non-empty).
+    # Direct API script submissions omit the field entirely (website=None).
+    if user_in.website is None or user_in.website != "":
+        print(f"🛡️ Honeypot/Direct-API block triggered for registration: {user_in.email} (value: {user_in.website})")
+        return UserResponse(
+            id=999999,
+            name=user_in.name,
+            email=user_in.email,
+            phone_number=user_in.phone_number,
+            role=user_in.role
+        )
     # 1. Resolve Organization
     org_id = None
     if user_in.role in ["doctor", "org_admin"]:
@@ -282,8 +296,10 @@ async def login_access_token(
     }
 
 @router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == request.email)
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, request_data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    # Rename request parameter to prevent signature/limiter conflicts
+    stmt = select(User).where(User.email == request_data.email)
     user = await db.scalar(stmt)
     if user:
         try:
