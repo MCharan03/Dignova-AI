@@ -147,7 +147,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
     
     config = types.LiveConnectConfig(
         system_instruction=types.Content(parts=[types.Part(text=orchestrator.system_instruction)]),
-        generation_config=types.GenerateContentConfig(
+        generation_config=types.GenerationConfig(
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Aoede")
@@ -193,6 +193,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
                             pcm_data = audio_to_pcm(payload)
                             
                             rms = calculate_rms(pcm_data)
+                            was_speaking = is_speaking
                             if rms > RMS_THRESHOLD:
                                 is_speaking = True
                                 hangover_counter = HANGOVER_FRAMES
@@ -211,6 +212,9 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                         }]
                                     }
                                 })
+                            elif was_speaking and not is_speaking:
+                                print("🎙️ User stopped speaking. Triggering Gemini response...")
+                                await session.send(input="", end_of_turn=True)
                         elif data['event'] == 'stop':
                             await flush_transcript(db_id)
                             break
@@ -292,7 +296,7 @@ async def twilio_media_handler(websocket: WebSocket):
     orchestrator = VoiceAgentOrchestrator(persona="TRIAGE", philosophy="balanced")
     config = types.LiveConnectConfig(
         system_instruction=types.Content(parts=[types.Part(text=orchestrator.system_instruction)]),
-        generation_config=types.GenerateContentConfig(
+        generation_config=types.GenerationConfig(
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Aoede")
@@ -327,6 +331,7 @@ async def twilio_media_handler(websocket: WebSocket):
                             lin16k, _ = audioop.ratecv(lin8k, 2, 1, 8000, 16000, None)
                             
                             rms = calculate_rms(lin16k)
+                            was_speaking = is_speaking
                             if rms > RMS_THRESHOLD:
                                 is_speaking = True
                                 hangover_counter = HANGOVER_FRAMES
@@ -345,6 +350,9 @@ async def twilio_media_handler(websocket: WebSocket):
                                         }]
                                     }
                                 })
+                            elif was_speaking and not is_speaking:
+                                print("🎙️ Twilio User stopped speaking. Triggering Gemini response...")
+                                await gemini_session.send(input="", end_of_turn=True)
                         elif msg["event"] == "stop":
                             print("📞 Twilio stream stopped.")
                             break
