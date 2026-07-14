@@ -174,9 +174,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
     try:
         async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
             print(f"CONNECTED to Gemini Live API with persona: {persona}")
-            await asyncio.sleep(1)
-
-            await session.send(input="Hello", end_of_turn=True)
+            await asyncio.sleep(0.1)
 
             async def app_to_gemini():
                 RMS_THRESHOLD = 400
@@ -310,7 +308,7 @@ async def twilio_media_handler(websocket: WebSocket):
         async with client.aio.live.connect(model=TWILIO_MODEL_ID, config=config) as gemini_session:
             print("✅ Twilio media bridge connected to Gemini Live API")
             
-            await gemini_session.send(input="Hello", end_of_turn=True)
+            pass
 
             async def twilio_to_gemini():
                 RMS_THRESHOLD = 400
