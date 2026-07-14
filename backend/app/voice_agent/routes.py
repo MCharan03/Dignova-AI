@@ -242,6 +242,8 @@ async def internal_call_ws_handler(websocket: WebSocket):
                         if message.server_content and message.server_content.model_turn:
                             parts = message.server_content.model_turn.parts
                             for part in parts:
+                                if getattr(part, 'thought', False):
+                                    continue
                                 if part.text:
                                     await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
                                     await websocket.send_json({
@@ -387,6 +389,8 @@ async def twilio_media_handler(websocket: WebSocket):
 
                         if sc.model_turn:
                             for part in sc.model_turn.parts:
+                                if getattr(part, 'thought', False):
+                                    continue
                                 if part.text:
                                     accumulated_transcript += f"ASSISTANT: {part.text}\n"
 
