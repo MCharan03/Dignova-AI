@@ -104,7 +104,7 @@ services:
       - key: N8N_PORT
         value: "10000"
       - key: DATABASE_URL
-        sync: false
+        value: postgresql://diagnova_user:xuhhO5iZVWlMeqrrrpJXZv0T81071tKM@dpg-d9680ihkh4rs73dcqlb0-a/diagnova
       - key: RESEND_API_KEY
         sync: false
       # Memory & Execution optimizations for restricted free tier (512MB RAM)
