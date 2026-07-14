@@ -228,6 +228,21 @@ async def internal_call_ws_handler(websocket: WebSocket):
             async def gemini_to_app():
                 try:
                     async for message in session.receive():
+                        try:
+                            # Safely serialize pydantic model to dict
+                            msg_dict = message.model_dump(exclude_none=True, mode='json')
+                            # Truncate inline audio data in debug to avoid spamming the console
+                            if 'server_content' in msg_dict and 'model_turn' in msg_dict['server_content']:
+                                for part in msg_dict['server_content']['model_turn'].get('parts', []):
+                                    if 'inline_data' in part:
+                                        part['inline_data']['data'] = f"<AUDIO_BYTES_LEN_{len(part['inline_data']['data'])}>"
+                            await websocket.send_json({
+                                "event": "debug",
+                                "message": f"Gemini raw event: {msg_dict}"
+                            })
+                        except Exception as debug_err:
+                            print(f"Debug serialization failed: {debug_err}")
+                        
                         if message.server_content and message.server_content.model_turn:
                             parts = message.server_content.model_turn.parts
                             for part in parts:
