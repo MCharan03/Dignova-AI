@@ -7,6 +7,22 @@ fi
 if [ -n "$DATABASE_URL" ]; then
   echo "DATABASE_URL detected. Parsing postgres credentials..."
   eval $(node /home/node/parse_db.js)
+  
+  # Verify PostgreSQL is reachable before committing to it
+  echo "Testing PostgreSQL connection..."
+  if node -e "
+    const { Client } = require('pg');
+    const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 5000 });
+    c.connect().then(() => { console.log('POSTGRES_OK'); c.end(); }).catch(e => { console.error('POSTGRES_FAIL:', e.message); process.exit(1); });
+  " 2>/dev/null; then
+    echo "PostgreSQL connection verified."
+  else
+    echo "PostgreSQL connection failed. Falling back to SQLite..."
+    export DB_TYPE=sqlite
+    unset DB_POSTGRESDB_HOST DB_POSTGRESDB_PORT DB_POSTGRESDB_DATABASE DB_POSTGRESDB_USER DB_POSTGRESDB_PASSWORD
+  fi
+else
+  echo "No DATABASE_URL set. Using SQLite (default)..."
 fi
 
 if [ -f "/home/node/Dignova_Sentient_Master_Unified.json" ]; then
