@@ -181,7 +181,12 @@ async def internal_call_ws_handler(websocket: WebSocket):
                 HANGOVER_FRAMES = 8
                 hangover_counter = 0
                 is_speaking = False
-                             if data['event'] == 'audio':
+                try:
+                    while True:
+                        message = await websocket.receive_text()
+                        data = json.loads(message)
+                        
+                        if data['event'] == 'audio':
                             payload = data['payload']
                             pcm_data = base64.b64decode(payload)
                             
