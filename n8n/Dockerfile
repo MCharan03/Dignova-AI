@@ -9,4 +9,5 @@ RUN chmod +x /entrypoint.sh && \
     chown -R node:node /home/node /entrypoint.sh
 
 USER node
+EXPOSE 5678
 ENTRYPOINT ["/entrypoint.sh"]
