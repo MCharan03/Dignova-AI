@@ -1,4 +1,9 @@
 #!/bin/sh
+if [ -n "$PORT" ]; then
+  echo "Render PORT environment variable detected ($PORT). Routing n8n to listen on $PORT..."
+  export N8N_PORT=$PORT
+fi
+
 if [ -n "$DATABASE_URL" ]; then
   echo "DATABASE_URL detected. Parsing configuration..."
   eval $(node /home/node/parse_db.js)
