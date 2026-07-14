@@ -219,7 +219,13 @@ async def internal_call_ws_handler(websocket: WebSocket):
                             await flush_transcript(db_id)
                             break
                 except Exception as e:
-                    print(f"App to Gemini Error: {e}")
+                    import traceback
+                    trace = traceback.format_exc()
+                    print(f"App to Gemini Error: {e}\n{trace}")
+                    try:
+                        await websocket.send_json({"event": "error", "message": f"App to Gemini Error: {str(e)}\n{trace}"})
+                    except:
+                        pass
                     await flush_transcript(db_id)
 
             async def gemini_to_app():
@@ -244,7 +250,13 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                         "payload": audio_payload
                                     })
                 except Exception as e:
-                    print(f"Gemini to App Error: {e}")
+                    import traceback
+                    trace = traceback.format_exc()
+                    print(f"Gemini to App Error: {e}\n{trace}")
+                    try:
+                        await websocket.send_json({"event": "error", "message": f"Gemini to App Error: {str(e)}\n{trace}"})
+                    except:
+                        pass
 
             await asyncio.gather(app_to_gemini(), gemini_to_app())
 
