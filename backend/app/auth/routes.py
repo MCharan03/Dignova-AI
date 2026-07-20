@@ -209,17 +209,23 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     await db.refresh(user)
 
     
-    # Generate verification token and send ONLY the verification link email
-    # n8n welcome onboarding fires AFTER the user verifies (see /verify route)
+    # Generate verification token
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
     token = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token}"
 
-    # Send bare verification email (no n8n, no welcome content — just the link)
-    background_tasks.add_task(
-        send_welcome_email,
-        user.email, user.name, verify_url, user.role.value
-    )
+    # MX check — only queue email if the domain can actually receive mail
+    domain = user.email.split("@")[1]
+    try:
+        import socket
+        socket.getaddrinfo(domain, None)
+        # Domain resolves — safe to send verification email
+        background_tasks.add_task(
+            send_welcome_email,
+            user.email, user.name, verify_url, user.role.value
+        )
+    except Exception:
+        print(f"[MX BLOCK] No DNS for {domain} — skipping verification email for {user.email}")
 
     return user
 
@@ -258,7 +264,7 @@ async def verify_email(token: str, background_tasks: BackgroundTasks, db: AsyncS
     return {"message": "Email verified successfully!"}
 
 @router.post("/resend-verification")
-@limiter.limit("3/minute")
+@limiter.limit("2/minute")
 async def resend_verification(request: Request, email: EmailStr, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.email == email)
     user = await db.scalar(stmt)
@@ -267,19 +273,13 @@ async def resend_verification(request: Request, email: EmailStr, background_task
             FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
             token = generate_verification_token(user.email)
             verify_url = f"{FRONTEND_URL}/verify?token={token}"
-            
-            # Delegate email sending to n8n onboarding webhook
-            user_data = {
-                "email": user.email,
-                "name": user.name,
-                "phone": user.phone_number,
-                "role": user.role.value,
-                "verify_url": verify_url,
-                "telegram_chat_id": user.telegram_chat_id
-            }
-            background_tasks.add_task(N8nService.trigger_onboarding, user_data)
+            # Use SMTP (with built-in MX gate) — NOT n8n — so fake addresses are dropped
+            background_tasks.add_task(
+                send_welcome_email,
+                user.email, user.name, verify_url, user.role.value
+            )
         except Exception as e:
-            print(f"Error resending verification: {e}")
+            print(f"[RESEND] Error: {e}")
     return {"message": "If that email is registered and unverified, a new verification link has been sent."}
 
 @router.post("/login", response_model=Token)
