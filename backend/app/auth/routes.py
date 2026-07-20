@@ -135,13 +135,15 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     # Bots filling forms submit website="value" (non-empty).
     # Direct API script submissions omit the field entirely (website=None).
     if user_in.website is None or user_in.website != "":
-        print(f"🛡️ Honeypot/Direct-API block triggered for registration: {user_in.email} (value: {user_in.website})")
+        print(f"[HONEYPOT] Bot/direct-API registration blocked: {user_in.email} (website={user_in.website!r})")
         return UserResponse(
             id=999999,
             name=user_in.name,
             email=user_in.email,
             phone_number=user_in.phone_number,
-            role=user_in.role
+            role=user_in.role,
+            is_verified=False,
+            created_at=datetime.utcnow()
         )
     # 1. Resolve Organization
     org_id = None
