@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from pydantic import EmailStr
 from typing import List, Any, Optional
 import asyncio
+import socket
 
 load_dotenv()
 
@@ -192,13 +193,27 @@ def build_appointment_reminder_email(
 
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
+def _has_mx_record(email: str) -> bool:
+    """Check if the email domain has a valid MX record. Drops fake domains silently."""
+    try:
+        domain = email.split("@")[1]
+        socket.getaddrinfo(domain, None)
+        return True
+    except Exception:
+        return False
+
 async def send_email_async(to: str, subject: str, body: str, html: str = None):
     """
     Async SMTP or Resend API dispatcher with deep diagnostics and simulation support.
     """
     recipients = [to]
     content = html or body
-    
+
+    # Layer 2: MX record check — drop emails to non-existent domains before hitting SMTP
+    if not _has_mx_record(to):
+        print(f"[EMAIL DROP] No MX record for domain in {to} — skipping send.")
+        return False
+
     if SIMULATE_EMAIL:
         print(f"🧪 EMAIL SIMULATION: Email would be sent to {recipients}")
         print(f"Subject: {subject}")

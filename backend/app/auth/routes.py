@@ -6,6 +6,7 @@ from typing import Any, List, Optional
 from datetime import timedelta, datetime
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ConfigDict
+import socket
 
 from ..extensions import get_db, limiter
 from ..models import User, UserRole, DoctorTier
@@ -128,7 +129,7 @@ class ResetPasswordRequest(BaseModel):
 # --- Routes ---
 
 @router.post("/register", response_model=UserResponse)
-@limiter.limit("3/minute")
+@limiter.limit("2/minute")
 async def register(request: Request, user_in: UserCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> Any:
     # 0. Honeypot check for spam bots
     # Humans using the frontend submit website="" (empty string).
@@ -208,26 +209,22 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     await db.refresh(user)
 
     
-    # Generate verification token and link for n8n
+    # Generate verification token and send ONLY the verification link email
+    # n8n welcome onboarding fires AFTER the user verifies (see /verify route)
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
     token = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token}"
 
-    # Trigger n8n Onboarding (Sentient Orchestration) via Background Task (which sends the email via Gmail API)
-    user_data = {
-        "email": user.email,
-        "name": user.name,
-        "phone": user.phone_number,
-        "role": user.role.value,
-        "verify_url": verify_url,
-        "telegram_chat_id": user.telegram_chat_id
-    }
-    background_tasks.add_task(N8nService.trigger_onboarding, user_data)
+    # Send bare verification email (no n8n, no welcome content — just the link)
+    background_tasks.add_task(
+        send_welcome_email,
+        user.email, user.name, verify_url, user.role.value
+    )
 
     return user
 
 @router.get("/verify")
-async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+async def verify_email(token: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     email = confirm_verification_token(token)
     if not email:
         raise HTTPException(status_code=400, detail="The verification link is invalid or has expired.")
@@ -243,6 +240,21 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     user.is_verified = True
     user.verified_at = datetime.utcnow()
     await db.commit()
+
+    # NOW trigger n8n welcome onboarding — only real humans reach this point
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+    token_new = generate_verification_token(user.email)
+    verify_url = f"{FRONTEND_URL}/verify?token={token_new}"
+    user_data = {
+        "email": user.email,
+        "name": user.name,
+        "phone": user.phone_number,
+        "role": user.role.value,
+        "verify_url": verify_url,
+        "telegram_chat_id": user.telegram_chat_id
+    }
+    background_tasks.add_task(N8nService.trigger_onboarding, user_data)
+
     return {"message": "Email verified successfully!"}
 
 @router.post("/resend-verification")
