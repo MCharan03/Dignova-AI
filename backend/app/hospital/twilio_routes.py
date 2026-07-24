@@ -263,7 +263,13 @@ async def phone_turn(request: Request):
         except Exception as e:
             print(f"⚠️ Emergency trigger error: {e}")
 
-    # Gather patient's next response after speaking doctor turn
+    # Check if final diagnosis is reached
+    if "[DIAGNOSIS_READY]" in doctor_text:
+        response.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
+        response.say("Thank you for consulting Dr. Dignova. Please follow the recommended care steps. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
+        return Response(content=str(response), media_type="application/xml")
+
+    # Otherwise gather patient's next response for multi-turn consultation
     gather = response.gather(
         input="speech",
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
@@ -272,5 +278,15 @@ async def phone_turn(request: Request):
         language="en-US"
     )
     gather.say(clean_doctor_text or "I understand. Please tell me more about your symptoms.", voice="Polly.Joanna", language="en-US")
+
+    # Re-prompt loop if user is silent during gather
+    re_gather = response.gather(
+        input="speech",
+        action=f"{BACKEND_URL}/api/twilio/phone-turn",
+        method="POST",
+        speech_timeout="auto",
+        language="en-US"
+    )
+    re_gather.say("I am still right here with you. Please take your time and describe any other symptoms you are experiencing.", voice="Polly.Joanna", language="en-US")
 
     return Response(content=str(response), media_type="application/xml")
