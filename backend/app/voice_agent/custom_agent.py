@@ -127,21 +127,24 @@ Interaction Rules:
             sentence_buffer += chunk
 
             # Synthesize audio on sentence boundaries for fluid streaming
-            if any(sentence_buffer.endswith(p) for p in [". ", "? ", "! ", ".\n", "?\n", "!\n"]):
-                audio_b64 = await self.generate_speech_audio(sentence_buffer)
-                yield {
-                    "event": "ai_response_chunk",
-                    "text": sentence_buffer.strip(),
-                    "audio": audio_b64
-                }
+            if any(p in sentence_buffer for p in [". ", "? ", "! ", ".\n", "?\n", "!\n", ". ", "...\n"]):
+                clean_text = sentence_buffer.strip()
+                if clean_text:
+                    audio_b64 = await self.generate_speech_audio(clean_text)
+                    yield {
+                        "event": "ai_response_chunk",
+                        "text": clean_text,
+                        "audio": audio_b64
+                    }
                 sentence_buffer = ""
 
         # Flush remaining buffer
         if sentence_buffer.strip():
-            audio_b64 = await self.generate_speech_audio(sentence_buffer)
+            clean_text = sentence_buffer.strip()
+            audio_b64 = await self.generate_speech_audio(clean_text)
             yield {
                 "event": "ai_response_chunk",
-                "text": sentence_buffer.strip(),
+                "text": clean_text,
                 "audio": audio_b64
             }
 

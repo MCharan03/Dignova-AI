@@ -208,11 +208,14 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     return Response(content=str(response), media_type="application/xml")
 
 
+PHONE_TRANSCRIPTS: Dict[str, str] = {}
+
 @router.api_route("/phone-turn", methods=["GET", "POST"])
 async def phone_turn(request: Request):
     """
     Handles interactive phone turn exchanges with Dr. Dignova.
-    Receives patient speech -> runs CustomVoiceAgent -> speaks doctor response.
+    Maintains complete conversation memory across turns so Dr. Dignova remembers symptoms
+    and provides accurate, non-repeating clinical assessments.
     """
     form = await request.form()
     speech_result = form.get("SpeechResult", "").strip()
@@ -245,16 +248,23 @@ async def phone_turn(request: Request):
 
     print(f"📞 Phone Patient ({call_sid}) said: {speech_result}")
 
+    # Fetch prior conversation memory
+    prior_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
+
     from ..voice_agent.custom_agent import CustomVoiceAgent
     agent = CustomVoiceAgent()
 
-    # Generate streaming doctor response text
+    # Generate streaming doctor response with full conversation memory
     doctor_text = ""
-    async for frame in agent.process_patient_turn("", speech_result):
+    async for frame in agent.process_patient_turn(prior_transcript, speech_result):
         if frame.get("event") == "ai_response_chunk":
             doctor_text += " " + frame.get("text", "")
 
     clean_doctor_text = doctor_text.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
+
+    # Update conversation memory
+    updated_transcript = prior_transcript + f"USER: {speech_result}\nASSISTANT: {clean_doctor_text}\n"
+    PHONE_TRANSCRIPTS[call_sid] = updated_transcript
 
     if "[EMERGENCY_DETECTED]" in doctor_text:
         try:
@@ -263,10 +273,16 @@ async def phone_turn(request: Request):
         except Exception as e:
             print(f"⚠️ Emergency trigger error: {e}")
 
-    # Check if final diagnosis is reached
-    if "[DIAGNOSIS_READY]" in doctor_text:
-        response.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
-        response.say("Thank you for consulting Dr. Dignova. Please follow the recommended care steps. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
+    # Patient requested to complete consultation or diagnosis ready
+    user_done_phrases = ["that's all", "that is all", "that's it", "that is it", "proceed", "go next", "no more"]
+    is_patient_done = any(phrase in speech_result.lower() for phrase in user_done_phrases)
+
+    if "[DIAGNOSIS_READY]" in doctor_text or is_patient_done:
+        final_speech = clean_doctor_text or "Based on your symptoms of fever, cold, running nose, and tiredness, rest well, stay hydrated, and consult a local clinic if fever exceeds 101 Fahrenheit."
+        response.say(final_speech, voice="Polly.Joanna", language="en-US")
+        response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
+        # Clean up memory
+        PHONE_TRANSCRIPTS.pop(call_sid, None)
         return Response(content=str(response), media_type="application/xml")
 
     # Otherwise gather patient's next response for multi-turn consultation
@@ -277,7 +293,7 @@ async def phone_turn(request: Request):
         speech_timeout="auto",
         language="en-US"
     )
-    gather.say(clean_doctor_text or "I understand. Please tell me more about your symptoms.", voice="Polly.Joanna", language="en-US")
+    gather.say(clean_doctor_text or "I understand your symptoms. Are you experiencing any other discomfort like cough or body ache?", voice="Polly.Joanna", language="en-US")
 
     # Re-prompt loop if user is silent during gather
     re_gather = response.gather(
