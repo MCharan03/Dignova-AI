@@ -280,6 +280,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # --- Static Files ---
 
 @app.get("/api/health")
+@app.get("/healthz")
 def health_check():
     return {
         "status": "active", 
