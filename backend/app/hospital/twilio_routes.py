@@ -216,13 +216,31 @@ async def phone_turn(request: Request):
     """
     form = await request.form()
     speech_result = form.get("SpeechResult", "").strip()
+    digits_result = form.get("Digits", "").strip()
     call_sid = form.get("CallSid", "unknown")
 
     response = VoiceResponse()
 
+    # If patient pressed a DTMF key (trial account prompt), immediately gather their speech
+    if digits_result and not speech_result:
+        gather = response.gather(
+            input="speech",
+            action=f"{BACKEND_URL}/api/twilio/phone-turn",
+            method="POST",
+            speech_timeout="auto",
+            language="en-US"
+        )
+        return Response(content=str(response), media_type="application/xml")
+
     if not speech_result:
-        gather = response.gather(input="speech", action=f"{BACKEND_URL}/api/twilio/phone-turn", method="POST", speech_timeout="auto")
-        gather.say("I'm listening. Please describe your symptoms.", voice="Polly.Joanna")
+        gather = response.gather(
+            input="speech",
+            action=f"{BACKEND_URL}/api/twilio/phone-turn",
+            method="POST",
+            speech_timeout="auto",
+            language="en-US"
+        )
+        gather.say("I am listening. Please describe how you are feeling or what symptoms you have.", voice="Polly.Joanna", language="en-US")
         return Response(content=str(response), media_type="application/xml")
 
     print(f"📞 Phone Patient ({call_sid}) said: {speech_result}")
@@ -247,8 +265,7 @@ async def phone_turn(request: Request):
 
     # Gather patient's next response after speaking doctor turn
     gather = response.gather(
-        input="speech dtmf",
-        num_digits=1,
+        input="speech",
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
         method="POST",
         speech_timeout="auto",
@@ -256,5 +273,4 @@ async def phone_turn(request: Request):
     )
     gather.say(clean_doctor_text or "I understand. Please tell me more about your symptoms.", voice="Polly.Joanna", language="en-US")
 
-    response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
