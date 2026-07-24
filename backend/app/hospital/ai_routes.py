@@ -184,7 +184,7 @@ def generate_predictions(flags, risk_score, user):
     if risk_score > 40:
         recommendations.append("Schedule a follow-up consultation within 48 hours.")
     if risk_score > 60:
-        recommendations.insert(0, "⚠️ URGENT: Immediate medical review recommended.")
+        recommendations.insert(0, "[WARN] URGENT: Immediate medical review recommended.")
 
     return predictions, recommendations
 

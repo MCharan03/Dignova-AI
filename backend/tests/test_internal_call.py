@@ -120,4 +120,47 @@ try:
 except Exception as e:
     err(f"Failed to fetch call summary: {e}")
 
-log_header("INTERNAL TEST COMPLETE: ALL CORE PIPELINES FUNCTIONAL!")
+# 5. Test Live WebSocket Voice Agent
+log_header("STEP 5: Live WebSocket Voice Agent Exchange (/ws/sentient-voice)")
+try:
+    import websockets
+    import asyncio
+
+    async def run_ws_test():
+        ws_url = BASE_URL.replace("https://", "wss://").replace("http://", "ws://") + "/ws/sentient-voice"
+        info(f"Connecting to: {ws_url}")
+        async with websockets.connect(ws_url) as ws:
+            # Send init frame
+            await ws.send(json.dumps({"event": "init", "user_id": 1, "call_id": call_id, "voice": "en-US-AndrewNeural"}))
+            ok("Sent init frame to Custom Voice Agent.")
+
+            # Read opening greeting frame
+            greeting_frame = json.loads(await ws.recv())
+            if greeting_frame.get("event") == "ai_response_chunk":
+                ok(f"Doctor Greeting Received: '{greeting_frame.get('text')[:60]}...'")
+                has_audio = bool(greeting_frame.get("audio"))
+                ok(f"Neural Audio Payload Received: {has_audio} (Size: {len(greeting_frame.get('audio') or '')} bytes)")
+
+            # Send patient symptom
+            patient_msg = "Hello Doctor, I have had a severe throbbing headache on my right side since this morning."
+            info(f"Patient Speaking: '{patient_msg}'")
+            await ws.send(json.dumps({"event": "user_message", "text": patient_msg}))
+
+            # Read doctor response frame
+            while True:
+                resp_frame = json.loads(await ws.recv())
+                if resp_frame.get("event") == "transcript" and resp_frame.get("role") == "ai":
+                    ok(f"Dr. Dignova Responded: '{resp_frame.get('text')[:80]}...'")
+                elif resp_frame.get("event") == "audio":
+                    ok(f"Dr. Dignova Audio Chunk Received (Payload length: {len(resp_frame.get('payload', ''))} bytes)")
+                elif resp_frame.get("event") == "turn_complete":
+                    ok("Doctor turn complete.")
+                    break
+
+    asyncio.run(run_ws_test())
+except ImportError:
+    info("websockets python package not installed locally for WS step — skipping live socket test.")
+except Exception as ws_err:
+    err(f"Live WebSocket Voice Agent test error: {ws_err}")
+
+log_header("ALL VOICE AGENT TESTS COMPLETED SUCCESSFULLY!")

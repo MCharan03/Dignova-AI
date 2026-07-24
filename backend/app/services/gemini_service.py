@@ -61,7 +61,7 @@ class GeminiService:
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"⚠️ Direct Gemini Triage Failed: {e}. Falling back to OpenRouter...")
+            print(f"[WARN] Direct Gemini Triage Failed: {e}. Falling back to OpenRouter...")
             from .openrouter_service import OpenRouterService
             return await OpenRouterService.triage_message(
                 conversation_history="",
@@ -83,7 +83,7 @@ class GeminiService:
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"⚠️ Direct Gemini Evaluation Failed: {e}. Falling back to OpenRouter...")
+            print(f"[WARN] Direct Gemini Evaluation Failed: {e}. Falling back to OpenRouter...")
             payload = {
                 "model": os.getenv("OPENROUTER_MODEL", "google/gemini-flash-1.5"),
                 "messages": [

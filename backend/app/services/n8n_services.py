@@ -37,20 +37,20 @@ class N8nService:
                 print(f"📡 Attempting production webhook: {url}")
                 response = await client.post(url, json=payload)
                 if response.status_code == 404:
-                    print(f"⚠️ Production webhook 404'd. Attempting test webhook...")
+                    print(f"[WARN] Production webhook 404'd. Attempting test webhook...")
                     test_url = f"{N8nService.BASE_URL}/webhook-test/{webhook_path}"
                     print(f"📡 Attempting test webhook: {test_url}")
                     response = await client.post(test_url, json=payload)
                 
                 print(f"📥 n8n response code: {response.status_code}")
                 response.raise_for_status()
-                print(f"✅ n8n trigger OK: {webhook_path}")
+                print(f"[OK] n8n trigger OK: {webhook_path}")
                 return True
             except httpx.ConnectError:
-                print(f"⚠️ n8n Offline: Could not connect to {N8nService.BASE_URL}. Is your tunnel active?")
+                print(f"[WARN] n8n Offline: Could not connect to {N8nService.BASE_URL}. Is your tunnel active?")
                 return False
             except Exception as e:
-                print(f"⚠️ n8n trigger failed ({webhook_path}): {e}")
+                print(f"[WARN] n8n trigger failed ({webhook_path}): {e}")
                 return False
 
     @staticmethod

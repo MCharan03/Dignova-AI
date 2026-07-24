@@ -94,7 +94,7 @@ async def _log_inbound_call(call_sid: str):
             session.add(call)
             await session.commit()
     except Exception as e:
-        print(f"⚠️ Twilio call log failed: {e}")
+        print(f"[WARN] Twilio call log failed: {e}")
 
 
 # ── Status callback ─────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ async def call_status_callback(request: Request):
                 call.transcript = (call.transcript or "") + note
                 await session.commit()
     except Exception as e:
-        print(f"⚠️ Status callback DB update failed: {e}")
+        print(f"[WARN] Status callback DB update failed: {e}")
 
     return Response(content="<?xml version='1.0'?><Response/>", media_type="application/xml")
 
@@ -246,7 +246,7 @@ async def phone_turn(request: Request):
         gather.say("I am listening. Please describe how you are feeling or what symptoms you have.", voice="Polly.Joanna", language="en-US")
         return Response(content=str(response), media_type="application/xml")
 
-    print(f"📞 Phone Patient ({call_sid}) said: {speech_result}")
+    print(f"[PHONE] Phone Patient ({call_sid}) said: {speech_result}")
 
     # Fetch prior conversation memory
     prior_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
@@ -280,7 +280,7 @@ Rules for your response:
             from ..services.n8n_services import N8nService
             await N8nService.trigger_onboarding("emergency@dignova.ai", f"CRITICAL_PHONE_PATIENT_{call_sid}")
         except Exception as e:
-            print(f"⚠️ Emergency trigger error: {e}")
+            print(f"[WARN] Emergency trigger error: {e}")
 
     # Patient requested to complete consultation or diagnosis ready
     user_done_phrases = ["that's all", "that is all", "that's it", "that is it", "proceed", "go next", "no more", "nothing else"]

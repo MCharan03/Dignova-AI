@@ -85,7 +85,7 @@ async def get_current_user(request: Request, token: Optional[str] = Depends(oaut
         # --- Military Grade Security: Validate Fingerprint ---
         # current_fpt = generate_fingerprint(request)
         # if token_fpt and token_fpt != current_fpt:
-        #     print(f"⚠️ SECURITY ALERT: Session hijacking attempt detected for {email}")
+        #     print(f"[WARN] SECURITY ALERT: Session hijacking attempt detected for {email}")
         #     raise HTTPException(
         #         status_code=status.HTTP_403_FORBIDDEN,
         #         detail="Security mismatch: Session binding failed."

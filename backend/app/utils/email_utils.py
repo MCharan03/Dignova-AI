@@ -101,11 +101,11 @@ def build_welcome_email(user_name: str, verify_url: str, role: str = "user") -> 
       </div>
 
       <p class="text">To activate your account and start using Dignova AI, please verify your email address:</p>
-      <a href="{verify_url}" class="btn">✅ Verify My Email</a>
+      <a href="{verify_url}" class="btn">[OK] Verify My Email</a>
 
       <hr class="divider">
       <p class="text" style="font-size:13px;">
-        🤖 <strong>What can you do?</strong><br>
+        [AGENT] <strong>What can you do?</strong><br>
         Chat with our AI triage assistant 24/7 • Get instant prescriptions for minor issues •
         Connect with doctors in seconds • Track your health over time.
       </p>
@@ -129,7 +129,7 @@ def build_diagnosis_receipt_email(
         for i, m in enumerate(medications, 1)
     )
 
-    source = "🤖 <strong>AI Auto-Prescription</strong> (Zero-Touch)" if is_auto else f"👨‍⚕️ <strong>Dr. {doctor_name}</strong>"
+    source = "[AGENT] <strong>AI Auto-Prescription</strong> (Zero-Touch)" if is_auto else f"👨‍⚕️ <strong>Dr. {doctor_name}</strong>"
     body = f"""
       <p class="greeting">Your Diagnosis & Prescription</p>
       <p class="text">Hi <strong>{patient_name}</strong>, your consultation is complete.
@@ -154,7 +154,7 @@ def build_diagnosis_receipt_email(
 
       <hr class="divider">
       <p class="text" style="font-size:12px;color:#475569;">
-        ⚠️ This prescription is AI-assisted and stored securely in Dignova AI.
+        [WARN] This prescription is AI-assisted and stored securely in Dignova AI.
         Always consult your doctor if symptoms worsen or do not improve within the prescribed duration.
       </p>
     """
@@ -240,10 +240,10 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
             }
             # Run the blocking Resend HTTP call in a background threadpool so it doesn't block the FastAPI event loop
             await asyncio.to_thread(resend.Emails.send, params)
-            print(f"✅ RESEND SUCCESS: Email dispatched.")
+            print(f"[OK] RESEND SUCCESS: Email dispatched.")
             return True
         except Exception as re_err:
-            print(f"⚠️ RESEND FAILURE: {re_err}")
+            print(f"[WARN] RESEND FAILURE: {re_err}")
             print("💡 Falling back to SMTP...")
 
     # 2. SMTP Fallback
@@ -256,11 +256,11 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
             subtype=MessageType.html if html else MessageType.plain
         )
         await fastmail.send_message(message)
-        print(f"✅ SMTP SUCCESS: Email dispatched.")
+        print(f"[OK] SMTP SUCCESS: Email dispatched.")
         return True
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ SMTP CRITICAL FAILURE: {error_msg}")
+        print(f"[ERROR] SMTP CRITICAL FAILURE: {error_msg}")
         
         # Diagnostic help
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
@@ -285,7 +285,7 @@ def send_email(to: str, subject: str, body: str, html: str = None):
         # No loop in this thread, try run (standard)
         asyncio.run(send_email_async(to, subject, body, html))
     except Exception as e:
-        print(f"⚠️ Email Dispatch Error: {e}")
+        print(f"[WARN] Email Dispatch Error: {e}")
 
     return True
 

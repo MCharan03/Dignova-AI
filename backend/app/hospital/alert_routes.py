@@ -102,7 +102,7 @@ async def scan_patient_alerts(
         db.add(Notification(
             user_id=current_user.id,
             organization_id=current_user.organization_id,
-            title=f"⚠️ Health Alert — {patient.name}",
+            title=f"[WARN] Health Alert — {patient.name}",
             message=alert_msg,
             type="critical" if has_critical else "warning",
             category="alert",
@@ -113,7 +113,7 @@ async def scan_patient_alerts(
         db.add(Notification(
             user_id=patient.id,
             organization_id=current_user.organization_id,
-            title="⚠️ Abnormal Vitals Detected",
+            title="[WARN] Abnormal Vitals Detected",
             message="Your recent vitals show concerning values. Please contact your doctor.",
             type="critical" if has_critical else "warning",
             category="alert",
@@ -206,7 +206,7 @@ async def vitals_iot_webhook(
     if alerts:
         db.add(Notification(
             user_id=user_id,
-            title="⚠️ Wearable Alert: Abnormal Vitals",
+            title="[WARN] Wearable Alert: Abnormal Vitals",
             message="; ".join(a["msg"] for a in alerts),
             type="critical",
             category="alert",

@@ -61,5 +61,5 @@ def mp3_b64_to_mulaw_b64(mp3_b64: str) -> str:
         mulaw_audio.export(out, format="raw", codec="pcm_mulaw")
         return base64.b64encode(out.getvalue()).decode("utf-8")
     except Exception as e:
-        print(f"⚠️ mp3_b64_to_mulaw_b64 conversion error: {e}")
+        print(f"[WARN] mp3_b64_to_mulaw_b64 conversion error: {e}")
         return ""

@@ -74,7 +74,7 @@ async def _update_call_record(call_sid_or_id: str | int | None, transcript_chunk
                         call.severity = severity
                     await session.commit()
     except Exception as e:
-        print(f"⚠️ Transcript save failed: {e}")
+        print(f"[WARN] Transcript save failed: {e}")
 
 async def _escalate_emergency(call_sid_or_id: str | int | None, transcript: str):
     """Auto-escalate: mark severity CRITICAL and trigger n8n alert."""
@@ -82,9 +82,9 @@ async def _escalate_emergency(call_sid_or_id: str | int | None, transcript: str)
     try:
         from ..services.n8n_services import N8nService
         await N8nService.trigger_onboarding("emergency@dignova.ai", "CRITICAL_PATIENT")
-        print("🚨 Emergency escalation webhook triggered successfully.")
+        print("[EMERGENCY] Emergency escalation webhook triggered successfully.")
     except Exception as e:
-        print(f"⚠️ Emergency escalation failed: {e}")
+        print(f"[WARN] Emergency escalation failed: {e}")
 
 # ── 1. In-App Call Handlers ──────────────────────────────────────────
 @router.websocket("/internal-call")
@@ -195,7 +195,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
             try:
                 await session.send(input="Please greet the patient warmly as Dr. Dignova and begin the triage consultation.", end_of_turn=True)
             except Exception as init_err:
-                print(f"⚠️ Live Kickoff Prompt Notice: {init_err}")
+                print(f"[WARN] Live Kickoff Prompt Notice: {init_err}")
 
             async def app_to_gemini():
                 RMS_THRESHOLD = 400
@@ -345,10 +345,10 @@ async def twilio_media_handler(websocket: WebSocket):
             if msg["event"] == "start":
                 stream_sid = msg["start"]["streamSid"]
                 call_sid = msg["start"].get("customParameters", {}).get("callSid") or msg["start"].get("callSid")
-                print(f"📞 Twilio custom stream started: {stream_sid} | Call Sid: {call_sid}")
+                print(f"[PHONE] Twilio custom stream started: {stream_sid} | Call Sid: {call_sid}")
                 break
     except Exception as e:
-        print(f"⚠️ Twilio custom start error: {e}")
+        print(f"[WARN] Twilio custom start error: {e}")
         await websocket.close()
         return
 
@@ -384,9 +384,9 @@ async def twilio_media_handler(websocket: WebSocket):
                 break
 
     except WebSocketDisconnect:
-        print("📞 Twilio custom WebSocket disconnected.")
+        print("[PHONE] Twilio custom WebSocket disconnected.")
     except Exception as e:
-        print(f"⚠️ Twilio custom media bridge error: {e}")
+        print(f"[WARN] Twilio custom media bridge error: {e}")
     finally:
         if call_sid and accumulated_transcript:
             await _update_call_record(call_sid, accumulated_transcript)
@@ -401,7 +401,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
     streaming LLM brain, Microsoft Neural TTS, and instant barge-in support.
     """
     await websocket.accept()
-    print("🤖 Sentient Custom Voice Agent WebSocket connected.")
+    print("[AGENT] Sentient Custom Voice Agent WebSocket connected.")
 
     user_id = None
     call_id = None
@@ -417,7 +417,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
             voice_choice = init_data.get("voice", "en-US-AndrewNeural")
             print(f"Initialized Custom Agent: user_id={user_id}, call_id={call_id}, voice={voice_choice}")
     except Exception as init_err:
-        print(f"⚠️ Sentient Voice Init error: {init_err}")
+        print(f"[WARN] Sentient Voice Init error: {init_err}")
 
     from .custom_agent import CustomVoiceAgent
     agent = CustomVoiceAgent(voice=voice_choice)
@@ -471,7 +471,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
                     await _update_call_record(call_id, accumulated_transcript)
 
             elif evt == "interrupt":
-                print("⚡ User interrupted Dr. Dignova — clearing speech buffer.")
+                print("[INTERRUPT] User interrupted Dr. Dignova — clearing speech buffer.")
                 await websocket.send_json({"event": "clear_buffer"})
 
             elif evt == "stop":
@@ -480,9 +480,9 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
                 break
 
     except WebSocketDisconnect:
-        print("🤖 Sentient Custom Voice Agent WebSocket disconnected.")
+        print("[AGENT] Sentient Custom Voice Agent WebSocket disconnected.")
     except Exception as e:
-        print(f"⚠️ Sentient Custom Voice Agent session error: {e}")
+        print(f"[WARN] Sentient Custom Voice Agent session error: {e}")
     finally:
         if call_id and accumulated_transcript:
             await _update_call_record(call_id, accumulated_transcript)

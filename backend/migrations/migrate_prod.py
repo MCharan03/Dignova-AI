@@ -27,24 +27,24 @@ from app.models import (
 
 
 async def run():
-    print("🔌 Connecting to database...")
+    print("[INFO] Connecting to database...")
     db_url = os.getenv("DATABASE_URL", "")
     if not db_url:
-        print("❌ DATABASE_URL is not set. Aborting.")
+        print("[ERROR] DATABASE_URL is not set. Aborting.")
         sys.exit(1)
 
     if "sqlite" in db_url:
-        print("⚠️  Warning: Running against SQLite. For production, use PostgreSQL.")
+        print("[WARN] Running against SQLite. For production, use PostgreSQL.")
     else:
-        print(f"✅ Using PostgreSQL: {db_url.split('@')[-1]}")  # Hide credentials in logs
+        print(f"[OK] Using PostgreSQL: {db_url.split('@')[-1]}")
 
     async with engine.begin() as conn:
-        print("📐 Creating all tables (skipping existing)...")
+        print("[INFO] Creating all tables (skipping existing)...")
         await conn.run_sync(Base.metadata.create_all)
-        print("✅ All tables created / verified successfully.")
+        print("[OK] All tables created / verified successfully.")
 
     await engine.dispose()
-    print("🚀 Migration complete — Dignova AI is ready.")
+    print("[SUCCESS] Migration complete — Dignova AI is ready.")
 
 
 if __name__ == "__main__":

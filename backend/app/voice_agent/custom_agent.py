@@ -63,7 +63,7 @@ class CustomVoiceAgent:
 """
                 return ehr_summary
         except Exception as e:
-            print(f"⚠️ EHR Context fetch notice: {e}")
+            print(f"[WARN] EHR Context fetch notice: {e}")
             return "Patient History: Standard consultation."
 
     def build_custom_doctor_prompt(self, ehr_context: str, philosophy: str = "balanced") -> str:
@@ -104,7 +104,7 @@ Interaction Rules:
             if audio_data:
                 return base64.b64encode(audio_data).decode("utf-8")
         except Exception as e:
-            print(f"⚠️ Neural TTS Error: {e}")
+            print(f"[WARN] Neural TTS Error: {e}")
 
         return None
 

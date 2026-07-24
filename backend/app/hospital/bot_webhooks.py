@@ -328,7 +328,7 @@ async def bot_triage_webhook(
             patient_info=patient_info
         )
 
-        print(f"🤖 AI Triage Result for {telegram_chat_id}:")
+        print(f"[AGENT] AI Triage Result for {telegram_chat_id}:")
         print(json.dumps(ai_result, indent=2))
 
         # Update transcript
@@ -440,7 +440,7 @@ async def bot_triage_webhook(
             "source":                     request.source
         }
     except Exception as e:
-        print(f"❌ CRITICAL ERROR in bot_triage_webhook: {e}")
+        print(f"[ERROR] CRITICAL ERROR in bot_triage_webhook: {e}")
         import traceback
         traceback.print_exc()
         return {
@@ -830,7 +830,7 @@ async def geofence_checkin_webhook(
     return {
         "status":   "checked_in",
         "distance": round(distance),
-        "message":  f"✅ You're {round(distance)}m away. You've been automatically checked in! Dr. {doctor_data['name']} has been notified of your arrival."
+        "message":  f"[OK] You're {round(distance)}m away. You've been automatically checked in! Dr. {doctor_data['name']} has been notified of your arrival."
     }
 
 
@@ -876,7 +876,7 @@ async def calendar_action_webhook(
 
         return {
             "status":  "confirmed",
-            "message": f"Appointment confirmed ✅ See you on {appointment.slot_time.strftime('%d %B at %I:%M %p')}!"
+            "message": f"Appointment confirmed [OK] See you on {appointment.slot_time.strftime('%d %B at %I:%M %p')}!"
         }
 
     elif request.action == "reschedule":

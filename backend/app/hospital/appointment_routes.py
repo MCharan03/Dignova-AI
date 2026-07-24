@@ -256,7 +256,7 @@ async def update_appointment_status(
     # Notify patient
     patient = await db.scalar(select(User).where(User.id == slot.patient_id))
     if patient:
-        status_word = "confirmed ✅" if payload.status == "confirmed" else "cancelled ❌"
+        status_word = "confirmed [OK]" if payload.status == "confirmed" else "cancelled [ERROR]"
         db.add(Notification(
             user_id=slot.patient_id,
             organization_id=current_user.organization_id,
