@@ -202,7 +202,7 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
         hashed_password=get_password_hash(user_in.password),
         role=role_enum,
         tier=tier_enum,
-        is_verified=False
+        is_verified=True
     )
     db.add(user)
     await db.commit()
