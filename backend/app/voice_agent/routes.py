@@ -42,8 +42,8 @@ if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
 else:
     print("[WARN] GEMINI_API_KEY is missing or using placeholder. Voice Agent Live API will be disabled.")
 
-MODEL_ID = "models/gemini-2.5-flash-native-audio-latest"
-TWILIO_MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" # Unified native audio model
+MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "models/gemini-2.0-flash-exp")
+TWILIO_MODEL_ID = os.getenv("GEMINI_LIVE_MODEL", "models/gemini-2.0-flash-exp")
 TRANSCRIPT_SAVE_INTERVAL = 3
 
 # ── Database Helpers ──────────────────────────────────────────────────
@@ -192,6 +192,10 @@ async def internal_call_ws_handler(websocket: WebSocket):
         async with client.aio.live.connect(model=MODEL_ID, config=config) as session:
             print(f"CONNECTED to Gemini Live API with persona: {persona}")
             await asyncio.sleep(0.1)
+            try:
+                await session.send(input="Please greet the patient warmly as Dr. Dignova and begin the triage consultation.", end_of_turn=True)
+            except Exception as init_err:
+                print(f"⚠️ Live Kickoff Prompt Notice: {init_err}")
 
             async def app_to_gemini():
                 RMS_THRESHOLD = 400
@@ -378,6 +382,10 @@ async def twilio_media_handler(websocket: WebSocket):
     try:
         async with client.aio.live.connect(model=TWILIO_MODEL_ID, config=config) as gemini_session:
             print("Twilio media bridge connected to Gemini Live API")
+            try:
+                await gemini_session.send(input="Please greet the patient warmly as Dr. Dignova and begin the triage consultation.", end_of_turn=True)
+            except Exception as init_err:
+                print(f"⚠️ Twilio Live Kickoff Prompt Notice: {init_err}")
 
             async def twilio_to_gemini():
                 RMS_THRESHOLD = 400
