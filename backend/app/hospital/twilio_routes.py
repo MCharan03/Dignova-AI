@@ -250,23 +250,32 @@ async def phone_turn(request: Request):
 
     # Fetch prior conversation memory
     prior_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
+    current_transcript = prior_transcript + f"Patient: {speech_result}\n"
 
-    from ..voice_agent.custom_agent import CustomVoiceAgent
-    agent = CustomVoiceAgent()
+    from ..services.ai_service import SentientOrchestrator
+    orchestrator = SentientOrchestrator(persona="TRIAGE")
 
-    # Generate streaming doctor response with full conversation memory
-    doctor_text = ""
-    async for frame in agent.process_patient_turn(prior_transcript, speech_result):
-        if frame.get("event") == "ai_response_chunk":
-            doctor_text += " " + frame.get("text", "")
+    prompt = f"""You are Dr. Dignova, an empathetic Senior Multi-Specialist Consultant Physician conducting a phone consultation.
 
-    clean_doctor_text = doctor_text.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
+Patient Conversation History so far:
+{current_transcript}
+
+Patient's latest response: "{speech_result}"
+
+Rules for your response:
+1. Speak in warm, caring, reassuring clinical English (2-3 short sentences max for phone clarity). Do NOT use markdown or tags.
+2. Ask specific, intelligent diagnostic questions (e.g. asking about shortness of breath, chills, headache, fluid intake, or duration) instead of generic "tell me more".
+3. If the patient indicates they have shared all symptoms (e.g. "that's all", "that's it", "nothing else", "no more"), provide a warm clinical diagnostic assessment, self-care guidance (hydration, rest, fever thresholds), and advise when to seek ER care, then append [DIAGNOSIS_READY].
+4. If red-flag emergency symptoms are present (chest pressure, severe breathlessness, sudden weakness), append [EMERGENCY_DETECTED].
+"""
+
+    doctor_reply = orchestrator.process_message(prompt, speech_result)
+    clean_doctor_text = doctor_reply.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
 
     # Update conversation memory
-    updated_transcript = prior_transcript + f"USER: {speech_result}\nASSISTANT: {clean_doctor_text}\n"
-    PHONE_TRANSCRIPTS[call_sid] = updated_transcript
+    PHONE_TRANSCRIPTS[call_sid] = current_transcript + f"Dr. Dignova: {clean_doctor_text}\n"
 
-    if "[EMERGENCY_DETECTED]" in doctor_text:
+    if "[EMERGENCY_DETECTED]" in doctor_reply:
         try:
             from ..services.n8n_services import N8nService
             await N8nService.trigger_onboarding("emergency@dignova.ai", f"CRITICAL_PHONE_PATIENT_{call_sid}")
@@ -274,18 +283,17 @@ async def phone_turn(request: Request):
             print(f"⚠️ Emergency trigger error: {e}")
 
     # Patient requested to complete consultation or diagnosis ready
-    user_done_phrases = ["that's all", "that is all", "that's it", "that is it", "proceed", "go next", "no more"]
+    user_done_phrases = ["that's all", "that is all", "that's it", "that is it", "proceed", "go next", "no more", "nothing else"]
     is_patient_done = any(phrase in speech_result.lower() for phrase in user_done_phrases)
 
-    if "[DIAGNOSIS_READY]" in doctor_text or is_patient_done:
-        final_speech = clean_doctor_text or "Based on your symptoms of fever, cold, running nose, and tiredness, rest well, stay hydrated, and consult a local clinic if fever exceeds 101 Fahrenheit."
+    if "[DIAGNOSIS_READY]" in doctor_reply or is_patient_done:
+        final_speech = clean_doctor_text or "Based on your symptoms of fever, cold, running nose, and dizziness, please rest well, stay hydrated, and consult a doctor if fever persists above 101 Fahrenheit."
         response.say(final_speech, voice="Polly.Joanna", language="en-US")
         response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
-        # Clean up memory
         PHONE_TRANSCRIPTS.pop(call_sid, None)
         return Response(content=str(response), media_type="application/xml")
 
-    # Otherwise gather patient's next response for multi-turn consultation
+    # Speak doctor's specific clinical question and gather next patient response
     gather = response.gather(
         input="speech",
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
@@ -293,7 +301,7 @@ async def phone_turn(request: Request):
         speech_timeout="auto",
         language="en-US"
     )
-    gather.say(clean_doctor_text or "I understand your symptoms. Are you experiencing any other discomfort like cough or body ache?", voice="Polly.Joanna", language="en-US")
+    gather.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
 
     # Re-prompt loop if user is silent during gather
     re_gather = response.gather(
@@ -303,6 +311,6 @@ async def phone_turn(request: Request):
         speech_timeout="auto",
         language="en-US"
     )
-    re_gather.say("I am still right here with you. Please take your time and describe any other symptoms you are experiencing.", voice="Polly.Joanna", language="en-US")
+    re_gather.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna", language="en-US")
 
     return Response(content=str(response), media_type="application/xml")
