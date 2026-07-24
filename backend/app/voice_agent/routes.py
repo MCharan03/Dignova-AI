@@ -2,7 +2,8 @@ import json
 import base64
 import asyncio
 import os
-from datetime import datetime
+import struct
+import math
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from google import genai
 from google.genai import types
@@ -12,7 +13,19 @@ from ..extensions import AsyncSessionLocal
 from .. import models as domain
 from ..utils.audio_utils import audio_to_pcm, pcm_to_audio, pcm_to_b64
 from .orchestrator import VoiceAgentOrchestrator
-from .telemetry import calculate_rms
+
+def calculate_rms(pcm_data: bytes) -> float:
+    """RMS of 16-bit PCM audio for VAD."""
+    if not pcm_data:
+        return 0.0
+    count = len(pcm_data) // 2
+    if count == 0:
+        return 0.0
+    try:
+        shorts = struct.unpack(f"<{count}h", pcm_data[:count * 2])
+        return math.sqrt(sum(s * s for s in shorts) / count)
+    except Exception:
+        return 0.0
 
 try:
     import audioop
@@ -27,7 +40,7 @@ client = None
 if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
     client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1alpha'})
 else:
-    print("⚠️ GEMINI_API_KEY is missing or using placeholder. Voice Agent Live API will be disabled.")
+    print("[WARN] GEMINI_API_KEY is missing or using placeholder. Voice Agent Live API will be disabled.")
 
 MODEL_ID = "models/gemini-2.5-flash-native-audio-latest"
 TWILIO_MODEL_ID = "models/gemini-2.5-flash-native-audio-latest" # Unified native audio model
@@ -154,7 +167,11 @@ async def internal_call_ws_handler(websocket: WebSocket):
                 )
             )
         ),
-        response_modalities=["AUDIO"]
+        response_modalities=["AUDIO"],
+        # Enable transcription of user's speech so we can display + save it
+        input_audio_transcription=types.AudioTranscriptionConfig(),
+        # Also get output text transcription alongside audio for the transcript display
+        output_audio_transcription=types.AudioTranscriptionConfig(),
     )
 
     transcription_buffer = []
@@ -224,34 +241,26 @@ async def internal_call_ws_handler(websocket: WebSocket):
             async def gemini_to_app():
                 try:
                     async for message in session.receive():
-                        try:
-                            # Safely serialize pydantic model to dict
-                            msg_dict = message.model_dump(exclude_none=True, mode='json')
-                            # Truncate inline audio data in debug to avoid spamming the console
-                            if 'server_content' in msg_dict and 'model_turn' in msg_dict['server_content']:
-                                for part in msg_dict['server_content']['model_turn'].get('parts', []):
-                                    if 'inline_data' in part:
-                                        part['inline_data']['data'] = f"<AUDIO_BYTES_LEN_{len(part['inline_data']['data'])}>"
-                            await websocket.send_json({
-                                "event": "debug",
-                                "message": f"Gemini raw event: {msg_dict}"
-                            })
-                        except Exception as debug_err:
-                            print(f"Debug serialization failed: {debug_err}")
-                        
-                        if message.server_content and message.server_content.model_turn:
-                            parts = message.server_content.model_turn.parts
-                            for part in parts:
+                        sc = message.server_content
+                        if not sc:
+                            continue
+
+                        # ── AI model turn: text transcript + audio chunks ──
+                        if sc.model_turn:
+                            for part in sc.model_turn.parts:
                                 if getattr(part, 'thought', False):
                                     continue
                                 if part.text:
-                                    await update_transcript(db_id, f"ASSISTANT: {part.text}\n")
-                                    await websocket.send_json({
-                                        "event": "transcript",
-                                        "role": "ai",
-                                        "text": part.text
-                                    })
-                                
+                                    clean_text = part.text.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
+                                    if "[EMERGENCY_DETECTED]" in part.text:
+                                        await _escalate_emergency(db_id, part.text)
+                                    if clean_text:
+                                        await update_transcript(db_id, f"ASSISTANT: {clean_text}\n")
+                                        await websocket.send_json({
+                                            "event": "transcript",
+                                            "role": "ai",
+                                            "text": clean_text
+                                        })
                                 if part.inline_data:
                                     pcm_chunk = part.inline_data.data
                                     audio_payload = pcm_to_b64(pcm_chunk)
@@ -259,12 +268,45 @@ async def internal_call_ws_handler(websocket: WebSocket):
                                         "event": "audio",
                                         "payload": audio_payload
                                     })
+
+                        # ── User speech transcript (from Gemini's input_transcription) ──
+                        if hasattr(sc, 'input_transcription') and sc.input_transcription:
+                            user_text = getattr(sc.input_transcription, 'text', None)
+                            if user_text and user_text.strip():
+                                await update_transcript(db_id, f"USER: {user_text.strip()}\n")
+                                await websocket.send_json({
+                                    "event": "transcript",
+                                    "role": "user",
+                                    "text": user_text.strip()
+                                })
+
+                        # ── AI spoken text (from output_audio_transcription on native audio model) ──
+                        if hasattr(sc, 'output_audio_transcription') and sc.output_audio_transcription:
+                            ai_text = getattr(sc.output_audio_transcription, 'text', None)
+                            if ai_text and ai_text.strip():
+                                clean_ai_text = ai_text.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
+                                if "[EMERGENCY_DETECTED]" in ai_text:
+                                    await _escalate_emergency(db_id, ai_text)
+                                if clean_ai_text:
+                                    await update_transcript(db_id, f"ASSISTANT: {clean_ai_text}\n")
+                                    await websocket.send_json({
+                                        "event": "transcript",
+                                        "role": "ai",
+                                        "text": clean_ai_text
+                                    })
+
+                        # ── Turn complete: notify frontend so it returns to LISTENING ──
+                        if sc.turn_complete:
+                            print(f"[LIVE] Turn complete for session {db_id}")
+                            await websocket.send_json({"event": "turn_complete"})
+
+
                 except Exception as e:
                     import traceback
                     trace = traceback.format_exc()
                     print(f"Gemini to App Error: {e}\n{trace}")
                     try:
-                        await websocket.send_json({"event": "error", "message": f"Gemini to App Error: {str(e)}\n{trace}"})
+                        await websocket.send_json({"event": "error", "message": f"Gemini Live error: {str(e)}"})
                     except:
                         pass
 
@@ -326,6 +368,8 @@ async def twilio_media_handler(websocket: WebSocket):
             )
         ),
         response_modalities=["AUDIO"],
+        input_audio_transcription=types.AudioTranscriptionConfig(),
+        output_audio_transcription=types.AudioTranscriptionConfig(),
     )
 
     assistant_turn_count = 0
@@ -334,8 +378,6 @@ async def twilio_media_handler(websocket: WebSocket):
     try:
         async with client.aio.live.connect(model=TWILIO_MODEL_ID, config=config) as gemini_session:
             print("Twilio media bridge connected to Gemini Live API")
-            
-            pass
 
             async def twilio_to_gemini():
                 RMS_THRESHOLD = 400
@@ -366,12 +408,11 @@ async def twilio_media_handler(websocket: WebSocket):
                                 await gemini_session.send_realtime_input(
                                     media=types.Blob(
                                         data=lin16k,
-                                        mime_type="audio/pcm;rate=16000"
+                                        mime_type="audio/pcm"
                                     )
                                 )
                             elif was_speaking and not is_speaking:
-                                print("Twilio User stopped speaking. Triggering Gemini response...")
-                                await gemini_session.send(end_of_turn=True)
+                                print("Twilio User stopped speaking. VAD streaming...")
                         elif msg["event"] == "stop":
                             print("Twilio stream stopped.")
                             break
@@ -402,6 +443,16 @@ async def twilio_media_handler(websocket: WebSocket):
                                         "streamSid": stream_sid,
                                         "media": {"payload": base64.b64encode(mulaw).decode()},
                                     })
+
+                        if hasattr(sc, 'input_transcription') and sc.input_transcription:
+                            u_text = getattr(sc.input_transcription, 'text', None)
+                            if u_text and u_text.strip():
+                                accumulated_transcript += f"USER: {u_text.strip()}\n"
+
+                        if hasattr(sc, 'output_audio_transcription') and sc.output_audio_transcription:
+                            a_text = getattr(sc.output_audio_transcription, 'text', None)
+                            if a_text and a_text.strip():
+                                accumulated_transcript += f"ASSISTANT: {a_text.strip()}\n"
 
                         if sc.turn_complete:
                             assistant_turn_count += 1
