@@ -182,14 +182,15 @@ async def trigger_outbound_call(body: OutboundCallRequest):
 async def outbound_twiml(request: Request, name: str = "Patient"):
     """
     TwiML served to the outbound call leg.
-    Greets patient warmly as Dr. Dignova and gathers their speech.
+    Supports speech and DTMF keypress for Twilio Trial accounts.
     """
     param_name = request.query_params.get("name") or name
     greeting = _time_greeting()
     response = VoiceResponse()
 
     gather = response.gather(
-        input="speech",
+        input="speech dtmf",
+        num_digits=1,
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
         method="POST",
         speech_timeout="auto",
@@ -202,7 +203,7 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
         language="en-US"
     )
 
-    # Fallback if no speech detected
+    # Fallback if no input detected
     response.say("I didn't hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
 
@@ -246,7 +247,8 @@ async def phone_turn(request: Request):
 
     # Gather patient's next response after speaking doctor turn
     gather = response.gather(
-        input="speech",
+        input="speech dtmf",
+        num_digits=1,
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
         method="POST",
         speech_timeout="auto",
