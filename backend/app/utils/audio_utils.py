@@ -45,3 +45,21 @@ def pcm_to_b64(pcm_bytes: bytes) -> str:
     Highest performance for modern web audio consumers.
     """
     return base64.b64encode(pcm_bytes).decode("utf-8")
+
+def mp3_b64_to_mulaw_b64(mp3_b64: str) -> str:
+    """
+    Converts MP3 base64 payload from edge-tts into 8kHz mu-law base64 payload
+    required for Twilio Media Streams telephony output.
+    """
+    if not mp3_b64:
+        return ""
+    try:
+        raw_mp3 = base64.b64decode(mp3_b64)
+        audio = AudioSegment.from_file(io.BytesIO(raw_mp3), format="mp3")
+        mulaw_audio = audio.set_frame_rate(8000).set_sample_width(1).set_channels(1)
+        out = io.BytesIO()
+        mulaw_audio.export(out, format="raw", codec="pcm_mulaw")
+        return base64.b64encode(out.getvalue()).decode("utf-8")
+    except Exception as e:
+        print(f"⚠️ mp3_b64_to_mulaw_b64 conversion error: {e}")
+        return ""
