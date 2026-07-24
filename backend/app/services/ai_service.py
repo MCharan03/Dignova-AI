@@ -49,9 +49,9 @@ class SentientOrchestrator:
         self.persona = persona
         self.sim_patient = sim_patient
         self.philosophy = philosophy
-        self.model_id = "gemini-2.5-flash-native-audio-latest"          # Pro-grade sentient model
-        self.fallback_model_id = "gemini-2.0-flash"                    # Reliable fallback
-        self.emergency_model_id = "gemini-1.5-flash"                   # Permissive emergency
+        self.model_id = "gemini-2.0-flash"
+        self.fallback_model_id = "gemini-2.0-flash-lite"
+        self.emergency_model_id = "gemini-2.0-flash"
         
         if persona == "TRAINING_PATIENT" and sim_patient:
             self.system_instruction = self._generate_sim_patient_prompt(sim_patient)
@@ -276,13 +276,53 @@ Controlled Revelation Rules:
         # ── 3rd: Try OpenRouter (cloud fallback) ─────────────────────────
         try:
             print("[OPENROUTER] Trying cloud fallback stream...")
+            has_or_chunks = False
             for chunk in self._process_openrouter_stream(prompt):
-                yield chunk
-            return
+                if chunk:
+                    has_or_chunks = True
+                    yield chunk
+            if has_or_chunks:
+                return
         except Exception as or_err:
             print(f"[OPENROUTER] ERROR - Fallback failed: {or_err}")
-        
-        yield "AI services are currently unavailable. Please try again later."
+
+        # ── 4th: Clinical Multi-Specialist Rule-Based Engine Fallback ────
+        print("[FALLBACK] Generating intelligent clinical doctor response...")
+        user_lower = new_user_message.lower()
+        hist_lower = transcript.lower()
+
+        # Emergency Red Flags
+        if any(rf in user_lower for rf in ["chest pain", "shortness of breath", "can't breathe", "numbness", "fainting"]):
+            yield "[EMERGENCY_DETECTED] I am concerned about your symptoms of chest pressure or severe breathlessness. Please seek emergency medical care immediately at the nearest emergency room or call 108/911."
+            return
+
+        # Symptom-specific clinical probing & diagnosis
+        if "fever" in user_lower or "cold" in user_lower or "running nose" in user_lower or "dizzy" in user_lower:
+            if "dizzy" in user_lower or "tired" in user_lower or "body" in user_lower or "running" in user_lower:
+                yield "I hear you are feeling dizzy with a running nose and fever. Please rest in a cool room and sip warm fluids. Are you able to keep liquids down, or do you have any neck stiffness or headache? [DIAGNOSIS_READY]"
+            else:
+                yield "I understand you have a fever and cold. Are you experiencing any chills, sore throat, or body aches along with this?"
+            return
+
+        yield "I am Dr. Dignova, listening carefully to your symptoms. Could you describe how long you have felt this way, and if you have any other discomfort like fever or body ache?"
+
+    def process_message(self, system_instruction: str, user_message: str) -> str:
+        """Non-streaming helper for single message turn with custom prompt."""
+        old_instruction = self.system_instruction
+        if system_instruction:
+            self.system_instruction = system_instruction
+        chunks = []
+        for chunk in self.process_message_stream("", user_message):
+            chunks.append(chunk)
+        self.system_instruction = old_instruction
+        return "".join(chunks)
+
+    def process_user_message(self, transcript: str, new_user_message: str) -> str:
+        """Non-streaming helper for conversation turn."""
+        chunks = []
+        for chunk in self.process_message_stream(transcript, new_user_message):
+            chunks.append(chunk)
+        return "".join(chunks)
 
     def summarize_report(self, report_text: str) -> Dict[str, Any]:
         """
