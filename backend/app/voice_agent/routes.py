@@ -390,9 +390,6 @@ async def twilio_media_handler(websocket: WebSocket):
     finally:
         if call_sid and accumulated_transcript:
             await _update_call_record(call_sid, accumulated_transcript)
-    finally:
-        if accumulated_transcript:
-            await _update_call_record(call_sid, accumulated_transcript)
 
 
 # ── 3. Self-Contained Custom Voice Agent (Zero 3rd-Party Keys) ────────────
