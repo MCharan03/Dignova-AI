@@ -53,6 +53,33 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] Seeding Skip: {e}")
     
+    try:
+        async with AsyncSessionLocal() as session:
+            from .utils.auth import get_password_hash
+            default_users = [
+                {"email": "admin@dignova.ai", "name": "Dignova Admin", "phone": "+919000000001", "role": domain.UserRole.super_admin, "pwd": "dignova2026admin"},
+                {"email": "patient@dignova.ai", "name": "Test Patient", "phone": "+919000000002", "role": domain.UserRole.user, "pwd": "user123"},
+                {"email": "mallelacharankumar@gmail.com", "name": "Charan Kumar", "phone": "+919000000003", "role": domain.UserRole.user, "pwd": "user123"}
+            ]
+            for uinfo in default_users:
+                u_stmt = select(domain.User).where(domain.User.email == uinfo["email"])
+                existing_u = await session.scalar(u_stmt)
+                if not existing_u:
+                    nu = domain.User(
+                        name=uinfo["name"],
+                        email=uinfo["email"],
+                        phone_number=uinfo["phone"],
+                        hashed_password=get_password_hash(uinfo["pwd"]),
+                        role=uinfo["role"],
+                        is_verified=True
+                    )
+                    session.add(nu)
+                else:
+                    existing_u.is_verified = True
+            await session.commit()
+    except Exception as e:
+        print(f"[WARN] Default User Bootstrap Skip: {e}")
+
     # Start Homeostasis Loop
     asyncio.create_task(homeostasis_loop())
         
