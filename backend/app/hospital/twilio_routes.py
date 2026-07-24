@@ -38,15 +38,18 @@ def _time_greeting() -> str:
 
 # ── Inbound call webhook ────────────────────────────────────────────────────
 
-@router.post("/incoming")
+@router.api_route("/incoming", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """
     Twilio webhook for inbound calls.
     Greets the caller, then bridges to the Gemini Live AI via WebSocket.
     Configure this URL in Twilio Console → Phone Number → Voice webhook.
     """
-    form = await request.form()
-    call_sid = form.get("CallSid", "unknown")
+    if request.method == "POST":
+        form = await request.form()
+        call_sid = form.get("CallSid", "unknown")
+    else:
+        call_sid = request.query_params.get("CallSid", "unknown")
 
     # Log to DB asynchronously — don't block TwiML response
     import asyncio
@@ -96,17 +99,24 @@ async def _log_inbound_call(call_sid: str):
 
 # ── Status callback ─────────────────────────────────────────────────────────
 
-@router.post("/status-callback")
+@router.api_route("/status-callback", methods=["GET", "POST"])
 async def call_status_callback(request: Request):
     """
     Twilio posts here when call status changes (completed, failed, no-answer).
     Configure as 'Status Callback URL' on the Twilio phone number.
     """
-    form = await request.form()
-    call_sid    = form.get("CallSid")
-    status      = form.get("CallStatus", "unknown")
-    duration    = int(form.get("CallDuration", 0))
-    recording   = form.get("RecordingUrl")
+    if request.method == "POST":
+        form = await request.form()
+        call_sid    = form.get("CallSid")
+        status      = form.get("CallStatus", "unknown")
+        duration    = int(form.get("CallDuration", 0))
+        recording   = form.get("RecordingUrl")
+    else:
+        params      = request.query_params
+        call_sid    = params.get("CallSid")
+        status      = params.get("CallStatus", "unknown")
+        duration    = int(params.get("CallDuration", 0))
+        recording   = params.get("RecordingUrl")
 
     try:
         from ..extensions import AsyncSessionLocal
@@ -155,6 +165,7 @@ async def trigger_outbound_call(body: OutboundCallRequest):
         to=body.phone_number,
         from_=TWILIO_NUMBER,
         url=twiml_url,
+        method="GET",
         status_callback=f"{BACKEND_URL}/api/twilio/status-callback",
         status_callback_method="POST",
     )
@@ -167,16 +178,17 @@ async def trigger_outbound_call(body: OutboundCallRequest):
     }
 
 
-@router.post("/outbound-twiml")
-async def outbound_twiml(name: str = "Patient"):
+@router.api_route("/outbound-twiml", methods=["GET", "POST"])
+async def outbound_twiml(request: Request, name: str = "Patient"):
     """
     TwiML served to the outbound call leg.
     Greets by name, then bridges to the same Gemini Live WS bot.
     """
+    param_name = request.query_params.get("name") or name
     greeting = _time_greeting()
     response = VoiceResponse()
     response.say(
-        f"{greeting} {name}. This is Dignova AI, your medical assistant. "
+        f"{greeting} {param_name}. This is Dignova AI, your medical assistant. "
         "I'm connecting you to our AI Doctor now. Please describe your symptoms when ready.",
         voice="Polly.Joanna",
         language="en-US",
