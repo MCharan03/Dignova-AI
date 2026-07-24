@@ -45,6 +45,3 @@ twilio==9.6.5
 
 # WebSockets
 websockets==15.0.1
-
-# Legacy CGI (Python 3.13 compat)
-legacy-cgi==2.6.2
