@@ -182,28 +182,77 @@ async def trigger_outbound_call(body: OutboundCallRequest):
 async def outbound_twiml(request: Request, name: str = "Patient"):
     """
     TwiML served to the outbound call leg.
-    Greets by name, then bridges to the same Gemini Live WS bot.
+    Greets patient warmly as Dr. Dignova and gathers their speech.
     """
     param_name = request.query_params.get("name") or name
     greeting = _time_greeting()
     response = VoiceResponse()
-    response.say(
-        f"{greeting} {param_name}. This is Dignova AI, your medical assistant. "
-        "I'm connecting you to our AI Doctor now. Please describe your symptoms when ready.",
+
+    gather = response.gather(
+        input="speech",
+        action=f"{BACKEND_URL}/api/twilio/phone-turn",
+        method="POST",
+        speech_timeout="auto",
+        language="en-US"
+    )
+    gather.say(
+        f"{greeting} {param_name}. I am Dr. Dignova, your senior medical consultant. "
+        "I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?",
         voice="Polly.Joanna",
-        language="en-US",
+        language="en-US"
     )
 
-    connect = Connect()
-    connect.stream(
-        url=f"{BACKEND_URL_WS}/ws/twilio-media",
-        track="inbound_track",
-    )
-    response.append(connect)
+    # Fallback if no speech detected
+    response.say("I didn't hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
+    return Response(content=str(response), media_type="application/xml")
 
-    response.say(
-        "I'm sorry, I lost the connection. Please call back or use the Dignova app. Take care.",
-        voice="Polly.Joanna",
-    )
 
+@router.api_route("/phone-turn", methods=["GET", "POST"])
+async def phone_turn(request: Request):
+    """
+    Handles interactive phone turn exchanges with Dr. Dignova.
+    Receives patient speech -> runs CustomVoiceAgent -> speaks doctor response.
+    """
+    form = await request.form()
+    speech_result = form.get("SpeechResult", "").strip()
+    call_sid = form.get("CallSid", "unknown")
+
+    response = VoiceResponse()
+
+    if not speech_result:
+        gather = response.gather(input="speech", action=f"{BACKEND_URL}/api/twilio/phone-turn", method="POST", speech_timeout="auto")
+        gather.say("I'm listening. Please describe your symptoms.", voice="Polly.Joanna")
+        return Response(content=str(response), media_type="application/xml")
+
+    print(f"📞 Phone Patient ({call_sid}) said: {speech_result}")
+
+    from ..voice_agent.custom_agent import CustomVoiceAgent
+    agent = CustomVoiceAgent()
+
+    # Generate streaming doctor response text
+    doctor_text = ""
+    async for frame in agent.process_patient_turn("", speech_result):
+        if frame.get("event") == "ai_response_chunk":
+            doctor_text += " " + frame.get("text", "")
+
+    clean_doctor_text = doctor_text.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
+
+    if "[EMERGENCY_DETECTED]" in doctor_text:
+        try:
+            from ..services.n8n_services import N8nService
+            await N8nService.trigger_onboarding("emergency@dignova.ai", f"CRITICAL_PHONE_PATIENT_{call_sid}")
+        except Exception as e:
+            print(f"⚠️ Emergency trigger error: {e}")
+
+    # Gather patient's next response after speaking doctor turn
+    gather = response.gather(
+        input="speech",
+        action=f"{BACKEND_URL}/api/twilio/phone-turn",
+        method="POST",
+        speech_timeout="auto",
+        language="en-US"
+    )
+    gather.say(clean_doctor_text or "I understand. Please tell me more about your symptoms.", voice="Polly.Joanna", language="en-US")
+
+    response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
