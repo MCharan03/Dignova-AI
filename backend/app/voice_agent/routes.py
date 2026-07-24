@@ -487,3 +487,100 @@ async def twilio_media_handler(websocket: WebSocket):
     finally:
         if accumulated_transcript:
             await _update_call_record(call_sid, accumulated_transcript)
+
+
+# ── 3. Self-Contained Custom Voice Agent (Zero 3rd-Party Keys) ────────────
+@router.websocket("/sentient-voice")
+async def sentient_custom_voice_handler(websocket: WebSocket):
+    """
+    100% self-contained Voice Agent endpoint.
+    Zero 3rd-party Live API dependency — EHR medical history injection,
+    streaming LLM brain, Microsoft Neural TTS, and instant barge-in support.
+    """
+    await websocket.accept()
+    print("🤖 Sentient Custom Voice Agent WebSocket connected.")
+
+    user_id = None
+    call_id = None
+    voice_choice = "en-US-AndrewNeural"
+
+    # Wait for init frame
+    try:
+        raw_msg = await websocket.receive_text()
+        init_data = json.loads(raw_msg)
+        if init_data.get("event") == "init":
+            user_id = init_data.get("user_id")
+            call_id = init_data.get("call_id")
+            voice_choice = init_data.get("voice", "en-US-AndrewNeural")
+            print(f"Initialized Custom Agent: user_id={user_id}, call_id={call_id}, voice={voice_choice}")
+    except Exception as init_err:
+        print(f"⚠️ Sentient Voice Init error: {init_err}")
+
+    from .custom_agent import CustomVoiceAgent
+    agent = CustomVoiceAgent(voice=voice_choice)
+    accumulated_transcript = ""
+
+    # Generate opening doctor greeting
+    greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?"
+    greeting_audio = await agent.generate_speech_audio(greeting_text)
+    accumulated_transcript += f"ASSISTANT: {greeting_text}\n"
+
+    await websocket.send_json({
+        "event": "ai_response_chunk",
+        "text": greeting_text,
+        "audio": greeting_audio
+    })
+    await websocket.send_json({"event": "turn_complete"})
+
+    try:
+        while True:
+            raw_msg = await websocket.receive_text()
+            data = json.loads(raw_msg)
+            evt = data.get("event")
+
+            if evt == "user_message":
+                patient_text = data.get("text", "").strip()
+                if not patient_text:
+                    continue
+
+                accumulated_transcript += f"USER: {patient_text}\n"
+                await websocket.send_json({"event": "speech_state", "state": "PROCESSING"})
+
+                async for frame in agent.process_patient_turn(accumulated_transcript, patient_text, user_id=user_id):
+                    if frame.get("event") == "ai_response_chunk":
+                        accumulated_transcript += f"ASSISTANT: {frame.get('text', '')}\n"
+                        await websocket.send_json({
+                            "event": "transcript",
+                            "role": "ai",
+                            "text": frame.get("text", "")
+                        })
+                        if frame.get("audio"):
+                            await websocket.send_json({
+                                "event": "audio",
+                                "payload": frame.get("audio")
+                            })
+                    elif frame.get("event") == "emergency_detected":
+                        await _escalate_emergency(call_id, accumulated_transcript)
+                        await websocket.send_json({"event": "emergency_banner"})
+
+                await websocket.send_json({"event": "turn_complete"})
+                if call_id:
+                    await _update_call_record(call_id, accumulated_transcript)
+
+            elif evt == "interrupt":
+                print("⚡ User interrupted Dr. Dignova — clearing speech buffer.")
+                await websocket.send_json({"event": "clear_buffer"})
+
+            elif evt == "stop":
+                if call_id:
+                    await _update_call_record(call_id, accumulated_transcript)
+                break
+
+    except WebSocketDisconnect:
+        print("🤖 Sentient Custom Voice Agent WebSocket disconnected.")
+    except Exception as e:
+        print(f"⚠️ Sentient Custom Voice Agent session error: {e}")
+    finally:
+        if call_id and accumulated_transcript:
+            await _update_call_record(call_id, accumulated_transcript)
+

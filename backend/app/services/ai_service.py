@@ -253,6 +253,9 @@ Controlled Revelation Rules:
                     error_str = str(e)
                     print(f"[GEMINI] Error ({current_model}) attempt {attempt+1}/{max_retries}: {error_str}")
                     
+                    if "leaked" in error_str.lower() or "permission_denied" in error_str.lower() or "403" in error_str:
+                        print("[GEMINI] Key invalid/leaked. Falling directly to OpenRouter...")
+                        break
                     if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "503" in error_str or "404" in error_str:
                         if attempt == 0 and current_model == self.model_id:
                             print(f"[GEMINI] Switching to fallback: {self.fallback_model_id}")

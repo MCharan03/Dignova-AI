@@ -207,6 +207,7 @@ export default function VoiceTriagePage() {
     const nextPlayTimeRef = useRef<number>(0);
     const voicesLoadedRef = useRef(false);
     const callStateRef = useRef<CallState>('IDLE');
+    const pendingTurnCompleteRef = useRef(false); // set when backend signals turn_complete
 
     useEffect(() => { activeCallIdRef.current = activeCallId; }, [activeCallId]);
     useEffect(() => { isSpeakingFallbackRef.current = isAiSpeakingFallback; }, [isAiSpeakingFallback]);
@@ -457,8 +458,8 @@ export default function VoiceTriagePage() {
             host = `${window.location.hostname}:8000`;
         }
 
-        console.log('[LIVE] Connecting to:', `${protocol}//${host}/ws/internal-call`);
-        const socket = new WebSocket(`${protocol}//${host}/ws/internal-call`);
+        console.log('[LIVE] Connecting to Sentient Custom Voice Agent:', `${protocol}//${host}/ws/sentient-voice`);
+        const socket = new WebSocket(`${protocol}//${host}/ws/sentient-voice`);
         wsRef.current = socket;
 
         const connectTimeout = setTimeout(() => {
@@ -471,7 +472,7 @@ export default function VoiceTriagePage() {
 
         socket.onopen = () => {
             clearTimeout(connectTimeout);
-            console.log('[LIVE] WebSocket Connected.');
+            console.log('[LIVE] Custom Voice Agent WebSocket Connected.');
             socket.send(JSON.stringify({ event: 'init', persona: 'TRIAGE', call_id: callId }));
             startProMicStreaming(socket);
         };
@@ -481,15 +482,44 @@ export default function VoiceTriagePage() {
             if (data.event === 'error') {
                 setError(data.message);
             }
-            if (data.event === 'audio') {
+            if (data.event === 'audio' && data.payload) {
                 setLastPacketTime(Date.now());
-                playProPCMAudio(data.payload);
+                try {
+                    const audioUrl = `data:audio/mp3;base64,${data.payload}`;
+                    const audio = new Audio(audioUrl);
+                    setSpeechState('SPEAKING');
+                    audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
+                    audio.onended = () => setSpeechState('LISTENING');
+                } catch {
+                    playProPCMAudio(data.payload);
+                }
+            }
+            if (data.event === 'ai_response_chunk' && data.audio) {
+                setLastPacketTime(Date.now());
+                if (data.text) addLine('ai', data.text);
+                try {
+                    const audioUrl = `data:audio/mp3;base64,${data.audio}`;
+                    const audio = new Audio(audioUrl);
+                    setSpeechState('SPEAKING');
+                    audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
+                    audio.onended = () => setSpeechState('LISTENING');
+                } catch {}
             }
             if (data.event === 'transcript') {
-                console.log('[LIVE] AI says:', data.text);
+                console.log(`[LIVE] ${data.role} says:`, data.text);
                 const role = data.role as 'user' | 'ai';
                 const text = (data.text || '').trim();
                 if (text) addLine(role, text);
+            }
+            if (data.event === 'turn_complete') {
+                console.log('[LIVE] Turn complete received');
+                // If audio queue already drained, switch immediately; otherwise flag it
+                const playCtx = playbackCtxRef.current;
+                if (playCtx && nextPlayTimeRef.current > playCtx.currentTime + 0.05) {
+                    pendingTurnCompleteRef.current = true; // audio still draining
+                } else {
+                    setSpeechState('LISTENING'); // audio already done
+                }
             }
         };
 
@@ -607,8 +637,19 @@ export default function VoiceTriagePage() {
                 nextPlayTimeRef.current = now + 0.05; // Small lookahead
             }
 
-            source.start(nextPlayTimeRef.current);
+            const scheduledStart = nextPlayTimeRef.current;
+            source.start(scheduledStart);
             nextPlayTimeRef.current += buffer.duration;
+
+            // When this buffer ends, check if the full audio queue has drained
+            source.onended = () => {
+                const stillPlaying = playbackCtxRef.current &&
+                    nextPlayTimeRef.current > playbackCtxRef.current.currentTime + 0.05;
+                if (!stillPlaying && pendingTurnCompleteRef.current) {
+                    pendingTurnCompleteRef.current = false;
+                    setSpeechState('LISTENING');
+                }
+            };
         } catch (e) {
             console.error('[LIVE] Playback error:', e);
         }
