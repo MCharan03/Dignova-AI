@@ -184,8 +184,20 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     """
     TwiML served to the outbound call leg.
     Supports speech and DTMF keypress for Twilio Trial accounts.
+    Creates a DB Call row so the session is tracked in history.
     """
+    if request.method == "POST":
+        form = await request.form()
+        call_sid = form.get("CallSid", "unknown")
+    else:
+        call_sid = request.query_params.get("CallSid", "unknown")
+
     param_name = request.query_params.get("name") or name
+
+    # Phase 1.1 — Create DB Call row for this outbound session
+    import asyncio
+    asyncio.create_task(_create_outbound_call_record(call_sid, param_name))
+
     greeting = _time_greeting()
     response = VoiceResponse()
 
@@ -199,14 +211,35 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     )
     gather.say(
         f"{greeting} {param_name}. I am Dr. Dignova, your senior medical consultant. "
-        "I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?",
+        "I am right here with you. Take a deep breath and tell me - what has been bothering you or how are you feeling today?",
         voice="Polly.Joanna",
         language="en-US"
     )
 
     # Fallback if no input detected
-    response.say("I didn't hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
+    response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
+
+
+async def _create_outbound_call_record(call_sid: str, patient_name: str):
+    """Background task: create a Call DB record for an outbound phone consultation."""
+    try:
+        from ..extensions import AsyncSessionLocal
+        from .. import models as domain
+        async with AsyncSessionLocal() as session:
+            call = domain.Call(
+                twilio_call_sid=call_sid,
+                call_type=domain.CallType.triage,
+                start_time=datetime.utcnow(),
+                state="active",
+                source="phone",
+                transcript=f"[OUTBOUND CALL] Patient: {patient_name}\n"
+            )
+            session.add(call)
+            await session.commit()
+            print(f"[DB] Outbound call record created: {call_sid}")
+    except Exception as e:
+        print(f"[WARN] Outbound call DB create failed: {e}")
 
 
 PHONE_TRANSCRIPTS: Dict[str, str] = {}
@@ -249,6 +282,28 @@ async def phone_turn(request: Request):
 
     print(f"[PHONE] Phone Patient ({call_sid}) said: {speech_result}")
 
+    # Phase 1.2 — Fetch real EHR context from DB if call is linked to a user
+    ehr_context = ""
+    try:
+        from ..extensions import AsyncSessionLocal
+        from .. import models as domain
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            stmt = select(domain.Call).where(domain.Call.twilio_call_sid == call_sid)
+            db_call = await session.scalar(stmt)
+            if db_call and db_call.user_id:
+                user = await session.get(domain.User, db_call.user_id)
+                if user:
+                    parts = []
+                    if user.allergies: parts.append(f"Allergies: {user.allergies}")
+                    if user.chronic_conditions: parts.append(f"Chronic conditions: {user.chronic_conditions}")
+                    if user.medications: parts.append(f"Current medications: {user.medications}")
+                    if user.blood_group: parts.append(f"Blood group: {user.blood_group}")
+                    if parts:
+                        ehr_context = "Patient Medical History: " + ". ".join(parts) + ".\n"
+    except Exception as e:
+        print(f"[WARN] EHR fetch skipped: {e}")
+
     # Fetch prior conversation memory
     prior_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
     current_transcript = prior_transcript + f"Patient: {speech_result}\n"
@@ -258,6 +313,7 @@ async def phone_turn(request: Request):
 
     prompt = f"""You are Dr. Dignova, an empathetic Senior Multi-Specialist Consultant Physician conducting a phone consultation.
 
+{ehr_context}
 Patient Conversation History so far:
 {current_transcript}
 
@@ -273,7 +329,12 @@ Rules for your response:
     doctor_reply = orchestrator.process_message(prompt, speech_result)
     clean_doctor_text = doctor_reply.replace("[EMERGENCY_DETECTED]", "").replace("[DIAGNOSIS_READY]", "").strip()
 
-    # Update conversation memory
+    # Phase 1.1 — Persist this turn to DB transcript
+    full_turn = f"Patient: {speech_result}\nDr. Dignova: {clean_doctor_text}\n"
+    import asyncio
+    asyncio.create_task(_append_call_transcript(call_sid, full_turn))
+
+    # Update in-memory conversation memory
     PHONE_TRANSCRIPTS[call_sid] = current_transcript + f"Dr. Dignova: {clean_doctor_text}\n"
 
     if "[EMERGENCY_DETECTED]" in doctor_reply:
@@ -288,9 +349,13 @@ Rules for your response:
     is_patient_done = any(phrase in speech_result.lower() for phrase in user_done_phrases)
 
     if "[DIAGNOSIS_READY]" in doctor_reply or is_patient_done:
-        final_speech = clean_doctor_text or "Based on your symptoms of fever, cold, running nose, and dizziness, please rest well, stay hydrated, and consult a doctor if fever persists above 101 Fahrenheit."
+        final_speech = clean_doctor_text or "Based on your symptoms, please rest well, stay hydrated, and consult a doctor if your condition worsens."
         response.say(final_speech, voice="Polly.Joanna", language="en-US")
         response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
+        # Phase 1.1 — Finalize call in DB with diagnosis summary
+        import asyncio
+        full_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
+        asyncio.create_task(_finalize_call_record(call_sid, final_speech, full_transcript))
         PHONE_TRANSCRIPTS.pop(call_sid, None)
         return Response(content=str(response), media_type="application/xml")
 
@@ -309,3 +374,52 @@ Rules for your response:
     response.redirect(f"{BACKEND_URL}/api/twilio/phone-turn", method="POST")
 
     return Response(content=str(response), media_type="application/xml")
+
+
+# ── Phase 1.1 DB Helper Functions ───────────────────────────────────────────
+
+async def _append_call_transcript(call_sid: str, turn_text: str):
+    """Background task: append a conversation turn to the Call DB record."""
+    try:
+        from ..extensions import AsyncSessionLocal
+        from .. import models as domain
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            stmt = select(domain.Call).where(domain.Call.twilio_call_sid == call_sid)
+            call = await session.scalar(stmt)
+            if call:
+                call.transcript = (call.transcript or "") + turn_text
+                await session.commit()
+    except Exception as e:
+        print(f"[WARN] Transcript append failed: {e}")
+
+
+async def _finalize_call_record(call_sid: str, diagnosis_text: str, full_transcript: str):
+    """Background task: mark call as completed and save final diagnosis summary."""
+    try:
+        from ..extensions import AsyncSessionLocal
+        from .. import models as domain
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            stmt = select(domain.Call).where(domain.Call.twilio_call_sid == call_sid)
+            call = await session.scalar(stmt)
+            if call:
+                call.state = "completed"
+                call.end_time = datetime.utcnow()
+                call.diagnosis_given = diagnosis_text[:500] if diagnosis_text else None
+                call.transcript = full_transcript or call.transcript
+                # Auto-tag severity based on transcript keywords
+                transcript_lower = full_transcript.lower()
+                if any(w in transcript_lower for w in ["chest pain", "can't breathe", "unconscious", "stroke", "heart attack"]):
+                    call.severity = "CRITICAL"
+                elif any(w in transcript_lower for w in ["fever", "vomiting", "severe", "bleeding", "emergency"]):
+                    call.severity = "HIGH"
+                elif any(w in transcript_lower for w in ["cold", "cough", "headache", "mild", "tired"]):
+                    call.severity = "MEDIUM"
+                else:
+                    call.severity = "LOW"
+                await session.commit()
+                print(f"[DB] Call {call_sid} finalized. Severity: {call.severity}")
+    except Exception as e:
+        print(f"[WARN] Call finalize failed: {e}")
+
