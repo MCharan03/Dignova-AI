@@ -57,9 +57,7 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as session:
             from .utils.auth import get_password_hash
             default_users = [
-                {"email": "admin@dignova.ai", "name": "Dignova Admin", "phone": "+919000000001", "role": domain.UserRole.super_admin, "pwd": "dignova2026admin"},
-                {"email": "patient@dignova.ai", "name": "Test Patient", "phone": "+919000000002", "role": domain.UserRole.user, "pwd": "user123"},
-                {"email": "mallelacharankumar@gmail.com", "name": "Charan Kumar", "phone": "+919000000003", "role": domain.UserRole.user, "pwd": "user123"}
+                {"email": "cherrycostech@gmail.com", "name": "Dignova Super Admin", "phone": "+919000000001", "role": domain.UserRole.super_admin, "pwd": "dignova2026admin"},
             ]
             for uinfo in default_users:
                 u_stmt = select(domain.User).where(domain.User.email == uinfo["email"])
@@ -75,7 +73,9 @@ async def lifespan(app: FastAPI):
                     )
                     session.add(nu)
                 else:
+                    # Ensure super admin stays verified and has correct role
                     existing_u.is_verified = True
+                    existing_u.role = domain.UserRole.super_admin
             await session.commit()
     except Exception as e:
         print(f"[WARN] Default User Bootstrap Skip: {e}")
