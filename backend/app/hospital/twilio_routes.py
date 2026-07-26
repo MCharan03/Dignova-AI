@@ -304,14 +304,8 @@ Rules for your response:
     )
     gather.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
 
-    # Re-prompt loop if user is silent during gather
-    re_gather = response.gather(
-        input="speech",
-        action=f"{BACKEND_URL}/api/twilio/phone-turn",
-        method="POST",
-        speech_timeout="auto",
-        language="en-US"
-    )
-    re_gather.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna", language="en-US")
+    # Fallback if patient is silent after prompt
+    response.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna", language="en-US")
+    response.redirect(f"{BACKEND_URL}/api/twilio/phone-turn", method="POST")
 
     return Response(content=str(response), media_type="application/xml")
