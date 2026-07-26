@@ -73,9 +73,10 @@ async def lifespan(app: FastAPI):
                     )
                     session.add(nu)
                 else:
-                    # Ensure super admin stays verified and has correct role
+                    # Ensure super admin stays verified, has correct role, and updated password
                     existing_u.is_verified = True
                     existing_u.role = domain.UserRole.super_admin
+                    existing_u.hashed_password = get_password_hash(uinfo["pwd"])
             await session.commit()
     except Exception as e:
         print(f"[WARN] Default User Bootstrap Skip: {e}")
