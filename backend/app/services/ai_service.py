@@ -39,6 +39,8 @@ else:
 # Simple memory cache for health tips to prevent quota exhaustion
 _health_tips_cache = {}
 
+_gemini_failures: Dict[str, int] = {}
+
 class SentientOrchestrator:
     """
     The central AI brain of Dignova. 
@@ -233,45 +235,52 @@ Controlled Revelation Rules:
             import time
             max_retries = 3
             current_model = self.model_id
+            api_key = GEMINI_API_KEY or "default"
             
-            for attempt in range(max_retries):
-                try:
-                    response_stream = client.models.generate_content_stream(
-                        model=current_model,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=self.system_instruction
+            if _gemini_failures.get(api_key, 0) >= 3:
+                print(f"[GEMINI] Circuit breaker open for {api_key}, skipping to OpenRouter...")
+            else:
+                for attempt in range(max_retries):
+                    try:
+                        response_stream = client.models.generate_content_stream(
+                            model=current_model,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                system_instruction=self.system_instruction
+                            )
                         )
-                    )
-                    
-                    for chunk in response_stream:
-                        if chunk.text:
-                            yield chunk.text
-                    return
-                    
-                except Exception as e:
-                    error_str = str(e)
-                    print(f"[GEMINI] Error ({current_model}) attempt {attempt+1}/{max_retries}: {error_str}")
-                    
-                    if "leaked" in error_str.lower() or "permission_denied" in error_str.lower() or "403" in error_str:
-                        print("[GEMINI] Key invalid/leaked. Falling directly to OpenRouter...")
+                        
+                        for chunk in response_stream:
+                            if chunk.text:
+                                yield chunk.text
+                        
+                        _gemini_failures[api_key] = 0
+                        return
+                        
+                    except Exception as e:
+                        error_str = str(e)
+                        print(f"[GEMINI] Error ({current_model}) attempt {attempt+1}/{max_retries}: {error_str}")
+                        
+                        if "leaked" in error_str.lower() or "permission_denied" in error_str.lower() or "403" in error_str:
+                            print("[GEMINI] Key invalid/leaked. Falling directly to OpenRouter...")
+                            break
+                        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "503" in error_str or "404" in error_str:
+                            _gemini_failures[api_key] = _gemini_failures.get(api_key, 0) + 1
+                            if attempt == 0 and current_model == self.model_id:
+                                print(f"[GEMINI] Switching to fallback: {self.fallback_model_id}")
+                                current_model = self.fallback_model_id
+                                time.sleep(1)
+                                continue
+                            if attempt == 1:
+                                print(f"[GEMINI] Switching to emergency: {self.emergency_model_id}")
+                                current_model = self.emergency_model_id
+                                time.sleep(1)
+                                continue
+                            if attempt < max_retries - 1:
+                                time.sleep((attempt + 1) * 3)
+                                continue
+                        # Fall through to OpenRouter on any unrecoverable error
                         break
-                    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "503" in error_str or "404" in error_str:
-                        if attempt == 0 and current_model == self.model_id:
-                            print(f"[GEMINI] Switching to fallback: {self.fallback_model_id}")
-                            current_model = self.fallback_model_id
-                            time.sleep(1)
-                            continue
-                        if attempt == 1:
-                            print(f"[GEMINI] Switching to emergency: {self.emergency_model_id}")
-                            current_model = self.emergency_model_id
-                            time.sleep(1)
-                            continue
-                        if attempt < max_retries - 1:
-                            time.sleep((attempt + 1) * 3)
-                            continue
-                    # Fall through to OpenRouter on any unrecoverable error
-                    break
         
         # ── 3rd: Try OpenRouter (cloud fallback) ─────────────────────────
         try:

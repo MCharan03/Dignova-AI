@@ -289,6 +289,33 @@ def health_check():
         "environment": "cloud"
     }
 
+@app.get("/api/health/ai")
+def ai_health_check():
+    import os
+    from .services.ai_service import _gemini_failures
+    
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    gemini_status = "down"
+    if gemini_key and gemini_key != "your_gemini_api_key_here":
+        failures = _gemini_failures.get(gemini_key, 0)
+        if failures >= 3:
+            gemini_status = "degraded"
+        else:
+            gemini_status = "ok"
+            
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    openrouter_status = "ok" if openrouter_key and openrouter_key != "your_openrouter_api_key_here" else "unconfigured"
+    
+    ollama_url = os.getenv("OLLAMA_BASE_URL")
+    ollama_status = "ok" if ollama_url else "disabled"
+    
+    return {
+        "gemini": gemini_status,
+        "openrouter": openrouter_status,
+        "ollama": ollama_status,
+        "active_tier": 1
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -304,6 +304,32 @@ async def phone_turn(request: Request):
     except Exception as e:
         print(f"[WARN] EHR fetch skipped: {e}")
 
+    # Load prior call history for this patient (cross-session memory)
+    prior_history = ""
+    try:
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            stmt = select(domain.Call).where(
+                domain.Call.twilio_call_sid == call_sid
+            )
+            db_call = await session.scalar(stmt)
+            if db_call and db_call.user_id:
+                hist_stmt = select(domain.Call).where(
+                    domain.Call.user_id == db_call.user_id,
+                    domain.Call.state == "completed",
+                    domain.Call.transcript != None
+                ).order_by(domain.Call.start_time.desc()).limit(3)
+                prior_calls = (await session.execute(hist_stmt)).scalars().all()
+                if prior_calls:
+                    excerpts = []
+                    for pc in prior_calls:
+                        date_str = pc.start_time.strftime("%b %d") if pc.start_time else "recent"
+                        excerpt = (pc.transcript or "")[:200].replace("\n", " ")
+                        excerpts.append(f"- {date_str}: {excerpt}")
+                    prior_history = "Prior consultations:\n" + "\n".join(excerpts) + "\n"
+    except Exception as e:
+        print(f"[WARN] Prior history load failed: {e}")
+
     # Fetch prior conversation memory
     prior_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
     current_transcript = prior_transcript + f"Patient: {speech_result}\n"
@@ -314,6 +340,7 @@ async def phone_turn(request: Request):
     prompt = f"""You are Dr. Dignova, an empathetic Senior Multi-Specialist Consultant Physician conducting a phone consultation.
 
 {ehr_context}
+{prior_history}
 Patient Conversation History so far:
 {current_transcript}
 
