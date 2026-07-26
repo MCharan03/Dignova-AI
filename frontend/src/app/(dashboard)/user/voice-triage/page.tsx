@@ -192,6 +192,9 @@ export default function VoiceTriagePage() {
     const [sigStrength] = useState(Math.floor(Math.random() * 2) + 3); // 3-4 bars
     const [isAiSpeakingFallback, setIsAiSpeakingFallback] = useState(false);
     const [lastPacketTime, setLastPacketTime] = useState<number | null>(null);
+    const [liveSeverity, setLiveSeverity] = useState('NORMAL');
+    const [isReconnecting, setIsReconnecting] = useState(false);
+    const reconnectAttemptsRef = useRef(0);
 
     // Refs
     const wsRef = useRef<WebSocket | null>(null);
@@ -214,8 +217,16 @@ export default function VoiceTriagePage() {
     useEffect(() => { callStateRef.current = callState; }, [callState]);
 
     useEffect(() => {
+        const text = transcript.map(t => t.text.toLowerCase()).join(' ');
+        if (text.match(/(chest pain|breathing|emergency)/)) {
+            setLiveSeverity('CRITICAL');
+        } else if (text.match(/(fever|cold|headache)/)) {
+            if (liveSeverity !== 'CRITICAL') setLiveSeverity('ELEVATED');
+        } else {
+            if (liveSeverity !== 'CRITICAL' && liveSeverity !== 'ELEVATED') setLiveSeverity('NORMAL');
+        }
         transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [transcript]);
+    }, [transcript, liveSeverity]);
 
     // Pre-load Web Speech Synthesis voices (Chrome loads them async)
     useEffect(() => {
@@ -432,116 +443,129 @@ export default function VoiceTriagePage() {
     const startLiveMode = useCallback(async (callId: number) => {
         setAudioMode('LIVE');
         
-        // Capture context at 16kHz for mic input (matching Gemini's expected format)
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        audioCtxRef.current = audioCtx;
+        if (!audioCtxRef.current) {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+            audioCtxRef.current = audioCtx;
 
-        // Separate playback context at browser's native sample rate for proper audio output
-        const playbackCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        playbackCtxRef.current = playbackCtx;
-        console.log(`[LIVE] Playback context sample rate: ${playbackCtx.sampleRate}Hz`);
-        
-        try {
-            await audioCtx.audioWorklet.addModule('/audio-processor.js');
-            console.log('[LIVE] AudioWorklet loaded.');
-        } catch (e) {
-            console.error('[LIVE] Failed to load AudioWorklet:', e);
-            startFallbackMode(callId);
-            return;
+            const playbackCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            playbackCtxRef.current = playbackCtx;
+            console.log(`[LIVE] Playback context sample rate: ${playbackCtx.sampleRate}Hz`);
+            
+            try {
+                await audioCtx.audioWorklet.addModule('/audio-processor.js');
+                console.log('[LIVE] AudioWorklet loaded.');
+            } catch (e) {
+                console.error('[LIVE] Failed to load AudioWorklet:', e);
+                startFallbackMode(callId);
+                return;
+            }
         }
 
-        const token = localStorage.getItem('access_token');
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        
-        let host = window.location.host;
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            host = `${window.location.hostname}:8000`;
-        }
-
-        console.log('[LIVE] Connecting to Sentient Custom Voice Agent:', `${protocol}//${host}/ws/sentient-voice`);
-        const socket = new WebSocket(`${protocol}//${host}/ws/sentient-voice`);
-        wsRef.current = socket;
-
-        const connectTimeout = setTimeout(() => {
-            if (socket.readyState !== WebSocket.OPEN) {
-                console.warn('[LIVE] Connection timeout, falling back');
-                socket.close();
-                startFallbackMode(callId);
+        const connectSocket = () => {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            let host = window.location.host;
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                host = `${window.location.hostname}:8000`;
             }
-        }, 6000);
 
-        socket.onopen = () => {
-            clearTimeout(connectTimeout);
-            console.log('[LIVE] Custom Voice Agent WebSocket Connected.');
-            socket.send(JSON.stringify({ event: 'init', persona: 'TRIAGE', call_id: callId }));
-            startProMicStreaming(socket);
-        };
+            console.log('[LIVE] Connecting to Sentient Custom Voice Agent:', `${protocol}//${host}/ws/sentient-voice`);
+            const socket = new WebSocket(`${protocol}//${host}/ws/sentient-voice`);
+            wsRef.current = socket;
 
-        socket.onmessage = async (event) => {
-            const data = JSON.parse(event.data);
-            if (data.event === 'error') {
-                setError(data.message);
-            }
-            if (data.event === 'audio' && data.payload) {
-                setLastPacketTime(Date.now());
-                try {
-                    const audioUrl = `data:audio/mp3;base64,${data.payload}`;
-                    const audio = new Audio(audioUrl);
-                    setSpeechState('SPEAKING');
-                    audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
-                    audio.onended = () => setSpeechState('LISTENING');
-                } catch {
-                    playProPCMAudio(data.payload);
+            const connectTimeout = setTimeout(() => {
+                if (socket.readyState !== WebSocket.OPEN) {
+                    console.warn('[LIVE] Connection timeout');
+                    socket.close();
                 }
-            }
-            if (data.event === 'ai_response_chunk' && data.audio) {
-                setLastPacketTime(Date.now());
-                if (data.text) addLine('ai', data.text);
-                try {
-                    const audioUrl = `data:audio/mp3;base64,${data.audio}`;
-                    const audio = new Audio(audioUrl);
-                    setSpeechState('SPEAKING');
-                    audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
-                    audio.onended = () => setSpeechState('LISTENING');
-                } catch {}
-            }
-            if (data.event === 'transcript') {
-                console.log(`[LIVE] ${data.role} says:`, data.text);
-                const role = data.role as 'user' | 'ai';
-                const text = (data.text || '').trim();
-                if (text) addLine(role, text);
-            }
-            if (data.event === 'turn_complete') {
-                console.log('[LIVE] Turn complete received');
-                // If audio queue already drained, switch immediately; otherwise flag it
-                const playCtx = playbackCtxRef.current;
-                if (playCtx && nextPlayTimeRef.current > playCtx.currentTime + 0.05) {
-                    pendingTurnCompleteRef.current = true; // audio still draining
-                } else {
-                    setSpeechState('LISTENING'); // audio already done
+            }, 6000);
+
+            socket.onopen = () => {
+                clearTimeout(connectTimeout);
+                setIsReconnecting(false);
+                reconnectAttemptsRef.current = 0;
+                console.log('[LIVE] Custom Voice Agent WebSocket Connected.');
+                socket.send(JSON.stringify({ event: 'init', persona: 'TRIAGE', call_id: callId }));
+                if (!streamRef.current) startProMicStreaming();
+            };
+
+            socket.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                if (data.event === 'error') {
+                    setError(data.message);
                 }
-            }
+                if (data.event === 'audio' && data.payload) {
+                    setLastPacketTime(Date.now());
+                    try {
+                        const audioUrl = `data:audio/mp3;base64,${data.payload}`;
+                        const audio = new Audio(audioUrl);
+                        setSpeechState('SPEAKING');
+                        audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
+                        audio.onended = () => setSpeechState('LISTENING');
+                    } catch {
+                        playProPCMAudio(data.payload);
+                    }
+                }
+                if (data.event === 'ai_response_chunk' && data.audio) {
+                    setLastPacketTime(Date.now());
+                    if (data.text) addLine('ai', data.text);
+                    try {
+                        const audioUrl = `data:audio/mp3;base64,${data.audio}`;
+                        const audio = new Audio(audioUrl);
+                        setSpeechState('SPEAKING');
+                        audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
+                        audio.onended = () => setSpeechState('LISTENING');
+                    } catch {}
+                }
+                if (data.event === 'transcript') {
+                    console.log(`[LIVE] ${data.role} says:`, data.text);
+                    const role = data.role as 'user' | 'ai';
+                    const text = (data.text || '').trim();
+                    if (text) addLine(role, text);
+                }
+                if (data.event === 'turn_complete') {
+                    console.log('[LIVE] Turn complete received');
+                    const playCtx = playbackCtxRef.current;
+                    if (playCtx && nextPlayTimeRef.current > playCtx.currentTime + 0.05) {
+                        pendingTurnCompleteRef.current = true;
+                    } else {
+                        setSpeechState('LISTENING');
+                    }
+                }
+            };
+
+            socket.onerror = () => {
+                console.warn('[LIVE] WS error');
+            };
+
+            socket.onclose = (event) => {
+                console.log(`[LIVE] WS Closed (code=${event.code}, reason=${event.reason}).`);
+                if (callStateRef.current !== 'ENDED' && callStateRef.current !== 'IDLE') {
+                    if (reconnectAttemptsRef.current >= 3) {
+                        setIsReconnecting(false);
+                        setCallState('ENDED');
+                        setError('Connection lost. Please try again.');
+                        cleanupAll();
+                    } else {
+                        const delays = [1000, 2000, 4000];
+                        const delay = delays[reconnectAttemptsRef.current];
+                        reconnectAttemptsRef.current += 1;
+                        setIsReconnecting(true);
+                        console.warn(`[LIVE] Reconnecting... Attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
+                        setTimeout(() => {
+                            if (callStateRef.current !== 'ENDED' && callStateRef.current !== 'IDLE') {
+                                connectSocket();
+                            }
+                        }, delay);
+                    }
+                }
+            };
         };
 
-        socket.onerror = () => {
-            console.warn('[LIVE] WS error, switching to fallback');
-            socket.close();
-            cleanupAll();
-            startFallbackMode(callId);
-        };
-
-        socket.onclose = (event) => {
-            console.log(`[LIVE] WS Closed (code=${event.code}, reason=${event.reason}).`);
-            if (callStateRef.current !== 'ENDED' && callStateRef.current !== 'IDLE') {
-                console.warn('[LIVE] WS closed unexpectedly, switching to fallback');
-                cleanupAll();
-                startFallbackMode(callId);
-            }
-        };
-    }, [addLine, startFallbackMode, cleanupAll]);
+        connectSocket();
+    }, [addLine, startFallbackMode, cleanupAll, playProPCMAudio]);
 
     // ── Pro Audio Streaming (Worklet based) ───────────────────────────────
-    const startProMicStreaming = async (socket: WebSocket) => {
+    const startProMicStreaming = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
@@ -557,8 +581,9 @@ export default function VoiceTriagePage() {
             workletNode.port.onmessage = (event) => {
                 if (event.data.event === 'capture') {
                     const b64 = btoa(String.fromCharCode(...new Uint8Array(event.data.buffer)));
-                    if (socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ event: 'audio', payload: b64 }));
+                    const currentSocket = wsRef.current;
+                    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                        currentSocket.send(JSON.stringify({ event: 'audio', payload: b64 }));
                     }
                 }
             };
@@ -698,6 +723,8 @@ export default function VoiceTriagePage() {
         setTranscript([]);
         setSummary(null);
         setCallState('RINGING');
+        setIsReconnecting(false);
+        reconnectAttemptsRef.current = 0;
 
         try {
             const token = localStorage.getItem('access_token');
@@ -1021,6 +1048,7 @@ export default function VoiceTriagePage() {
                         <div className="call-topbar">
                             <CallTimer running={callState === 'CONNECTED'} />
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <SeverityBadge level={liveSeverity} />
                                 {audioMode !== 'UNKNOWN' && (
                                     <span className="mode-badge" style={{
                                         color: audioMode === 'LIVE' ? '#10b981' : '#f59e0b',
@@ -1043,7 +1071,8 @@ export default function VoiceTriagePage() {
                             {/* Doctor info */}
                             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                                 <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4 }}>
-                                    {speechState === 'SPEAKING' ? '● DOCTOR IS SPEAKING' :
+                                    {isReconnecting ? '● RECONNECTING...' :
+                                     speechState === 'SPEAKING' ? '● DOCTOR IS SPEAKING' :
                                      speechState === 'LISTENING' ? '● LISTENING TO YOU' :
                                      speechState === 'PROCESSING' ? '● THINKING…' : '● CONNECTED'}
                                 </p>

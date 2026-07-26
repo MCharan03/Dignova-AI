@@ -38,6 +38,8 @@ export default function InterventionTerminal() {
 
     useEffect(() => {
         if (!callId) { setLoading(false); return; }
+        
+        let intervalId: any;
         const fetchCallDetails = async () => {
             const token = localStorage.getItem('access_token');
             try {
@@ -49,11 +51,17 @@ export default function InterventionTerminal() {
                     setCall(data);
                     const lines = data.transcript?.split('\n') || [];
                     const parsed = lines.map((l: string) => {
+                        if (l.startsWith('Patient:')) return { role: 'user', text: l.replace('Patient:', '').trim() };
+                        if (l.startsWith('Dr. Dignova:')) return { role: 'assistant', text: l.replace('Dr. Dignova:', '').trim() };
                         if (l.startsWith('PATIENT:')) return { role: 'user', text: l.replace('PATIENT:', '').trim() };
                         if (l.startsWith('ASSISTANT:')) return { role: 'assistant', text: l.replace('ASSISTANT:', '').trim() };
                         return { role: 'system', text: l.trim() };
                     }).filter((m: any) => m.text);
                     setMessages(parsed);
+                    
+                    if (data.state !== 'active') {
+                        clearInterval(intervalId);
+                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -62,7 +70,9 @@ export default function InterventionTerminal() {
             }
         };
         fetchCallDetails();
-        scrollToBottom();
+        intervalId = setInterval(fetchCallDetails, 5000);
+        
+        return () => clearInterval(intervalId);
     }, [callId]);
 
     useEffect(() => { scrollToBottom(); }, [messages]);
@@ -97,7 +107,11 @@ export default function InterventionTerminal() {
                             <Stethoscope className="text-accent-blue" size={20} />
                             Intervention Terminal <span className="text-gray-500 font-mono text-sm ml-2">#DGN-{callId}</span>
                         </h1>
-                        <p className="text-[10px] font-mono text-success uppercase tracking-widest animate-pulse">Live Uplink Active</p>
+                        {call.state === 'active' ? (
+                            <p className="text-[10px] font-mono text-success uppercase tracking-widest animate-pulse">Live Uplink Active</p>
+                        ) : (
+                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Completed</p>
+                        )}
                     </div>
                 </div>
                 <div className="flex gap-3">
@@ -150,8 +164,13 @@ export default function InterventionTerminal() {
                                 <p className="text-lg font-bold">{call.user_name || "Unknown Patient"}</p>
                             </div>
                             <div>
-                                <label className="text-[10px] text-gray-500 uppercase font-mono">Severity</label>
-                                <p className={`text-sm font-bold uppercase ${call.severity === 'CRITICAL' ? 'text-danger' : call.severity === 'ELEVATED' ? 'text-warning' : 'text-accent-blue'}`}>{call.severity}</p>
+                                <label className="text-[10px] text-gray-500 uppercase font-mono mb-1 block">Severity</label>
+                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                    call.severity === 'CRITICAL' ? 'bg-danger/20 text-danger' : 
+                                    call.severity === 'HIGH' ? 'bg-orange-500/20 text-orange-500' : 
+                                    call.severity === 'MEDIUM' ? 'bg-warning/20 text-warning' : 
+                                    'bg-success/20 text-success'
+                                }`}>{call.severity}</span>
                             </div>
                         </div>
                     </GlassCard>
@@ -194,6 +213,12 @@ export default function InterventionTerminal() {
                             ))}
                             <div ref={transcriptEndRef} />
                         </div>
+                        {call.diagnosis_given && (
+                            <div className="p-4 bg-accent-blue/10 border-t border-accent-blue/20 text-accent-blue text-sm z-10">
+                                <span className="font-bold uppercase tracking-wider text-[10px] opacity-70 block mb-1">Diagnosis Given:</span>
+                                {call.diagnosis_given}
+                            </div>
+                        )}
 
                         <div className="p-6 bg-black/60 backdrop-blur-2xl border-t border-white/10 z-10">
                             <div className="flex gap-4">
