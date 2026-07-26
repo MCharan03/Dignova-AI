@@ -301,7 +301,7 @@ def _generate_ai_feedback(alignment_data: dict, difficulty: str) -> dict:
     elif alignment >= 40:
         grade = "DEVELOPING"
         summary = "Shows understanding of core concepts but needs improvement in clinical precision."
-        improvements = [f"Study critical term: '{m}' — this was in the expert diagnosis" for m in missed[:4]]
+        improvements = [f"Study critical term: '{m}' - this was in the expert diagnosis" for m in missed[:4]]
     else:
         grade = "NEEDS_IMPROVEMENT"
         summary = "Significant gaps in diagnostic alignment. Recommend reviewing fundamentals."
@@ -585,7 +585,7 @@ async def get_intern_progress(
 
 
 # ═══════════════════════════════════════════════════
-# DOCTOR TRAINING LAB — SCENARIO CRUD
+# DOCTOR TRAINING LAB - SCENARIO CRUD
 # ═══════════════════════════════════════════════════
 
 def _require_doctor_or_admin(user: User):
@@ -681,7 +681,7 @@ async def archive_training_scenario(
 
 
 # ═══════════════════════════════════════════════════
-# DOCTOR VIEW — INTERN PERFORMANCE ACROSS SCENARIOS
+# DOCTOR VIEW - INTERN PERFORMANCE ACROSS SCENARIOS
 # ═══════════════════════════════════════════════════
 
 @router.get("/training/intern-performance")
@@ -780,7 +780,7 @@ async def get_intern_performance(
     }
 
 # ═══════════════════════════════════════════════════
-# INTERN CASE STUDIES — LEARNING REPOSITORY
+# INTERN CASE STUDIES - LEARNING REPOSITORY
 # ═══════════════════════════════════════════════════
 
 @router.get("/cases", response_model=List[CaseStudyResponse])

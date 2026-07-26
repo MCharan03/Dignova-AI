@@ -296,7 +296,7 @@ async def get_org_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Deep analytics for a specific organization — Super Admin drill-down."""
+    """Deep analytics for a specific organization - Super Admin drill-down."""
     require_super_admin(current_user)
     
     org = await db.scalar(select(Organization).where(Organization.id == org_id))
@@ -376,7 +376,7 @@ async def get_org_members(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all members of an organization — for Super Admin drill-down."""
+    """List all members of an organization - for Super Admin drill-down."""
     require_super_admin(current_user)
     
     result = await db.execute(

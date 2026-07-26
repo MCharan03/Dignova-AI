@@ -37,7 +37,7 @@ async def get_patient_notes(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get clinical notes for a patient — doctors and admins only."""
+    """Get clinical notes for a patient - doctors and admins only."""
     if current_user.role not in [UserRole.super_admin, UserRole.org_admin, UserRole.doctor]:
         raise HTTPException(status_code=403, detail="Requires clinical privileges.")
 

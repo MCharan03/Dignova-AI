@@ -38,12 +38,12 @@ def _check_vitals_for_alert(vitals: UserVitals) -> list[dict]:
         elif vitals.systolic_bp < ALERT_THRESHOLDS["systolic_bp_low"]:
             alerts.append({"field": "systolic_bp", "value": vitals.systolic_bp, "severity": "HIGH", "msg": f"Hypotension detected: BP {vitals.systolic_bp}"})
     if vitals.spo2 and vitals.spo2 < ALERT_THRESHOLDS["spo2_low"]:
-        alerts.append({"field": "spo2", "value": vitals.spo2, "severity": "CRITICAL", "msg": f"Critical SpO2: {vitals.spo2}% — Hypoxia risk"})
+        alerts.append({"field": "spo2", "value": vitals.spo2, "severity": "CRITICAL", "msg": f"Critical SpO2: {vitals.spo2}% - Hypoxia risk"})
     if vitals.temperature:
         if vitals.temperature > ALERT_THRESHOLDS["temperature_high"]:
-            alerts.append({"field": "temperature", "value": vitals.temperature, "severity": "HIGH", "msg": f"High fever: {vitals.temperature}°C"})
+            alerts.append({"field": "temperature", "value": vitals.temperature, "severity": "HIGH", "msg": f"High fever: {vitals.temperature} deg C"})
         elif vitals.temperature < ALERT_THRESHOLDS["temperature_low"]:
-            alerts.append({"field": "temperature", "value": vitals.temperature, "severity": "HIGH", "msg": f"Hypothermia risk: {vitals.temperature}°C"})
+            alerts.append({"field": "temperature", "value": vitals.temperature, "severity": "HIGH", "msg": f"Hypothermia risk: {vitals.temperature} deg C"})
     if vitals.blood_glucose:
         if vitals.blood_glucose > ALERT_THRESHOLDS["blood_glucose_high"]:
             alerts.append({"field": "blood_glucose", "value": vitals.blood_glucose, "severity": "HIGH", "msg": f"Severe hyperglycemia: {vitals.blood_glucose} mg/dL"})
@@ -102,7 +102,7 @@ async def scan_patient_alerts(
         db.add(Notification(
             user_id=current_user.id,
             organization_id=current_user.organization_id,
-            title=f"[WARN] Health Alert — {patient.name}",
+            title=f"[WARN] Health Alert - {patient.name}",
             message=alert_msg,
             type="critical" if has_critical else "warning",
             category="alert",
@@ -177,7 +177,7 @@ async def vitals_iot_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    IoT/wearable webhook endpoint — receives vitals and auto-triggers alerts.
+    IoT/wearable webhook endpoint - receives vitals and auto-triggers alerts.
     Expected payload: { user_id, heart_rate, systolic_bp, diastolic_bp, spo2, temperature, blood_glucose }
     """
     user_id = data.get("user_id")

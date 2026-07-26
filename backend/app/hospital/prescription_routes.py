@@ -98,20 +98,20 @@ def _generate_prescription_pdf(prescription: Prescription, patient: User, doctor
 
     # Title row
     story.append(Paragraph("Dignova AI Healthcare", header_style))
-    story.append(Paragraph("Sentient Clinical Platform — Official Prescription", sub_style))
+    story.append(Paragraph("Sentient Clinical Platform - Official Prescription", sub_style))
     story.append(Paragraph(f"Issued: {datetime.utcnow().strftime('%B %d, %Y at %H:%M UTC')}", sub_style))
     story.append(HRFlowable(width="100%", thickness=2, color=DIGNOVA_CYAN, spaceAfter=12))
 
     # ── Patient & Doctor Info ────────────────────────────────────────────────────
     info_data = [
         [Paragraph("<b>PATIENT</b>", label_style), Paragraph("<b>PRESCRIBING PHYSICIAN</b>", label_style)],
-        [Paragraph(patient.name or "—", value_style), Paragraph(doctor.name if doctor else "—", value_style)],
-        [Paragraph(f"ID: {patient.id} | Age: {patient.age or '—'}", sub_style),
+        [Paragraph(patient.name or "-", value_style), Paragraph(doctor.name if doctor else "-", value_style)],
+        [Paragraph(f"ID: {patient.id} | Age: {patient.age or '-'}", sub_style),
          Paragraph(f"{doctor.specialty or 'General'} | {doctor.qualification or ''}", sub_style)],
-        [Paragraph(f"Blood Group: {patient.blood_group or '—'}", sub_style),
-         Paragraph(f"License: {doctor.license_number or '—'}", sub_style)],
+        [Paragraph(f"Blood Group: {patient.blood_group or '-'}", sub_style),
+         Paragraph(f"License: {doctor.license_number or '-'}", sub_style)],
         [Paragraph(f"Email: {patient.email}", sub_style),
-         Paragraph(f"Dept: {doctor.department or '—'}", sub_style)],
+         Paragraph(f"Dept: {doctor.department or '-'}", sub_style)],
     ]
     info_table = Table(info_data, colWidths=[8.5*cm, 8.5*cm])
     info_table.setStyle(TableStyle([
@@ -129,7 +129,7 @@ def _generate_prescription_pdf(prescription: Prescription, patient: User, doctor
 
     # ── Diagnosis ────────────────────────────────────────────────────────────────
     story.append(Paragraph("CLINICAL DIAGNOSIS", label_style))
-    diag_data = [[Paragraph(prescription.diagnosis or "—", value_style)]]
+    diag_data = [[Paragraph(prescription.diagnosis or "-", value_style)]]
     diag_table = Table(diag_data, colWidths=[17*cm])
     diag_table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,-1), GRAY_LIGHT),
@@ -153,11 +153,11 @@ def _generate_prescription_pdf(prescription: Prescription, patient: User, doctor
         if isinstance(med, dict):
             med_data.append([
                 str(i),
-                med.get("name", "—"),
-                med.get("dosage", "—"),
-                med.get("frequency", "—"),
-                med.get("duration", "—"),
-                med.get("instructions", "—"),
+                med.get("name", "-"),
+                med.get("dosage", "-"),
+                med.get("frequency", "-"),
+                med.get("duration", "-"),
+                med.get("instructions", "-"),
             ])
 
     med_table = Table(med_data, colWidths=[1*cm, 3.5*cm, 2.5*cm, 2.5*cm, 2.5*cm, 5*cm])
@@ -198,11 +198,11 @@ def _generate_prescription_pdf(prescription: Prescription, patient: User, doctor
         v_data = [
             ["Heart Rate", "Blood Pressure", "SpO2", "Temperature", "Glucose"],
             [
-                f"{vitals.heart_rate or '—'} bpm",
-                f"{vitals.systolic_bp or '—'}/{vitals.diastolic_bp or '—'} mmHg",
-                f"{vitals.spo2 or '—'}%",
-                f"{vitals.temperature or '—'}°C",
-                f"{vitals.blood_glucose or '—'} mg/dL",
+                f"{vitals.heart_rate or '-'} bpm",
+                f"{vitals.systolic_bp or '-'}/{vitals.diastolic_bp or '-'} mmHg",
+                f"{vitals.spo2 or '-'}%",
+                f"{vitals.temperature or '-'} deg C",
+                f"{vitals.blood_glucose or '-'} mg/dL",
             ]
         ]
         v_table = Table(v_data, colWidths=[3.4*cm]*5)

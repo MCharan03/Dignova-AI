@@ -79,7 +79,7 @@ def _wrap_email(title: str, body_html: str) -> str:
       {body_html}
     </div>
     <div class="footer">
-      <p>© 2026 Dignova AI &nbsp;•&nbsp; <a href="https://dignova.ai">dignova.ai</a> &nbsp;•&nbsp; Emergency: 1800-DIGNOVA</p>
+      <p>© 2026 Dignova AI &nbsp;*&nbsp; <a href="https://dignova.ai">dignova.ai</a> &nbsp;*&nbsp; Emergency: 1800-DIGNOVA</p>
       <p style="margin-top:6px;">This email was sent by Dignova AI. Do not reply to this email.</p>
     </div>
   </div>
@@ -93,7 +93,7 @@ def build_welcome_email(user_name: str, verify_url: str, role: str = "user") -> 
     body = f"""
       <p class="greeting">Welcome, {user_name}! 👋</p>
       <p class="text">Your <strong>Dignova AI</strong> account has been created.
-      You're now part of the future of healthcare — where AI meets compassion.</p>
+      You're now part of the future of healthcare - where AI meets compassion.</p>
 
       <div class="info-box">
         <p class="label">Your Role</p>
@@ -106,8 +106,8 @@ def build_welcome_email(user_name: str, verify_url: str, role: str = "user") -> 
       <hr class="divider">
       <p class="text" style="font-size:13px;">
         [AGENT] <strong>What can you do?</strong><br>
-        Chat with our AI triage assistant 24/7 • Get instant prescriptions for minor issues •
-        Connect with doctors in seconds • Track your health over time.
+        Chat with our AI triage assistant 24/7 * Get instant prescriptions for minor issues *
+        Connect with doctors in seconds * Track your health over time.
       </p>
       <p class="text" style="font-size:12px;color:#475569;">This link expires in 1 hour. If you didn't create this account, ignore this email.</p>
     """
@@ -124,8 +124,8 @@ def build_diagnosis_receipt_email(
     is_auto: bool = False
 ) -> str:
     meds_rows = "".join(
-        f"<tr><td>{i}</td><td><strong>{m.get('name','—')}</strong></td><td>{m.get('dosage','—')}</td>"
-        f"<td>{m.get('frequency','As directed')}</td><td>{m.get('duration','—')}</td></tr>"
+        f"<tr><td>{i}</td><td><strong>{m.get('name','-')}</strong></td><td>{m.get('dosage','-')}</td>"
+        f"<td>{m.get('frequency','As directed')}</td><td>{m.get('duration','-')}</td></tr>"
         for i, m in enumerate(medications, 1)
     )
 
@@ -209,9 +209,9 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
     recipients = [to]
     content = html or body
 
-    # Layer 2: MX record check — drop emails to non-existent domains before hitting SMTP
+    # Layer 2: MX record check - drop emails to non-existent domains before hitting SMTP
     if not _has_mx_record(to):
-        print(f"[EMAIL DROP] No MX record for domain in {to} — skipping send.")
+        print(f"[EMAIL DROP] No MX record for domain in {to} - skipping send.")
         return False
 
     if SIMULATE_EMAIL:
@@ -301,7 +301,7 @@ def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "us
 
 def send_diagnosis_receipt(to: str, patient_name: str, diagnosis: str, medications: list, doctor_name: str, pdf_url: str, call_id: int, is_auto: bool = False):
     html = build_diagnosis_receipt_email(patient_name, diagnosis, medications, doctor_name, pdf_url, call_id, is_auto)
-    return send_email(to=to, subject=f"Your Dignova AI Prescription — Ref #{call_id}", body=f"Your prescription is ready. Download it at: {pdf_url}", html=html)
+    return send_email(to=to, subject=f"Your Dignova AI Prescription - Ref #{call_id}", body=f"Your prescription is ready. Download it at: {pdf_url}", html=html)
 
 def send_appointment_reminder(to: str, patient_name: str, slot_time: str, doctor_name: str, appointment_id: int):
     """Sends a 24-hour appointment reminder email."""

@@ -1,7 +1,7 @@
 """
-Production Migration Script — Dignova AI Sentient OS Layer
+Production Migration Script - Dignova AI Sentient OS Layer
 Runs create_all against the configured DATABASE_URL (PostgreSQL on Render).
-Safe to run multiple times — only creates tables that don't already exist.
+Safe to run multiple times - only creates tables that don't already exist.
 """
 import asyncio
 import os
@@ -44,7 +44,7 @@ async def run():
         print("[OK] All tables created / verified successfully.")
 
     await engine.dispose()
-    print("[SUCCESS] Migration complete — Dignova AI is ready.")
+    print("[SUCCESS] Migration complete - Dignova AI is ready.")
 
 
 if __name__ == "__main__":

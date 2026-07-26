@@ -1,5 +1,5 @@
 """
-OpenRouter AI Service — Dignova AI
+OpenRouter AI Service - Dignova AI
 ===================================
 Handles all AI inference for the Telegram bot:
   1. Audio transcription via Whisper
@@ -62,14 +62,14 @@ Rules:
 - Set auto_prescribe=true ONLY if risk_level is LOW and confidence >= 0.90 and it is a minor, common condition (e.g. seasonal allergy, mild cold, routine refill).
 - Set escalate_to_doctor=true if red_flags are detected, risk_level >= MEDIUM, or confidence < 0.80.
 - medications list should only be populated if auto_prescribe=true.
-- NEVER auto-prescribe for: chest pain, stroke symptoms, high fever (>103°F/39.4°C for 3+ days), breathing difficulty, severe abdominal pain, pediatric cases under 5, pregnancy-related complaints.
-- Keep 'response' human and compassionate — this goes directly to the patient on Telegram."""
+- NEVER auto-prescribe for: chest pain, stroke symptoms, high fever (>103 deg F/39.4 deg C for 3+ days), breathing difficulty, severe abdominal pain, pediatric cases under 5, pregnancy-related complaints.
+- Keep 'response' human and compassionate - this goes directly to the patient on Telegram."""
 
     # ─── Highlight card prompt for doctor ────────────────────────────────── #
     HIGHLIGHT_CARD_SYSTEM = """You are a medical summarisation assistant.
 Given a patient's complaint, create a concise doctor briefing card as JSON:
 {
-  "title": "Patient Alert — One line summary",
+  "title": "Patient Alert - One line summary",
   "symptoms": ["list", "of", "symptoms"],
   "duration": "how long symptoms have been present",
   "red_flags": ["specific", "red", "flags"],
@@ -86,7 +86,7 @@ Be clinical and precise. Doctors read this in 10 seconds."""
         Returns the transcribed text or None on failure.
         """
         if not _OR_AVAILABLE:
-            print("[!] OpenRouter not configured — transcription unavailable")
+            print("[!] OpenRouter not configured - transcription unavailable")
             return None
 
         try:
@@ -226,7 +226,7 @@ Be clinical and precise. Doctors read this in 10 seconds."""
         """
         if not _OR_AVAILABLE:
             return {
-                "title": "Patient Alert — Review Required",
+                "title": "Patient Alert - Review Required",
                 "symptoms": [complaint[:100]],
                 "duration": "Unknown",
                 "red_flags": ["Manual review needed"],
@@ -266,7 +266,7 @@ Be clinical and precise. Doctors read this in 10 seconds."""
         except Exception as e:
             print(f"[X] Highlight card error: {e}")
             return {
-                "title": "Patient Alert — Review Required",
+                "title": "Patient Alert - Review Required",
                 "symptoms": [complaint[:100]],
                 "duration": "Unknown",
                 "red_flags": ["AI card generation failed"],
@@ -313,5 +313,5 @@ Be clinical and precise. Doctors read this in 10 seconds."""
             print(f"[X] Preventive message error: {e}")
             return (
                 f"Hi {patient_name}! 💙 It's been {months_since_checkup} months since your last check-up. "
-                "Your health matters — book a quick slot below!"
+                "Your health matters - book a quick slot below!"
             )

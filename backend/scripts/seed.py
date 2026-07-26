@@ -220,12 +220,12 @@ async def seed_data():
         await db.commit()
         print("Bootstrap: Org-Monitored Patient created (Manipal)")
 
-        # 5. TRAINING SCENARIOS (Ghost Replays — Rich Library)
+        # 5. TRAINING SCENARIOS (Ghost Replays - Rich Library)
         training_scenarios = [
             # ─── BEGINNER ────────────────────────────────────
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Common Cold Triage — Case #101",
+                title="Common Cold Triage - Case #101",
                 difficulty="beginner",
                 category="General Medicine",
                 patient_personality="calm and cooperative",
@@ -240,7 +240,7 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Mild Allergic Reaction — Case #102",
+                title="Mild Allergic Reaction - Case #102",
                 difficulty="beginner",
                 category="Allergy & Immunology",
                 patient_personality="anxious but stable",
@@ -255,7 +255,7 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="UTI Assessment — Case #103",
+                title="UTI Assessment - Case #103",
                 difficulty="beginner",
                 category="Urology",
                 patient_personality="embarrassed and hesitant",
@@ -272,7 +272,7 @@ async def seed_data():
             # ─── INTERMEDIATE ────────────────────────────────
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Diabetic Ketoacidosis — Case #201",
+                title="Diabetic Ketoacidosis - Case #201",
                 difficulty="intermediate",
                 category="Internal Medicine",
                 patient_personality="confused and lethargic",
@@ -288,7 +288,7 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Asthma Exacerbation — Case #202",
+                title="Asthma Exacerbation - Case #202",
                 difficulty="intermediate",
                 category="Pulmonology",
                 patient_personality="panicked and breathless",
@@ -304,11 +304,11 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Pediatric Febrile Seizure — Case #203",
+                title="Pediatric Febrile Seizure - Case #203",
                 difficulty="intermediate",
                 category="Pediatrics",
                 patient_personality="parent is crying and terrified",
-                initial_symptoms="My 2-year-old son suddenly started shaking all over. His eyes rolled back and the whole body was jerking for about 2 minutes. He had a fever of 103°F since yesterday. He's now drowsy but breathing.",
+                initial_symptoms="My 2-year-old son suddenly started shaking all over. His eyes rolled back and the whole body was jerking for about 2 minutes. He had a fever of 103 deg F since yesterday. He's now drowsy but breathing.",
                 expert_diagnosis="Simple Febrile Seizure secondary to viral febrile illness. Self-limiting, but requires fever source identification and parental reassurance.",
                 expert_action_plan=[
                     {"timestamp": 5, "action": "Ensure airway protection", "description": "Place child in recovery position. Do NOT insert anything in mouth. Time the seizure."},
@@ -322,11 +322,11 @@ async def seed_data():
             # ─── ADVANCED ────────────────────────────────────
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Cardiac Arrest Triage — Case #301",
+                title="Cardiac Arrest Triage - Case #301",
                 difficulty="advanced",
                 category="Cardiology",
                 patient_personality="panicked and breathless",
-                initial_symptoms="My chest is crushing — like an elephant is sitting on it. The pain is going to my left arm and jaw. I'm sweating buckets. Started 20 minutes ago while climbing stairs.",
+                initial_symptoms="My chest is crushing - like an elephant is sitting on it. The pain is going to my left arm and jaw. I'm sweating buckets. Started 20 minutes ago while climbing stairs.",
                 expert_diagnosis="Acute Myocardial Infarction (STEMI). Requires immediate cath lab activation and dual antiplatelet therapy.",
                 expert_action_plan=[
                     {"timestamp": 5, "action": "Identify STEMI criteria", "description": "Classic triad: crushing substernal chest pain, radiation to left arm/jaw, diaphoresis."},
@@ -338,7 +338,7 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Acute Stroke Assessment — Case #302",
+                title="Acute Stroke Assessment - Case #302",
                 difficulty="advanced",
                 category="Neurology",
                 patient_personality="confused, speech is slurred",
@@ -354,14 +354,14 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Sepsis Protocol — Case #303",
+                title="Sepsis Protocol - Case #303",
                 difficulty="advanced",
                 category="Emergency Medicine",
                 patient_personality="delirious and shivering",
-                initial_symptoms="I had a small cut on my leg that got infected 4 days ago. Now I have high fever 104°F, shaking chills, heart racing, and I feel confused about where I am. The wound is red and swollen with pus.",
+                initial_symptoms="I had a small cut on my leg that got infected 4 days ago. Now I have high fever 104 deg F, shaking chills, heart racing, and I feel confused about where I am. The wound is red and swollen with pus.",
                 expert_diagnosis="Severe Sepsis with suspected cellulitis source. Meets SIRS criteria. Requires Hour-1 Sepsis Bundle activation.",
                 expert_action_plan=[
-                    {"timestamp": 5, "action": "Recognize sepsis criteria", "description": "SIRS: Temp > 38.3°C, HR > 90, altered mental status. Calculate qSOFA score."},
+                    {"timestamp": 5, "action": "Recognize sepsis criteria", "description": "SIRS: Temp > 38.3 deg C, HR > 90, altered mental status. Calculate qSOFA score."},
                     {"timestamp": 10, "action": "Obtain cultures BEFORE antibiotics", "description": "Blood cultures x2 (different sites), wound culture/swab. Lactate level STAT."},
                     {"timestamp": 15, "action": "Initiate Hour-1 Bundle", "description": "Broad-spectrum IV antibiotics (piperacillin-tazobactam). 30mL/kg crystalloid bolus for hypotension."},
                     {"timestamp": 30, "action": "Source control", "description": "Surgical consult for wound debridement if abscess present. I&D may be required."},
@@ -370,12 +370,12 @@ async def seed_data():
             ),
             domain.TrainingScenario(
                 organization_id=manipal.id,
-                title="Anaphylaxis Management — Case #304",
+                title="Anaphylaxis Management - Case #304",
                 difficulty="advanced",
                 category="Emergency Medicine",
                 patient_personality="gasping, unable to speak clearly",
                 initial_symptoms="I got stung by a bee 10 minutes ago. My throat is swelling shut, I can barely breathe, I'm covered in hives, and I feel dizzy like I'm going to faint. I don't have my EpiPen.",
-                expert_diagnosis="Anaphylaxis — Hymenoptera venom allergy. Life-threatening. Requires immediate IM epinephrine and airway management.",
+                expert_diagnosis="Anaphylaxis - Hymenoptera venom allergy. Life-threatening. Requires immediate IM epinephrine and airway management.",
                 expert_action_plan=[
                     {"timestamp": 2, "action": "Administer epinephrine IMMEDIATELY", "description": "IM Epinephrine 0.3-0.5mg (1:1000) mid-lateral thigh. This is the FIRST and MOST critical step."},
                     {"timestamp": 5, "action": "Secure airway", "description": "Position supine with legs elevated (unless respiratory distress → sit upright). Prepare for intubation if airway compromised."},

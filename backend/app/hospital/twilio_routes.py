@@ -1,5 +1,5 @@
 """
-twilio_routes.py — Dignova AI Call Bot Controller
+twilio_routes.py - Dignova AI Call Bot Controller
 Full Twilio Voice integration: inbound bot, outbound escalation, status callbacks.
 """
 import os
@@ -51,7 +51,7 @@ async def handle_incoming_call(request: Request):
     else:
         call_sid = request.query_params.get("CallSid", "unknown")
 
-    # Log to DB asynchronously — don't block TwiML response
+    # Log to DB asynchronously - don't block TwiML response
     import asyncio
     asyncio.create_task(_log_inbound_call(call_sid))
 
@@ -198,7 +198,7 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     )
     gather.say(
         f"{greeting} {param_name}. I am Dr. Dignova, your senior medical consultant. "
-        "I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?",
+        "I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?",
         voice="Polly.Joanna",
         language="en-US"
     )

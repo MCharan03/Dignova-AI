@@ -1,5 +1,5 @@
 """
-n8n Services — Dignova AI Nervous System
+n8n Services - Dignova AI Nervous System
 ==========================================
 All outbound triggers to n8n webhooks live here.
 n8n handles: Telegram delivery, email orchestration, Google Calendar, scheduling.
@@ -17,7 +17,7 @@ load_dotenv()
 class N8nService:
     """
     The Nervous System Bridge.
-    Thin layer — just posts structured payloads to n8n webhook URLs.
+    Thin layer - just posts structured payloads to n8n webhook URLs.
     All AI logic is done BEFORE calling these methods.
     """
 

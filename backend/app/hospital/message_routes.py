@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/messages", tags=["Messaging"])
 
 
 # ═══════════════════════════════════════════════════
-# MODELS — In-memory message store (production: use DB model)
+# MODELS - In-memory message store (production: use DB model)
 # ═══════════════════════════════════════════════════
 
 # Simple in-memory store; in production, back with a DB table

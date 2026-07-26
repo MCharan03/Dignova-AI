@@ -331,7 +331,7 @@ async def internal_call_ws_handler(websocket: WebSocket):
 async def twilio_media_handler(websocket: WebSocket):
     """
     100% Custom Self-Contained Twilio Media Bridge.
-    Zero 3rd-party Live API dependency — Streams neural audio directly to phone
+    Zero 3rd-party Live API dependency - Streams neural audio directly to phone
     with EHR medical history, high-fidelity neural voice, and instant barge-in cut-off.
     """
     await websocket.accept()
@@ -359,7 +359,7 @@ async def twilio_media_handler(websocket: WebSocket):
     accumulated_transcript = ""
 
     # Send initial greeting neural audio directly to phone
-    greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?"
+    greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?"
     greeting_mp3_b64 = await agent.generate_speech_audio(greeting_text)
     greeting_mulaw_b64 = mp3_b64_to_mulaw_b64(greeting_mp3_b64)
 
@@ -397,7 +397,7 @@ async def twilio_media_handler(websocket: WebSocket):
 async def sentient_custom_voice_handler(websocket: WebSocket):
     """
     100% self-contained Voice Agent endpoint.
-    Zero 3rd-party Live API dependency — EHR medical history injection,
+    Zero 3rd-party Live API dependency - EHR medical history injection,
     streaming LLM brain, Microsoft Neural TTS, and instant barge-in support.
     """
     await websocket.accept()
@@ -424,7 +424,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
     accumulated_transcript = ""
 
     # Generate opening doctor greeting
-    greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?"
+    greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?"
     greeting_audio = await agent.generate_speech_audio(greeting_text)
     accumulated_transcript += f"ASSISTANT: {greeting_text}\n"
 
@@ -471,7 +471,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
                     await _update_call_record(call_id, accumulated_transcript)
 
             elif evt == "interrupt":
-                print("[INTERRUPT] User interrupted Dr. Dignova — clearing speech buffer.")
+                print("[INTERRUPT] User interrupted Dr. Dignova - clearing speech buffer.")
                 await websocket.send_json({"event": "clear_buffer"})
 
             elif evt == "stop":

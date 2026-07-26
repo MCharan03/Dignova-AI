@@ -96,7 +96,7 @@ async def trigger_sos(
         notif = Notification(
             user_id=doc.id,
             organization_id=current_user.organization_id,
-            title=f"[EMERGENCY] EMERGENCY SOS — {current_user.name}",
+            title=f"[EMERGENCY] EMERGENCY SOS - {current_user.name}",
             message=sos_message,
             type="critical",
             category="alert",
@@ -114,7 +114,7 @@ async def trigger_sos(
         notif = Notification(
             user_id=admin.id,
             organization_id=current_user.organization_id,
-            title=f"[EMERGENCY] SOS Triggered — {current_user.name}",
+            title=f"[EMERGENCY] SOS Triggered - {current_user.name}",
             message=sos_message,
             type="critical",
             category="alert",

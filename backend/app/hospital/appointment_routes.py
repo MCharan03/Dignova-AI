@@ -29,7 +29,7 @@ class AppointmentResponse(BaseModel):
     created_at: datetime
 
 class ScheduleSlotRequest(BaseModel):
-    day_of_week: int   # 0=Mon … 6=Sun
+    day_of_week: int   # 0=Mon ... 6=Sun
     start_time: str    # "09:00"
     end_time: str      # "17:00"
     department_id: Optional[int] = None
@@ -129,7 +129,7 @@ async def book_appointment(
     db.add(Notification(
         user_id=payload.doctor_id,
         organization_id=current_user.organization_id,
-        title=f"New Appointment Request — {current_user.name}",
+        title=f"New Appointment Request - {current_user.name}",
         message=f"{current_user.name} has booked an appointment for {payload.slot_time.strftime('%b %d, %Y at %H:%M')}.",
         type="info",
         category="appointment",

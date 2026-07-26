@@ -1,5 +1,5 @@
 """
-test_internal_call.py — Automated internal test script for Dignova Voice Agent.
+test_internal_call.py - Automated internal test script for Dignova Voice Agent.
 Tests:
 1. Backend health check (/api/health)
 2. Patient authentication (/api/auth/login)
@@ -159,7 +159,7 @@ try:
 
     asyncio.run(run_ws_test())
 except ImportError:
-    info("websockets python package not installed locally for WS step — skipping live socket test.")
+    info("websockets python package not installed locally for WS step - skipping live socket test.")
 except Exception as ws_err:
     err(f"Live WebSocket Voice Agent test error: {ws_err}")
 

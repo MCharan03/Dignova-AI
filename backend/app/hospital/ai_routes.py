@@ -91,7 +91,7 @@ def analyze_vitals_trend(vitals_list):
             risk_score += 8
             flags.append("prediabetic_range")
 
-    # Trend analysis — compare first half to second half of readings
+    # Trend analysis - compare first half to second half of readings
     trend = "stable"
     if len(hr_vals) >= 4:
         mid = len(hr_vals) // 2
@@ -195,7 +195,7 @@ async def predict_patient_health(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """AI health prediction for a specific patient — available to doctors and admins."""
+    """AI health prediction for a specific patient - available to doctors and admins."""
     if current_user.role not in [UserRole.super_admin, UserRole.org_admin, UserRole.doctor]:
         raise HTTPException(status_code=403, detail="Requires clinical privileges.")
 

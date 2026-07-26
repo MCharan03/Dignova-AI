@@ -1,5 +1,5 @@
 """
-custom_agent.py — Dignova Sentient Self-Contained Custom Voice Engine
+custom_agent.py - Dignova Sentient Self-Contained Custom Voice Engine
 ========================================================================
 100% independent custom Voice Agent pipeline:
 - EHR Patient Medical History Injection (allergies, chronic conditions, vitals)
@@ -58,7 +58,7 @@ class CustomVoiceAgent:
 - Known Allergies: {user.allergies or 'None reported'}
 - Current Medications: {user.medications or 'None reported'}
 - Chronic Conditions: {user.chronic_conditions or 'None reported'}
-- Vitals: Weight {user.weight_kg or '—'} kg, Height {user.height_cm or '—'} cm
+- Vitals: Weight {user.weight_kg or '-'} kg, Height {user.height_cm or '-'} cm
 - Historical Stress Index: {user.avg_stress_level or 0.5:.2f}
 """
                 return ehr_summary
@@ -79,7 +79,7 @@ Clinical Philosophy: {philosophy}
 Interaction Rules:
 1. Speak directly to the patient in warm, empathetic, reassuring English. Do NOT use markdown symbols, stage directions, or metadata tags in your spoken sentences.
 2. Translate all medical terms into simple, comforting explanations immediately.
-3. Start the consultation by greeting them warmly using their name (if known) and referencing their chart gently: "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me—what's been bothering you or how are you feeling today?"
+3. Start the consultation by greeting them warmly using their name (if known) and referencing their chart gently: "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?"
 4. Ask systematic diagnostic questions ONE AT A TIME (onset, location, severity, accompanying symptoms).
 5. If critical red-flag symptoms occur (severe chest pain, radiating arm numbness, acute shortness of breath, sudden facial drooping, severe uncontrollable bleeding), output [EMERGENCY_DETECTED] and immediately advise emergency medical care (call 108/911 or go to nearest ER).
 6. When sufficient clinical details are gathered (3-4 turns), provide a clear diagnostic assessment, explain your reasoning, recommend next steps, and append [DIAGNOSIS_READY].

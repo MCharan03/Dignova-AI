@@ -506,7 +506,7 @@ async def update_org_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update org settings — org admins can change their own org."""
+    """Update org settings - org admins can change their own org."""
     require_org_admin(current_user)
     org_id = get_org_id(current_user)
     
@@ -556,7 +556,7 @@ async def record_vitals(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Record new vitals entry — patients enter their own data."""
+    """Record new vitals entry - patients enter their own data."""
     new_vitals = UserVitals(
         user_id=current_user.id,
         heart_rate=vitals_in.heart_rate,

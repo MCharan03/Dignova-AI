@@ -1,18 +1,18 @@
 """
-Bot Webhooks — Dignova AI
+Bot Webhooks - Dignova AI
 ==========================
 All n8n → Backend webhook receivers.
 n8n handles Telegram delivery; Backend handles all logic.
 
 Endpoints:
-  POST /api/n8n/webhook/register-telegram   — Link Telegram chat_id to user
-  POST /api/n8n/webhook/triage              — Text message triage  
-  POST /api/n8n/webhook/voice               — Audio → Whisper → AI → auto-rx or escalate
-  POST /api/n8n/webhook/doctor-approval     — Doctor approve/modify via Telegram button
-  POST /api/n8n/webhook/aftercare-response  — Patient day-3 inline button (Yes/No)
-  POST /api/n8n/webhook/geofence-checkin    — Live location → 500m hospital check-in
-  POST /api/n8n/webhook/calendar-action     — Appointment confirm/reschedule
-  POST /api/n8n/webhook/preventive-check    — Cron: find overdue patients for nudging
+  POST /api/n8n/webhook/register-telegram   - Link Telegram chat_id to user
+  POST /api/n8n/webhook/triage              - Text message triage  
+  POST /api/n8n/webhook/voice               - Audio → Whisper → AI → auto-rx or escalate
+  POST /api/n8n/webhook/doctor-approval     - Doctor approve/modify via Telegram button
+  POST /api/n8n/webhook/aftercare-response  - Patient day-3 inline button (Yes/No)
+  POST /api/n8n/webhook/geofence-checkin    - Live location → 500m hospital check-in
+  POST /api/n8n/webhook/calendar-action     - Appointment confirm/reschedule
+  POST /api/n8n/webhook/preventive-check    - Cron: find overdue patients for nudging
 """
 
 import os
@@ -320,7 +320,7 @@ async def bot_triage_webhook(
                 "allergies": user.allergies, "chronic_conditions": user.chronic_conditions
             }
 
-        # Run AI triage (async — awaited here)
+        # Run AI triage (async - awaited here)
         from ..services.openrouter_service import OpenRouterService
         ai_result = await OpenRouterService.triage_message(
             conversation_history=db_call.transcript or "",
@@ -690,7 +690,7 @@ async def doctor_approval_webhook(
         }
 
     else:
-        # Doctor rejected — mark for manual follow-up
+        # Doctor rejected - mark for manual follow-up
         db_call.state = "evaluation"
         db_call.severity = "ELEVATED"
         await db.commit()
@@ -794,7 +794,7 @@ async def geofence_checkin_webhook(
             "message":  f"You are {round(distance)}m from the hospital. Check-in activates within 500m."
         }
 
-    # Patient is within range — check them in
+    # Patient is within range - check them in
     user = await _resolve_user_by_chat(request.telegram_chat_id, db)
 
     # Find their most recent appointment

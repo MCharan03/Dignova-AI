@@ -214,18 +214,18 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     token = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token}"
 
-    # MX check — only queue email if the domain can actually receive mail
+    # MX check - only queue email if the domain can actually receive mail
     domain = user.email.split("@")[1]
     try:
         import socket
         socket.getaddrinfo(domain, None)
-        # Domain resolves — safe to send verification email
+        # Domain resolves - safe to send verification email
         background_tasks.add_task(
             send_welcome_email,
             user.email, user.name, verify_url, user.role.value
         )
     except Exception:
-        print(f"[MX BLOCK] No DNS for {domain} — skipping verification email for {user.email}")
+        print(f"[MX BLOCK] No DNS for {domain} - skipping verification email for {user.email}")
 
     return user
 
@@ -247,7 +247,7 @@ async def verify_email(token: str, background_tasks: BackgroundTasks, db: AsyncS
     user.verified_at = datetime.utcnow()
     await db.commit()
 
-    # NOW trigger n8n welcome onboarding — only real humans reach this point
+    # NOW trigger n8n welcome onboarding - only real humans reach this point
     FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
     token_new = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token_new}"
@@ -273,7 +273,7 @@ async def resend_verification(request: Request, email: EmailStr, background_task
             FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
             token = generate_verification_token(user.email)
             verify_url = f"{FRONTEND_URL}/verify?token={token}"
-            # Use SMTP (with built-in MX gate) — NOT n8n — so fake addresses are dropped
+            # Use SMTP (with built-in MX gate) - NOT n8n - so fake addresses are dropped
             background_tasks.add_task(
                 send_welcome_email,
                 user.email, user.name, verify_url, user.role.value
@@ -324,7 +324,7 @@ async def forgot_password(request: Request, request_data: ForgotPasswordRequest,
             # Using basic send_email for password reset
             send_email(
                 to=user.email,
-                subject="Password Reset — Dignova AI",
+                subject="Password Reset - Dignova AI",
                 body=f"Hello {user.name},\n\nYou requested a password reset. Click the link below to set a new password:\n\n{reset_url}\n\nThis link expires in 30 minutes.",
                 category='support'
             )

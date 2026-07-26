@@ -23,7 +23,7 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 
 def _check_ollama_available() -> bool:
-    """Quick health check — is Ollama running?"""
+    """Quick health check - is Ollama running?"""
     try:
         r = httpx.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2.0)
         return r.status_code == 200
@@ -73,7 +73,7 @@ Your persona is that of a composed, authoritative, and deeply compassionate cons
 Clinical Protocol:
 1. **Professional Communication**: Speak with clear clinical authority. Use precise medical terms but immediately explain them in a clear, accessible manner to the patient. For example: "I am concerned you may be experiencing acute gastroenteritis, which is a severe inflammation of the stomach lining."
 2. **Clinical Empathy**: Maintain a calm, reassuring, and highly professional bedside manner. Reassure the patient of your focus on their safety and health.
-3. **Structured Triage**: Ask diagnostic questions systematically—focus on symptom onset, pain level, duration, and aggravating factors. Do not rush.
+3. **Structured Triage**: Ask diagnostic questions systematically-focus on symptom onset, pain level, duration, and aggravating factors. Do not rush.
 4. **Methodical Diagnosis**: Avoid asking multiple questions at once. Ask one diagnostic question at a time, listen carefully to the patient's response, and proceed.
 
 Emergency & Critical Signs:
