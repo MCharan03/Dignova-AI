@@ -59,6 +59,10 @@ async def lifespan(app: FastAPI):
             default_users = [
                 {"email": "cherrycostech@gmail.com", "name": "Dignova Super Admin", "phone": "+919000000001", "role": domain.UserRole.super_admin, "pwd": "dignova2026admin"},
                 {"email": "mallelacharankumar@gmail.com", "name": "Charan Kumar", "phone": "+919036205526", "role": domain.UserRole.user, "pwd": "user123"},
+                {"email": "admin@manipal.ai", "name": "Manipal Admin", "phone": "+919000000004", "role": domain.UserRole.org_admin, "pwd": "admin123"},
+                {"email": "sarah.manipal@dignova.ai", "name": "Dr. Sarah Smith", "phone": "+919000000005", "role": domain.UserRole.doctor, "tier": domain.DoctorTier.experienced, "pwd": "doctor123"},
+                {"email": "priya.manipal@dignova.ai", "name": "Dr. Priya Nair", "phone": "+919000000006", "role": domain.UserRole.doctor, "tier": domain.DoctorTier.mid_range, "pwd": "doctor123"},
+                {"email": "mike.intern@dignova.ai", "name": "Intern Mike", "phone": "+919000000007", "role": domain.UserRole.doctor, "tier": domain.DoctorTier.intern, "pwd": "doctor123"},
             ]
             for uinfo in default_users:
                 u_stmt = select(domain.User).where(domain.User.email == uinfo["email"])
@@ -70,6 +74,7 @@ async def lifespan(app: FastAPI):
                         phone_number=uinfo["phone"],
                         hashed_password=get_password_hash(uinfo["pwd"]),
                         role=uinfo["role"],
+                        tier=uinfo.get("tier"),
                         is_verified=True
                     )
                     session.add(nu)
@@ -77,6 +82,8 @@ async def lifespan(app: FastAPI):
                     # Ensure default account stays verified, has correct role, and updated password
                     existing_u.is_verified = True
                     existing_u.role = uinfo["role"]
+                    if uinfo.get("tier"):
+                        existing_u.tier = uinfo["tier"]
                     existing_u.hashed_password = get_password_hash(uinfo["pwd"])
             await session.commit()
     except Exception as e:
