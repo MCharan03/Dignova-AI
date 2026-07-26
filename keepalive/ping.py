@@ -8,7 +8,7 @@ import requests
 import sys
 
 TARGETS = [
-    ("Backend",  "https://dignova-ai.onrender.com/docs"),
+    ("Backend",  "https://dignova-ai.onrender.com/api/health"),
     ("n8n",      "https://dignova-n8n.onrender.com/healthz"),
 ]
 
@@ -17,15 +17,15 @@ def main():
     for name, url in TARGETS:
         try:
             r = requests.get(url, timeout=30)
-            print(f"✅ {name}: {r.status_code}")
+            print(f"[OK] {name}: {r.status_code}")
         except Exception as e:
-            print(f"⚠️ {name}: {e}")
+            print(f"[WARN] {name}: {e}")
             all_ok = False
 
     if all_ok:
-        print("All services alive.")
+        print("[SUCCESS] All services alive.")
     else:
-        print("Some services may be starting up.")
+        print("[WARN] Some services may be starting up.")
 
 if __name__ == "__main__":
     main()

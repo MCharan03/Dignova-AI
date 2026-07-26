@@ -22,15 +22,15 @@ services:
       - key: TWILIO_PHONE_NUMBER
         sync: false
       - key: BACKEND_URL
-        sync: false          # e.g. https://dignova-ai-backend.onrender.com
+        sync: false          # e.g. https://dignova-ai.onrender.com
       - key: BACKEND_URL_WS
-        sync: false          # e.g. wss://dignova-ai-backend.onrender.com
+        sync: false          # e.g. wss://dignova-ai.onrender.com
       - key: FRONTEND_URL
         sync: false          # e.g. https://dignova-ai.vercel.app
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: google/gemini-2.5-flash
+        value: meta-llama/llama-3.3-70b-instruct:free
       - key: N8N_BASE_URL
         sync: false
       - key: TELEGRAM_BOT_TOKEN
@@ -63,28 +63,6 @@ services:
       - key: OLLAMA_MODEL
         value: llama3.2
 
-  # ── Frontend (Next.js) ───────────────────────────────────────────
-  - type: web
-    name: dignova-ai-frontend
-    runtime: node
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
-    plan: free
-    envVars:
-      - key: BACKEND_URL
-        fromService:
-          type: web
-          name: dignova-ai-backend
-          property: host
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: dignova-ai-backend
-          property: host
-      - key: NODE_VERSION
-        value: "20"
-
   # ── n8n Automation Engine (Docker) ──────────────────────────────
   - type: web
     name: dignova-n8n
@@ -94,7 +72,6 @@ services:
     envVars:
       - key: N8N_ENFORCE_SETTINGS_FILE_FOR_EVAL
         value: "true"
-      # Expose standard credentials settings
       - key: N8N_BASIC_AUTH_ACTIVE
         value: "true"
       - key: N8N_BASIC_AUTH_USER
@@ -107,7 +84,6 @@ services:
         value: postgresql://diagnova_user:xuhhO5iZVWlMeqrrrpJXZv0T81071tKM@dpg-d9680ihkh4rs73dcqlb0-a/diagnova
       - key: RESEND_API_KEY
         sync: false
-      # Memory & Execution optimizations for restricted free tier (512MB RAM)
       - key: EXECUTIONS_PROCESS
         value: main
       - key: EXECUTIONS_DATA_PRUNE
