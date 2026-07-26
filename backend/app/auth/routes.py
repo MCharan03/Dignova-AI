@@ -128,13 +128,21 @@ class ResetPasswordRequest(BaseModel):
 
 # --- Routes ---
 
+def _get_frontend_url(request: Request = None) -> str:
+    if request:
+        origin = request.headers.get("origin") or request.headers.get("referer")
+        if origin:
+            from urllib.parse import urlparse
+            parsed = urlparse(origin)
+            if parsed.scheme and parsed.netloc:
+                return f"{parsed.scheme}://{parsed.netloc}"
+    return os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+
+
 @router.post("/register", response_model=UserResponse)
 @limiter.limit("2/minute")
 async def register(request: Request, user_in: UserCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> Any:
     # 0. Honeypot check for spam bots
-    # Humans using the frontend submit website="" (empty string).
-    # Bots filling forms submit website="value" (non-empty).
-    # Direct API script submissions omit the field entirely (website=None).
     if user_in.website is None or user_in.website != "":
         print(f"[HONEYPOT] Bot/direct-API registration blocked: {user_in.email} (website={user_in.website!r})")
         return UserResponse(
@@ -155,7 +163,6 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
         org = await db.scalar(org_stmt)
         if not org:
             if user_in.role == "org_admin":
-                # Dynamic Auto-Creation for New Hospital Admins
                 org_name = f"{user_in.name.split()[0]}'s Hospital" if user_in.name else "New Medical Center"
                 org = Organization(
                     name=org_name,
@@ -167,7 +174,6 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
                 await db.flush()
                 org_id = org.id
             else:
-                # Fallback to default hospital for new doctors if org_code not found
                 default_org_stmt = select(Organization).limit(1)
                 default_org = await db.scalar(default_org_stmt)
                 if not default_org:
@@ -198,7 +204,6 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
         stmt_phone = select(User).where(User.phone_number == phone)
         existing_phone = await db.scalar(stmt_phone)
         if existing_phone:
-            # Append micro-suffix to prevent 500 DB constraint error for duplicate demo numbers
             import random
             phone = f"{phone}-{random.randint(100, 999)}"
 
@@ -227,35 +232,34 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
         hashed_password=get_password_hash(user_in.password),
         role=role_enum,
         tier=tier_enum,
-        is_verified=True
+        is_verified=False  # Mandatory verification for new signups
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    
-    # Generate verification token
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+    # Generate verification token dynamically based on request origin
+    FRONTEND_URL = _get_frontend_url(request)
     token = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token}"
+    print(f"[AUTH] New signup {user.email}. Dynamic verification URL: {verify_url}")
 
     # MX check - only queue email if the domain can actually receive mail
     domain = user.email.split("@")[1]
     try:
         import socket
         socket.getaddrinfo(domain, None)
-        # Domain resolves - safe to send verification email
         background_tasks.add_task(
             send_welcome_email,
             user.email, user.name, verify_url, user.role.value
         )
-    except Exception:
-        print(f"[MX BLOCK] No DNS for {domain} - skipping verification email for {user.email}")
+    except Exception as e:
+        print(f"[MX BLOCK] Could not send verification email: {e}")
 
     return user
 
 @router.get("/verify")
-async def verify_email(token: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+async def verify_email(request: Request, token: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     email = confirm_verification_token(token)
     if not email:
         raise HTTPException(status_code=400, detail="The verification link is invalid or has expired.")
@@ -272,8 +276,7 @@ async def verify_email(token: str, background_tasks: BackgroundTasks, db: AsyncS
     user.verified_at = datetime.utcnow()
     await db.commit()
 
-    # NOW trigger n8n welcome onboarding - only real humans reach this point
-    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+    FRONTEND_URL = _get_frontend_url(request)
     token_new = generate_verification_token(user.email)
     verify_url = f"{FRONTEND_URL}/verify?token={token_new}"
     user_data = {
@@ -295,10 +298,9 @@ async def resend_verification(request: Request, email: EmailStr, background_task
     user = await db.scalar(stmt)
     if user and not user.is_verified:
         try:
-            FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+            FRONTEND_URL = _get_frontend_url(request)
             token = generate_verification_token(user.email)
             verify_url = f"{FRONTEND_URL}/verify?token={token}"
-            # Use SMTP (with built-in MX gate) - NOT n8n - so fake addresses are dropped
             background_tasks.add_task(
                 send_welcome_email,
                 user.email, user.name, verify_url, user.role.value
@@ -320,8 +322,8 @@ async def login_access_token(
         record_failed_attempt(email)
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
-    # Allow login for all users — verification is encouraged but not enforced
-    # (blocks legitimate users when email delivery fails)
+    if not user.is_verified:
+        raise HTTPException(status_code=400, detail="Please verify your email address before logging in. Check your inbox for the verification link.")
     clear_login_attempts(email)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
