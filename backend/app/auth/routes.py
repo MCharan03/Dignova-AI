@@ -295,9 +295,8 @@ async def login_access_token(
         record_failed_attempt(email)
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
-    if not user.is_verified:
-        raise HTTPException(status_code=400, detail="Please verify your email before logging in.")
-
+    # Allow login for all users — verification is encouraged but not enforced
+    # (blocks legitimate users when email delivery fails)
     clear_login_attempts(email)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
@@ -307,6 +306,7 @@ async def login_access_token(
             expires_delta=access_token_expires
         ),
         "token_type": "bearer",
+        "is_verified": user.is_verified,
     }
 
 @router.post("/forgot-password")
