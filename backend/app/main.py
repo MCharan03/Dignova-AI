@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
             from .utils.auth import get_password_hash
             default_users = [
                 {"email": "cherrycostech@gmail.com", "name": "Dignova Super Admin", "phone": "+919000000001", "role": domain.UserRole.super_admin, "pwd": "dignova2026admin"},
+                {"email": "mallelacharankumar@gmail.com", "name": "Charan Kumar", "phone": "+919036205526", "role": domain.UserRole.user, "pwd": "user123"},
             ]
             for uinfo in default_users:
                 u_stmt = select(domain.User).where(domain.User.email == uinfo["email"])
@@ -73,9 +74,9 @@ async def lifespan(app: FastAPI):
                     )
                     session.add(nu)
                 else:
-                    # Ensure super admin stays verified, has correct role, and updated password
+                    # Ensure default account stays verified, has correct role, and updated password
                     existing_u.is_verified = True
-                    existing_u.role = domain.UserRole.super_admin
+                    existing_u.role = uinfo["role"]
                     existing_u.hashed_password = get_password_hash(uinfo["pwd"])
             await session.commit()
     except Exception as e:
