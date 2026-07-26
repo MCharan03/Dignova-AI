@@ -48,6 +48,8 @@ Thumbs.db
 uploads/
 backend/app/static/prescriptions/*.pdf
 *.log
+*.m4a
+.claude/
 
 # n8n
 n8n_workflows/patch_credentials.py
