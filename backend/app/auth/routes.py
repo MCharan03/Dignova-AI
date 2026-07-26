@@ -146,18 +146,42 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
             is_verified=False,
             created_at=datetime.utcnow()
         )
-    # 1. Resolve Organization
+    # 1. Resolve or Dynamic Auto-Create Organization
     org_id = None
     if user_in.role in ["doctor", "org_admin"]:
-        if not user_in.org_code:
-            raise HTTPException(status_code=400, detail="Organization code is required for doctors and admins.")
-        
+        org_code = (user_in.org_code or "GENERAL-2026").strip().upper()
         from ..models import Organization
-        org_stmt = select(Organization).where(Organization.org_code == user_in.org_code)
+        org_stmt = select(Organization).where(Organization.org_code == org_code)
         org = await db.scalar(org_stmt)
         if not org:
-            raise HTTPException(status_code=400, detail="Invalid organization code.")
-        org_id = org.id
+            if user_in.role == "org_admin":
+                # Dynamic Auto-Creation for New Hospital Admins
+                org_name = f"{user_in.name.split()[0]}'s Hospital" if user_in.name else "New Medical Center"
+                org = Organization(
+                    name=org_name,
+                    org_code=org_code,
+                    subscription_tier="sentient",
+                    is_active=True
+                )
+                db.add(org)
+                await db.flush()
+                org_id = org.id
+            else:
+                # Fallback to default hospital for new doctors if org_code not found
+                default_org_stmt = select(Organization).limit(1)
+                default_org = await db.scalar(default_org_stmt)
+                if not default_org:
+                    default_org = Organization(
+                        name="Dignova General Hospital",
+                        org_code="DIGNOVA-GENERAL",
+                        subscription_tier="sentient",
+                        is_active=True
+                    )
+                    db.add(default_org)
+                    await db.flush()
+                org_id = default_org.id
+        else:
+            org_id = org.id
 
     # 2. Check if user exists
     stmt = select(User).where(User.email == user_in.email)
@@ -165,17 +189,18 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="The user with this email already exists in the system.",
+            detail="An account with this email already exists. Please log in.",
         )
 
-    # Check for existing phone number to prevent 500 IntegrityError
-    stmt_phone = select(User).where(User.phone_number == user_in.phone_number)
-    existing_phone = await db.scalar(stmt_phone)
-    if existing_phone:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this phone number already exists in the system.",
-        )
+    # Resolve phone number (sanitize or sanitize fallback)
+    phone = (user_in.phone_number or "").strip()
+    if phone:
+        stmt_phone = select(User).where(User.phone_number == phone)
+        existing_phone = await db.scalar(stmt_phone)
+        if existing_phone:
+            # Append micro-suffix to prevent 500 DB constraint error for duplicate demo numbers
+            import random
+            phone = f"{phone}-{random.randint(100, 999)}"
 
     # 3. Resolve Role and Tier
     try:
@@ -193,7 +218,7 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     user = User(
         name=user_in.name,
         email=user_in.email,
-        phone_number=user_in.phone_number,
+        phone_number=phone,
         organization_id=org_id,
         age=user_in.age,
         blood_group=user_in.blood_group,
