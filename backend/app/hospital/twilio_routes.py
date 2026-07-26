@@ -445,8 +445,34 @@ async def _finalize_call_record(call_sid: str, diagnosis_text: str, full_transcr
                     call.severity = "MEDIUM"
                 else:
                     call.severity = "LOW"
+
+                # Phase 3.2 — Auto-assign an online doctor for HIGH/CRITICAL calls
+                if call.severity in ("HIGH", "CRITICAL") and call.organization_id:
+                    try:
+                        doc_stmt = select(domain.User).where(
+                            domain.User.role == domain.UserRole.doctor,
+                            domain.User.organization_id == call.organization_id,
+                            domain.User.is_online == True,
+                            domain.User.tier != domain.DoctorTier.intern
+                        ).limit(1)
+                        assigned_doctor = await session.scalar(doc_stmt)
+                        if assigned_doctor:
+                            call.diagnosis_given = (call.diagnosis_given or "") + f" [ASSIGNED: Dr. {assigned_doctor.name}]"
+                            print(f"[ASSIGN] Call {call_sid} ({call.severity}) assigned to Dr. {assigned_doctor.name}")
+                    except Exception as ae:
+                        print(f"[WARN] Doctor auto-assign failed: {ae}")
+
+                # Phase 5.3 — Flag call for proactive follow-up (MEDIUM+ severity)
+                if call.severity in ("MEDIUM", "HIGH", "CRITICAL"):
+                    from datetime import timedelta
+                    # Store follow-up due time in transcript metadata
+                    follow_up_time = datetime.utcnow() + timedelta(hours=6)
+                    call.transcript = (call.transcript or "") + f"\n[FOLLOW_UP_DUE] {follow_up_time.isoformat()}"
+                    print(f"[FOLLOW-UP] Call {call_sid} flagged for follow-up at {follow_up_time}")
+
                 await session.commit()
                 print(f"[DB] Call {call_sid} finalized. Severity: {call.severity}")
     except Exception as e:
         print(f"[WARN] Call finalize failed: {e}")
+
 
