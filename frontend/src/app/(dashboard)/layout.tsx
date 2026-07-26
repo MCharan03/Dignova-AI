@@ -119,48 +119,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const getNavItems = () => {
         if (!user) return [];
         if (user.role === 'super_admin') return [
-            { name: 'Command Center', path: '/admin', icon: <LayoutDashboard size={20} /> },
+            { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },
             { name: 'Analytics', path: '/admin/analytics', icon: <BarChart3 size={20} /> },
             { name: 'Organizations', path: '/admin/organizations', icon: <Building2 size={20} /> },
             { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
             { name: 'Doctors', path: '/admin/doctors', icon: <Stethoscope size={20} /> },
-            { name: 'Audit Log', path: '/admin/history', icon: <History size={20} /> },
+            { name: 'Activity Log', path: '/admin/history', icon: <History size={20} /> },
             { name: 'Settings', path: '/admin/settings', icon: <Settings size={20} /> },
         ];
         if (user.role === 'org_admin' || user.role === 'receptionist') return [
-            { name: 'Hospital HQ', path: '/org-admin', icon: <Building2 size={20} /> },
-            { name: 'Admissions', path: '/org-admin/admissions', icon: <Users size={20} /> },
-            { name: 'Billing', path: '/org-admin/billing', icon: <FileText size={20} /> },
+            { name: 'Dashboard', path: '/org-admin', icon: <Building2 size={20} /> },
+            { name: 'Patients', path: '/org-admin/admissions', icon: <Users size={20} /> },
             { name: 'Departments', path: '/org-admin/departments', icon: <ClipboardList size={20} /> },
             { name: 'Staff', path: '/org-admin/staff', icon: <Stethoscope size={20} /> },
+            { name: 'Schedule', path: '/org-admin/schedules', icon: <Calendar size={20} /> },
             { name: 'Settings', path: '/org-admin/settings', icon: <Settings size={20} /> },
             { name: 'Profile', path: '/user/profile', icon: <UserCircle size={20} /> },
         ];
         if (user.role === 'doctor') {
             if (user.tier === 'intern') return [
-                { name: 'Training Terminal', path: '/intern', icon: <GraduationCap size={20} /> },
+                { name: 'Training', path: '/intern', icon: <GraduationCap size={20} /> },
                 { name: 'Reports', path: '/intern/reports', icon: <History size={20} /> },
                 { name: 'Profile', path: '/user/profile', icon: <UserCircle size={20} /> },
             ];
             return [
-                { name: 'Command', path: '/doctor', icon: <Stethoscope size={20} /> },
+                { name: 'Dashboard', path: '/doctor', icon: <Stethoscope size={20} /> },
                 { name: 'Appointments', path: '/doctor/appointments', icon: <Calendar size={20} /> },
                 { name: 'Availability', path: '/doctor/availability', icon: <ClipboardList size={20} /> },
                 { name: 'Prescriptions', path: '/doctor/prescriptions', icon: <FileText size={20} /> },
-                { name: 'Training Lab', path: '/doctor/training', icon: <GraduationCap size={20} /> },
-                { name: 'History', path: '/doctor/history', icon: <History size={20} /> },
+                { name: 'Training', path: '/doctor/training', icon: <GraduationCap size={20} /> },
+                { name: 'Call History', path: '/doctor/history', icon: <History size={20} /> },
                 { name: 'Messages', path: '/user/messages', icon: <Radio size={20} /> },
                 { name: 'Profile', path: '/user/profile', icon: <UserCircle size={20} /> },
             ];
         }
         return [
-            { name: 'Dashboard', path: '/user', icon: <LayoutDashboard size={20} /> },
-            { name: 'Triage AI', path: '/user/call', icon: <HeartPulse size={20} /> },
+            { name: 'Home', path: '/user', icon: <LayoutDashboard size={20} /> },
+            { name: 'Call Doctor', path: '/user/call', icon: <HeartPulse size={20} /> },
             { name: 'Prescriptions', path: '/user/prescriptions', icon: <FileText size={20} /> },
             { name: 'Vitals', path: '/user/vitals', icon: <Activity size={20} /> },
             { name: 'Messages', path: '/user/messages', icon: <Radio size={20} /> },
-            { name: 'History', path: '/user/history', icon: <History size={20} /> },
-            { name: 'Identity', path: '/user/profile', icon: <UserCircle size={20} /> },
+            { name: 'Call History', path: '/user/history', icon: <History size={20} /> },
+            { name: 'Profile', path: '/user/profile', icon: <UserCircle size={20} /> },
         ];
     };
 
@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <motion.div initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)' }} transition={{ duration: 1, ease: [0.2, 0.8, 0.2, 1] }} className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
                         <div className="flex flex-col items-center gap-6">
                             <Activity className="text-accent-cyan animate-pulse" size={60} />
-                            <p className="text-accent-cyan text-xl font-mono tracking-[0.3em] uppercase opacity-50">Synchronizing Neural Layer</p>
+                            <p className="text-accent-cyan text-xl font-mono tracking-[0.3em] uppercase opacity-50">Loading your dashboard...</p>
                         </div>
                     </motion.div>
                 )}
