@@ -377,7 +377,8 @@ export default function VoiceTriagePage() {
             setSpeechState('PROCESSING');
 
             try {
-                const res = await fetch(`/api/calls/${callId}/voice-text`, {
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+                const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/calls/${callId}/voice-text`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -765,14 +766,15 @@ export default function VoiceTriagePage() {
             const token = localStorage.getItem('access_token');
             if (!token) throw new Error('Not authenticated. Please log in.');
 
-            const res = await fetch('/api/calls/start', {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+            const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/calls/start`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: 0 }),
             });
 
             if (!res.ok) {
-                const d = await res.json();
+                const d = await res.json().catch(() => ({}));
                 throw new Error(d.detail || 'Failed to start call');
             }
 
@@ -807,16 +809,17 @@ export default function VoiceTriagePage() {
         if (cid) {
             try {
                 const token = localStorage.getItem('access_token');
-                await fetch(`/api/calls/${cid}/terminate`, {
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+                await fetch(`${baseUrl.replace(/\/$/, '')}/api/calls/${cid}/terminate`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
 
                 // Fetch summary
-                const sRes = await fetch(`/api/calls/${cid}/summary`, {
+                const sRes = await fetch(`${baseUrl.replace(/\/$/, '')}/api/calls/${cid}/summary`, {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
-                if (sRes.ok) setSummary(await sRes.json());
+                if (sRes.ok) setSummary(await sRes.json().catch(() => ({})));
             } catch { }
         }
     };
