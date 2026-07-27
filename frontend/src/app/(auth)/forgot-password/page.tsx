@@ -19,13 +19,14 @@ export default function ForgotPasswordPage() {
         setMessage('');
 
         try {
-            const res = await fetch('/api/auth/forgot-password', {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+            const res = await fetch(`${baseUrl}/api/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             setStatus('success');
             setMessage(data.message || 'If that email is registered, a reset link has been sent.');
         } catch (err) {

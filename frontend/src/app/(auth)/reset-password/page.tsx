@@ -35,13 +35,14 @@ function ResetPasswordContent() {
         setMessage('');
 
         try {
-            const res = await fetch('/api/auth/reset-password', {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+            const res = await fetch(`${baseUrl}/api/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token, new_password: newPassword })
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (res.ok) {
                 setStatus('success');
                 setMessage('Password updated successfully! Redirecting...');

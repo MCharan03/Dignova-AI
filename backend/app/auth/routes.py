@@ -344,9 +344,9 @@ async def forgot_password(request: Request, request_data: ForgotPasswordRequest,
     user = await db.scalar(stmt)
     if user:
         try:
-            FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dignova-ai.vercel.app")
+            frontend_url = _get_frontend_url(request)
             token = generate_reset_token(user.email)
-            reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+            reset_url = f"{frontend_url}/reset-password?token={token}"
             
             # Using basic send_email for password reset
             send_email(
