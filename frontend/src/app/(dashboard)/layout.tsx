@@ -155,6 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         return [
             { name: 'Home', path: '/user', icon: <LayoutDashboard size={20} /> },
+            { name: 'Voice AI Doctor', path: '/user/voice-triage', icon: <Brain size={20} /> },
             { name: 'Call Doctor', path: '/user/call', icon: <HeartPulse size={20} /> },
             { name: 'Prescriptions', path: '/user/prescriptions', icon: <FileText size={20} /> },
             { name: 'Vitals', path: '/user/vitals', icon: <Activity size={20} /> },

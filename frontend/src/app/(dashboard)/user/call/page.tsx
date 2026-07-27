@@ -6,9 +6,12 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { MessageSquare, Phone, ShieldCheck, Zap, Brain, Activity, PhoneCall, Loader2, Check } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 
+import { useRouter } from 'next/navigation';
+
 type CallState = 'idle' | 'calling' | 'success' | 'error';
 
 export default function TriageSelectionPage() {
+    const router = useRouter();
     const [phone, setPhone] = useState('+919036205526');
     const [callState, setCallState] = useState<CallState>('idle');
     const [errorMsg, setErrorMsg] = useState('');
@@ -92,7 +95,7 @@ export default function TriageSelectionPage() {
                 >
                     <GlassCard
                         className="p-10 h-full flex flex-col items-center text-center space-y-6 cursor-pointer border-accent-cyan/20 hover:border-accent-cyan/60 transition-all group"
-                        onClick={() => (window.location.href = '/user/chat-triage')}
+                        onClick={() => router.push('/user/chat-triage')}
                     >
                         <div className="p-6 rounded-full bg-accent-cyan/10 border border-accent-cyan/20 group-hover:bg-accent-cyan/20 transition-all">
                             <MessageSquare size={48} className="text-accent-cyan" />
@@ -120,7 +123,7 @@ export default function TriageSelectionPage() {
                 >
                     <GlassCard
                         className="p-10 h-full flex flex-col items-center text-center space-y-6 cursor-pointer border-accent-magenta/20 hover:border-accent-magenta/60 transition-all group"
-                        onClick={() => (window.location.href = '/user/voice-triage')}
+                        onClick={() => router.push('/user/voice-triage')}
                     >
                         <div className="p-6 rounded-full bg-accent-magenta/10 border border-accent-magenta/20 group-hover:bg-accent-magenta/20 transition-all">
                             <Brain size={48} className="text-accent-magenta" />
