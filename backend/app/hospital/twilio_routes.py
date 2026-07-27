@@ -43,18 +43,20 @@ def _time_greeting() -> str:
 async def handle_incoming_call(request: Request):
     """
     Twilio webhook for inbound calls.
-    Greets the caller, then bridges to the Gemini Live AI via WebSocket.
-    Configure this URL in Twilio Console → Phone Number → Voice webhook.
+    Extracts caller phone number (From), links to registered user dynamically,
+    and connects caller to Dr. Dignova.
     """
     if request.method == "POST":
         form = await request.form()
         call_sid = form.get("CallSid", "unknown")
+        from_number = form.get("From")
     else:
         call_sid = request.query_params.get("CallSid", "unknown")
+        from_number = request.query_params.get("From")
 
-    # Log to DB asynchronously - don't block TwiML response
+    # Log to DB asynchronously with caller phone matching
     import asyncio
-    asyncio.create_task(_log_inbound_call(call_sid))
+    asyncio.create_task(_log_inbound_call(call_sid, from_number))
 
     greeting = _time_greeting()
     response = VoiceResponse()
@@ -81,16 +83,29 @@ async def handle_incoming_call(request: Request):
     return Response(content=str(response), media_type="application/xml")
 
 
-async def _log_inbound_call(call_sid: str):
-    """Background task: create a Call record for this Twilio inbound call."""
+async def _log_inbound_call(call_sid: str, from_number: str | None = None):
+    """Background task: create a Call record for this Twilio inbound call and auto-match caller phone to User."""
     try:
         from ..extensions import AsyncSessionLocal
         from .. import models as domain
+        from sqlalchemy import select
         async with AsyncSessionLocal() as session:
+            user_id = None
+            if from_number:
+                clean_phone = from_number.strip().replace(" ", "").replace("-", "")
+                if len(clean_phone) >= 10:
+                    stmt = select(domain.User).where(domain.User.phone_number.like(f"%{clean_phone[-10:]}%"))
+                    matched_user = await session.scalar(stmt)
+                    if matched_user:
+                        user_id = matched_user.id
+                        print(f"[INBOUND] Matched caller {from_number} to User #{user_id} ({matched_user.name})")
+
             call = domain.Call(
                 twilio_call_sid=call_sid,
+                user_id=user_id,
                 start_time=datetime.utcnow(),
                 state="active",
+                source="phone"
             )
             session.add(call)
             await session.commit()
@@ -189,14 +204,16 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     if request.method == "POST":
         form = await request.form()
         call_sid = form.get("CallSid", "unknown")
+        phone_number = form.get("To")
     else:
         call_sid = request.query_params.get("CallSid", "unknown")
+        phone_number = request.query_params.get("To")
 
     param_name = request.query_params.get("name") or name
 
     # Phase 1.1 — Create DB Call row for this outbound session
     import asyncio
-    asyncio.create_task(_create_outbound_call_record(call_sid, param_name))
+    asyncio.create_task(_create_outbound_call_record(call_sid, param_name, phone_number))
 
     greeting = _time_greeting()
     response = VoiceResponse()
@@ -221,14 +238,26 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     return Response(content=str(response), media_type="application/xml")
 
 
-async def _create_outbound_call_record(call_sid: str, patient_name: str):
-    """Background task: create a Call DB record for an outbound phone consultation."""
+async def _create_outbound_call_record(call_sid: str, patient_name: str, phone_number: str | None = None):
+    """Background task: create a Call DB record for an outbound phone consultation and link to User."""
     try:
         from ..extensions import AsyncSessionLocal
         from .. import models as domain
+        from sqlalchemy import select
         async with AsyncSessionLocal() as session:
+            user_id = None
+            if phone_number:
+                clean_phone = phone_number.strip().replace(" ", "").replace("-", "")
+                if len(clean_phone) >= 10:
+                    stmt = select(domain.User).where(domain.User.phone_number.like(f"%{clean_phone[-10:]}%"))
+                    matched_user = await session.scalar(stmt)
+                    if matched_user:
+                        user_id = matched_user.id
+                        print(f"[OUTBOUND] Matched recipient {phone_number} to User #{user_id} ({matched_user.name})")
+
             call = domain.Call(
                 twilio_call_sid=call_sid,
+                user_id=user_id,
                 call_type=domain.CallType.triage,
                 start_time=datetime.utcnow(),
                 state="active",
@@ -237,7 +266,7 @@ async def _create_outbound_call_record(call_sid: str, patient_name: str):
             )
             session.add(call)
             await session.commit()
-            print(f"[DB] Outbound call record created: {call_sid}")
+            print(f"[DB] Outbound call record created: {call_sid} (user_id={user_id})")
     except Exception as e:
         print(f"[WARN] Outbound call DB create failed: {e}")
 
