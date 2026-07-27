@@ -47,8 +47,8 @@ export default function TriageSelectionPage() {
         setCallState('calling');
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/twilio/outbound`, {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/twilio/outbound', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
