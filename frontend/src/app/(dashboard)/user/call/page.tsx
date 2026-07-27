@@ -9,9 +9,28 @@ import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 type CallState = 'idle' | 'calling' | 'success' | 'error';
 
 export default function TriageSelectionPage() {
-    const [phone, setPhone] = useState('');
+    const [phone, setPhone] = useState('+919036205526');
     const [callState, setCallState] = useState<CallState>('idle');
     const [errorMsg, setErrorMsg] = useState('');
+
+    React.useEffect(() => {
+        const fetchUserPhone = async () => {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/auth/me', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.phone_number) {
+                        setPhone(data.phone_number);
+                    }
+                }
+            } catch {}
+        };
+        fetchUserPhone();
+    }, []);
 
     const handlePhoneCall = async () => {
         const cleaned = phone.trim();

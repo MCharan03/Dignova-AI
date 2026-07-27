@@ -227,14 +227,14 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
         language="en-US"
     )
     gather.say(
-        f"{greeting} {param_name}. I am Dr. Dignova, your senior medical consultant. "
-        "I am right here with you. Take a deep breath and tell me - what has been bothering you or how are you feeling today?",
-        voice="Polly.Joanna",
+        f"{greeting} {param_name}. This is Dr. Dignova, your consultant physician calling from Dignova AI. "
+        "I am right here with you. Please take your time and tell me - what symptoms or health concerns are you experiencing today?",
+        voice="Polly.Joanna-Neural",
         language="en-US"
     )
 
     # Fallback if no input detected
-    response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
+    response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna-Neural")
     return Response(content=str(response), media_type="application/xml")
 
 
@@ -366,7 +366,7 @@ async def phone_turn(request: Request):
     from ..services.ai_service import SentientOrchestrator
     orchestrator = SentientOrchestrator(persona="TRIAGE")
 
-    prompt = f"""You are Dr. Dignova, an empathetic Senior Multi-Specialist Consultant Physician conducting a phone consultation.
+    prompt = f"""You are Dr. Dignova, an elite, deeply empathetic Senior Consultant Physician conducting a live phone clinical consultation.
 
 {ehr_context}
 {prior_history}
@@ -375,11 +375,13 @@ Patient Conversation History so far:
 
 Patient's latest response: "{speech_result}"
 
-Rules for your response:
-1. Speak in warm, caring, reassuring clinical English (2-3 short sentences max for phone clarity). Do NOT use markdown or tags.
-2. Ask specific, intelligent diagnostic questions (e.g. asking about shortness of breath, chills, headache, fluid intake, or duration) instead of generic "tell me more".
-3. If the patient indicates they have shared all symptoms (e.g. "that's all", "that's it", "nothing else", "no more"), provide a warm clinical diagnostic assessment, self-care guidance (hydration, rest, fever thresholds), and advise when to seek ER care, then append [DIAGNOSIS_READY].
-4. If red-flag emergency symptoms are present (chest pressure, severe breathlessness, sudden weakness), append [EMERGENCY_DETECTED].
+Clinical Voice Agent Protocol:
+1. Speak as a real, highly experienced consultant physician. NEVER sound script-like, robotic, or pre-programmed. Adapt dynamically to the patient's exact words and emotional state.
+2. Use warm clinical empathy and active listening (e.g. "I hear you...", "I see, that must be very uncomfortable...", "Let's take a close look at that together").
+3. Keep spoken responses to 2-3 natural, clear sentences suitable for a phone call.
+4. Systematically explore the complaint: ask targeted questions about symptom location, intensity on a 1-10 scale, onset, duration, and accompanying symptoms (fever, breathlessness, nausea, dizziness).
+5. If the patient indicates they have shared all symptoms (e.g. "that's all", "that's it", "nothing else", "no more"), provide a calm diagnostic summary, clear self-care advice, and append [DIAGNOSIS_READY].
+6. If emergency red-flag symptoms are present (chest pressure, severe shortness of breath, sudden weakness), calmly direct immediate emergency intervention and append [EMERGENCY_DETECTED].
 """
 
     doctor_reply = orchestrator.process_message(prompt, speech_result)
@@ -394,20 +396,20 @@ Rules for your response:
     PHONE_TRANSCRIPTS[call_sid] = current_transcript + f"Dr. Dignova: {clean_doctor_text}\n"
 
     if "[EMERGENCY_DETECTED]" in doctor_reply:
-        try:
-            from ..services.n8n_services import N8nService
-            await N8nService.trigger_onboarding("emergency@dignova.ai", f"CRITICAL_PHONE_PATIENT_{call_sid}")
-        except Exception as e:
-            print(f"[WARN] Emergency trigger error: {e}")
+        response.say("I am concerned about these symptoms. They require immediate medical evaluation. I am escalating your care to an emergency responder right now.", voice="Polly.Joanna-Neural", language="en-US")
+        # Trigger SOS alert logic
+        asyncio.create_task(_finalize_call_record(call_sid, "EMERGENCY: Immediate hospital escalation required", current_transcript))
+        PHONE_TRANSCRIPTS.pop(call_sid, None)
+        return Response(content=str(response), media_type="application/xml")
 
-    # Patient requested to complete consultation or diagnosis ready
-    user_done_phrases = ["that's all", "that is all", "that's it", "that is it", "proceed", "go next", "no more", "nothing else"]
+    # Check for completion keywords from user or LLM tag
+    user_done_phrases = ["that's all", "that is all", "nothing else", "no more", "that's it", "no other symptoms"]
     is_patient_done = any(phrase in speech_result.lower() for phrase in user_done_phrases)
 
     if "[DIAGNOSIS_READY]" in doctor_reply or is_patient_done:
         final_speech = clean_doctor_text or "Based on your symptoms, please rest well, stay hydrated, and consult a doctor if your condition worsens."
-        response.say(final_speech, voice="Polly.Joanna", language="en-US")
-        response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
+        response.say(final_speech, voice="Polly.Joanna-Neural", language="en-US")
+        response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna-Neural", language="en-US")
         # Phase 1.1 — Finalize call in DB with diagnosis summary
         import asyncio
         full_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
@@ -423,10 +425,10 @@ Rules for your response:
         speech_timeout="auto",
         language="en-US"
     )
-    gather.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
+    gather.say(clean_doctor_text, voice="Polly.Joanna-Neural", language="en-US")
 
     # Fallback if patient is silent after prompt
-    response.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna", language="en-US")
+    response.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna-Neural", language="en-US")
     response.redirect(f"{BACKEND_URL}/api/twilio/phone-turn", method="POST")
 
     return Response(content=str(response), media_type="application/xml")
