@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, []);
 
     // --- APPLE PHYSICS SCROLL ---
-    const { scrollY } = useScroll({ container: scrollContainerRef });
+    const { scrollY } = useScroll();
     const islandWidth = useTransform(scrollY, [0, 100], ['92%', '40%']);
     const islandHeight = useTransform(scrollY, [0, 100], ['64px', '40px']);
     const islandY = useTransform(scrollY, [0, 100], [0, 10]);
