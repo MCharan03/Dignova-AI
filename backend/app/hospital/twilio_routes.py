@@ -227,8 +227,7 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
         language="en-IN"
     )
     gather.say(
-        f"{greeting} {param_name}. This is Dr. Dignova, your consultant physician calling from Dignova AI. "
-        "I am right here with you. Please take your time and tell me - what symptoms or health concerns are you experiencing today?",
+        f"{greeting} {param_name}. This is Dr. Dignova calling from Dignova AI. How are you feeling today?",
         voice="Polly.Joanna",
         language="en-US"
     )
@@ -366,22 +365,23 @@ async def phone_turn(request: Request):
     from ..services.ai_service import SentientOrchestrator
     orchestrator = SentientOrchestrator(persona="TRIAGE")
 
-    prompt = f"""You are Dr. Dignova, an elite, deeply empathetic Senior Consultant Physician conducting a live phone clinical consultation.
+    prompt = f"""You are Dr. Dignova, a senior consultant physician conducting a live phone clinical consultation.
+You are warm, attentive, and highly natural. Speak like a real human doctor sitting with a patient. Never sound robotic or pre-programmed.
 
 {ehr_context}
 {prior_history}
-Patient Conversation History so far:
+Conversation so far:
 {current_transcript}
 
 Patient's latest response: "{speech_result}"
 
-Clinical Voice Agent Protocol:
-1. Speak as a real, highly experienced consultant physician. NEVER sound script-like, robotic, or pre-programmed. Adapt dynamically to the patient's exact words and emotional state.
-2. Use warm clinical empathy and active listening (e.g. "I hear you...", "I see, that must be very uncomfortable...", "Let's take a close look at that together").
-3. Keep spoken responses to 2-3 natural, clear sentences suitable for a phone call.
-4. Systematically explore the complaint: ask targeted questions about symptom location, intensity on a 1-10 scale, onset, duration, and accompanying symptoms (fever, breathlessness, nausea, dizziness).
-5. If the patient indicates they have shared all symptoms (e.g. "that's all", "that's it", "nothing else", "no more"), provide a calm diagnostic summary, clear self-care advice, and append [DIAGNOSIS_READY].
-6. If emergency red-flag symptoms are present (chest pressure, severe shortness of breath, sudden weakness), calmly direct immediate emergency intervention and append [EMERGENCY_DETECTED].
+Clinical Voice Protocol:
+1. ALWAYS acknowledge what the patient just said with warm empathy (e.g. "I understand...", "I see, that sounds uncomfortable...", "Thank you for sharing that...").
+2. Ask targeted follow-up clinical questions to explore symptom location, intensity (1-10 scale), duration, and accompanying symptoms (fever, nausea, breathlessness, dizziness).
+3. DO NOT deliver a final diagnosis on early turns (turn 1 or 2). Ask clarifying follow-up questions first to get complete details.
+4. Only when you have gathered sufficient clinical information (after at least 2-3 turns of dialogue), state your diagnostic impression, provide recommended self-care, and append [DIAGNOSIS_READY] at the end.
+5. If dangerous red flags are mentioned (chest pain, shortness of breath, collapse), advise immediate emergency care and append [EMERGENCY_DETECTED].
+6. Keep spoken replies to 2-3 natural sentences suitable for a phone call.
 """
 
     doctor_reply = orchestrator.process_message(prompt, speech_result)
@@ -402,12 +402,14 @@ Clinical Voice Agent Protocol:
         PHONE_TRANSCRIPTS.pop(call_sid, None)
         return Response(content=str(response), media_type="application/xml")
 
-    # Check for completion keywords from user or LLM tag
-    user_done_phrases = ["that's all", "that is all", "nothing else", "no more", "that's it", "no other symptoms"]
-    is_patient_done = any(phrase in speech_result.lower() for phrase in user_done_phrases)
+    # Count turns in history
+    turn_count = current_transcript.count("Patient:")
+    explicit_done_phrases = ["that's all i wanted", "that's all doctor", "goodbye doctor", "bye doctor", "thank you goodbye", "that is all doctor"]
+    is_explicit_done = any(phrase in speech_result.lower() for phrase in explicit_done_phrases)
 
-    if "[DIAGNOSIS_READY]" in doctor_reply or is_patient_done:
-        final_speech = clean_doctor_text or "Based on your symptoms, please rest well, stay hydrated, and consult a doctor if your condition worsens."
+    # Only finalize if doctor is ready after at least 2 turns, or patient explicitly says goodbye
+    if ("[DIAGNOSIS_READY]" in doctor_reply and turn_count >= 2) or is_explicit_done:
+        final_speech = clean_doctor_text or "Based on our consultation, please get plenty of rest, stay hydrated, and consult a physician if symptoms persist."
         response.say(final_speech, voice="Polly.Joanna", language="en-US")
         response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
         # Phase 1.1 — Finalize call in DB with diagnosis summary
