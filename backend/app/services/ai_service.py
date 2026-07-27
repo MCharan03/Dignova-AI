@@ -40,6 +40,7 @@ else:
 _health_tips_cache = {}
 
 _gemini_failures: Dict[str, int] = {}
+_gemini_last_failure_time: Dict[str, float] = {}
 
 class SentientOrchestrator:
     """
@@ -237,6 +238,11 @@ Controlled Revelation Rules:
             current_model = self.model_id
             api_key = GEMINI_API_KEY or "default"
             
+            # Auto-reset Gemini circuit breaker if 60 seconds have elapsed
+            last_fail_time = _gemini_last_failure_time.get(api_key, 0)
+            if time.time() - last_fail_time > 60:
+                _gemini_failures[api_key] = 0
+
             if _gemini_failures.get(api_key, 0) >= 3:
                 print(f"[GEMINI] Circuit breaker open for {api_key}, skipping to OpenRouter...")
             else:
@@ -266,6 +272,7 @@ Controlled Revelation Rules:
                             break
                         if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "503" in error_str or "404" in error_str:
                             _gemini_failures[api_key] = _gemini_failures.get(api_key, 0) + 1
+                            _gemini_last_failure_time[api_key] = time.time()
                             if attempt == 0 and current_model == self.model_id:
                                 print(f"[GEMINI] Switching to fallback: {self.fallback_model_id}")
                                 current_model = self.fallback_model_id
@@ -298,22 +305,22 @@ Controlled Revelation Rules:
         # ── 4th: Clinical Multi-Specialist Rule-Based Engine Fallback ────
         print("[FALLBACK] Generating intelligent clinical doctor response...")
         user_lower = new_user_message.lower()
-        hist_lower = transcript.lower()
 
         # Emergency Red Flags
         if any(rf in user_lower for rf in ["chest pain", "shortness of breath", "can't breathe", "numbness", "fainting"]):
             yield "[EMERGENCY_DETECTED] I am concerned about your symptoms of chest pressure or severe breathlessness. Please seek emergency medical care immediately at the nearest emergency room or call 108/911."
             return
 
-        # Symptom-specific clinical probing & diagnosis
-        if "fever" in user_lower or "cold" in user_lower or "running nose" in user_lower or "dizzy" in user_lower:
-            if "dizzy" in user_lower or "tired" in user_lower or "body" in user_lower or "running" in user_lower:
-                yield "I hear you are feeling dizzy with a running nose and fever. Please rest in a cool room and sip warm fluids. Are you able to keep liquids down, or do you have any neck stiffness or headache? [DIAGNOSIS_READY]"
-            else:
-                yield "I understand you have a fever and cold. Are you experiencing any chills, sore throat, or body aches along with this?"
+        # Intelligent clinical dialogue probing without premature diagnosis
+        if "fever" in user_lower or "cold" in user_lower or "cough" in user_lower or "headache" in user_lower:
+            yield "I hear you. To better evaluate your symptoms, how many days have you had this fever or cold, and what is your current body temperature?"
             return
 
-        yield "I am Dr. Dignova, listening carefully to your symptoms. Could you describe how long you have felt this way, and if you have any other discomfort like fever or body ache?"
+        if "stomach" in user_lower or "pain" in user_lower or "nausea" in user_lower:
+            yield "I understand you are having abdominal discomfort. On a scale of 1 to 10, how severe is the pain, and does it worsen after meals?"
+            return
+
+        yield "I am Dr. Dignova, listening carefully. Could you describe how long you have experienced these symptoms, and whether you have any fever, cough, or pain?"
 
     def process_message(self, system_instruction: str, user_message: str) -> str:
         """Non-streaming helper for single message turn with custom prompt."""
