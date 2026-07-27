@@ -223,8 +223,8 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
         num_digits=1,
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
         method="POST",
-        speech_timeout="auto",
-        language="en-US"
+        speech_timeout="3",
+        language="en-IN"
     )
     gather.say(
         f"{greeting} {param_name}. This is Dr. Dignova, your consultant physician calling from Dignova AI. "
@@ -293,8 +293,8 @@ async def phone_turn(request: Request):
             input="speech",
             action=f"{BACKEND_URL}/api/twilio/phone-turn",
             method="POST",
-            speech_timeout="auto",
-            language="en-US"
+            speech_timeout="3",
+            language="en-IN"
         )
         return Response(content=str(response), media_type="application/xml")
 
@@ -303,8 +303,8 @@ async def phone_turn(request: Request):
             input="speech",
             action=f"{BACKEND_URL}/api/twilio/phone-turn",
             method="POST",
-            speech_timeout="auto",
-            language="en-US"
+            speech_timeout="3",
+            language="en-IN"
         )
         gather.say("I am listening. Please describe how you are feeling or what symptoms you have.", voice="Polly.Joanna", language="en-US")
         return Response(content=str(response), media_type="application/xml")
@@ -422,8 +422,8 @@ Clinical Voice Agent Protocol:
         input="speech",
         action=f"{BACKEND_URL}/api/twilio/phone-turn",
         method="POST",
-        speech_timeout="auto",
-        language="en-US"
+        speech_timeout="3",
+        language="en-IN"
     )
     gather.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
 
