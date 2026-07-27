@@ -15,8 +15,8 @@ load_dotenv()
 
 router = APIRouter(prefix="/api/twilio", tags=["Twilio Voice Bot"])
 
-BACKEND_URL    = os.getenv("BACKEND_URL", "https://dignova-ai-1.onrender.com")
-BACKEND_URL_WS = os.getenv("BACKEND_URL_WS", "wss://dignova-ai-1.onrender.com")
+BACKEND_URL    = os.getenv("BACKEND_URL", "https://dignova-ai.onrender.com").rstrip('/')
+BACKEND_URL_WS = os.getenv("BACKEND_URL_WS", "wss://dignova-ai.onrender.com").rstrip('/')
 ACCOUNT_SID    = os.getenv("TWILIO_ACCOUNT_SID", "")
 AUTH_TOKEN     = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_NUMBER  = os.getenv("TWILIO_PHONE_NUMBER", "")
@@ -229,12 +229,12 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     gather.say(
         f"{greeting} {param_name}. This is Dr. Dignova, your consultant physician calling from Dignova AI. "
         "I am right here with you. Please take your time and tell me - what symptoms or health concerns are you experiencing today?",
-        voice="Polly.Joanna-Neural",
+        voice="Polly.Joanna",
         language="en-US"
     )
 
     # Fallback if no input detected
-    response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna-Neural")
+    response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
 
 
@@ -396,7 +396,7 @@ Clinical Voice Agent Protocol:
     PHONE_TRANSCRIPTS[call_sid] = current_transcript + f"Dr. Dignova: {clean_doctor_text}\n"
 
     if "[EMERGENCY_DETECTED]" in doctor_reply:
-        response.say("I am concerned about these symptoms. They require immediate medical evaluation. I am escalating your care to an emergency responder right now.", voice="Polly.Joanna-Neural", language="en-US")
+        response.say("I am concerned about these symptoms. They require immediate medical evaluation. I am escalating your care to an emergency responder right now.", voice="Polly.Joanna", language="en-US")
         # Trigger SOS alert logic
         asyncio.create_task(_finalize_call_record(call_sid, "EMERGENCY: Immediate hospital escalation required", current_transcript))
         PHONE_TRANSCRIPTS.pop(call_sid, None)
@@ -408,8 +408,8 @@ Clinical Voice Agent Protocol:
 
     if "[DIAGNOSIS_READY]" in doctor_reply or is_patient_done:
         final_speech = clean_doctor_text or "Based on your symptoms, please rest well, stay hydrated, and consult a doctor if your condition worsens."
-        response.say(final_speech, voice="Polly.Joanna-Neural", language="en-US")
-        response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna-Neural", language="en-US")
+        response.say(final_speech, voice="Polly.Joanna", language="en-US")
+        response.say("Thank you for consulting Dr. Dignova. Take care and stay safe. Goodbye.", voice="Polly.Joanna", language="en-US")
         # Phase 1.1 — Finalize call in DB with diagnosis summary
         import asyncio
         full_transcript = PHONE_TRANSCRIPTS.get(call_sid, "")
@@ -425,10 +425,10 @@ Clinical Voice Agent Protocol:
         speech_timeout="auto",
         language="en-US"
     )
-    gather.say(clean_doctor_text, voice="Polly.Joanna-Neural", language="en-US")
+    gather.say(clean_doctor_text, voice="Polly.Joanna", language="en-US")
 
     # Fallback if patient is silent after prompt
-    response.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna-Neural", language="en-US")
+    response.say("I am still right here with you. Are you experiencing any other symptoms or discomfort?", voice="Polly.Joanna", language="en-US")
     response.redirect(f"{BACKEND_URL}/api/twilio/phone-turn", method="POST")
 
     return Response(content=str(response), media_type="application/xml")
