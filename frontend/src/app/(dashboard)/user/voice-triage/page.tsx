@@ -580,20 +580,38 @@ export default function VoiceTriagePage() {
             if (audioCtx.state === 'suspended') await audioCtx.resume();
 
             const source = audioCtx.createMediaStreamSource(stream);
-            const workletNode = new AudioWorkletNode(audioCtx, 'dignova-audio-processor');
-            
-            workletNode.port.onmessage = (event) => {
-                if (event.data.event === 'capture') {
-                    const b64 = btoa(String.fromCharCode(...new Uint8Array(event.data.buffer)));
+            try {
+                const workletNode = new AudioWorkletNode(audioCtx, 'dignova-audio-processor');
+                workletNode.port.onmessage = (event) => {
+                    if (event.data.event === 'capture') {
+                        const b64 = btoa(String.fromCharCode(...new Uint8Array(event.data.buffer)));
+                        const currentSocket = wsRef.current;
+                        if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                            currentSocket.send(JSON.stringify({ event: 'audio', payload: b64 }));
+                        }
+                    }
+                };
+                source.connect(workletNode);
+                workletNode.connect(audioCtx.destination);
+            } catch (workletErr) {
+                console.warn('[LIVE] AudioWorklet not registered, falling back to ScriptProcessor:', workletErr);
+                const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+                processorRef.current = processor;
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const pcm16 = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                    }
+                    const b64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
                     const currentSocket = wsRef.current;
                     if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
                         currentSocket.send(JSON.stringify({ event: 'audio', payload: b64 }));
                     }
-                }
-            };
-
-            source.connect(workletNode);
-            workletNode.connect(audioCtx.destination);
+                };
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+            }
         } catch (err) {
             console.error('[LIVE] Mic error:', err);
             setError('Microphone access denied.');
