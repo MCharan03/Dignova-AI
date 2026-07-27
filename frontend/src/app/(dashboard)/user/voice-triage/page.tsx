@@ -459,9 +459,7 @@ export default function VoiceTriagePage() {
                 await audioCtx.audioWorklet.addModule('/audio-processor.js');
                 console.log('[LIVE] AudioWorklet loaded.');
             } catch (e) {
-                console.error('[LIVE] Failed to load AudioWorklet:', e);
-                startFallbackMode(callId);
-                return;
+                console.warn('[LIVE] AudioWorklet module load skipped/fallback active:', e);
             }
         }
 
