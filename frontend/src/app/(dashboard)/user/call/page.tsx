@@ -48,7 +48,8 @@ export default function TriageSelectionPage() {
 
         try {
             const token = localStorage.getItem('access_token');
-            const res = await fetch('/api/twilio/outbound', {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+            const res = await fetch(`${baseUrl}/api/twilio/outbound`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
