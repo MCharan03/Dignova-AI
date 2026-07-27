@@ -103,7 +103,7 @@ function LoginContent() {
         }));
     }, [isLogin, registerRole, isTransitioning]);
 
-    const apiBaseURL = ""; // Use relative paths to trigger next.config.mjs rewrites
+    const apiBaseURL = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
 
     const triggerHyperspaceAndRoute = (targetUrl: string) => {
         setIsTransitioning(true); // Engages the 3D portal
@@ -129,7 +129,7 @@ function LoginContent() {
                 body: formData.toString()
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.detail || 'Login failed');
 
             localStorage.setItem('access_token', data.access_token);
@@ -138,7 +138,7 @@ function LoginContent() {
             const meRes = await fetch(`${apiBaseURL}/api/auth/me`, {
                 headers: { 'Authorization': `Bearer ${data.access_token}` }
             });
-            const userData = await meRes.json();
+            const userData = await meRes.json().catch(() => ({}));
 
             // Decide route
             let targetRoute = '/user/call';
@@ -184,7 +184,7 @@ function LoginContent() {
                 body: JSON.stringify(payload)
             });
             
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.detail || 'Registration failed');
 
             setIsLogin(true);
