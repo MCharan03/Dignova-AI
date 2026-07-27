@@ -256,9 +256,11 @@ export default function VoiceTriagePage() {
     // ── Speak AI text via Web Speech Synthesis ─────────────────────────────
     const speakText = useCallback((text: string, onEnd?: () => void) => {
         if (isSpeakerOff) { onEnd?.(); return; }
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) { onEnd?.(); return; }
         const synth = window.speechSynthesis;
+        if (!synth) { onEnd?.(); return; }
         synthRef.current = synth;
-        synth.cancel();
+        try { synth.cancel(); } catch {}
 
         const doSpeak = () => {
             const utterance = new SpeechSynthesisUtterance(text);
@@ -702,45 +704,56 @@ export default function VoiceTriagePage() {
         }
     }, [isSpeakerOff]);
     const testAudioSystem = async () => {
-        // Use a temporary context at native sample rate for the test pulse
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        if (ctx.state === 'suspended') await ctx.resume();
-        
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, ctx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.5);
-        console.log('[AUDIO] System Test Pulse fired.');
-        
-        // Also test Web Speech Synthesis
-        const synth = window.speechSynthesis;
-        const testUtterance = new SpeechSynthesisUtterance('Audio system ready.');
-        testUtterance.volume = 0.3;
-        testUtterance.rate = 1.0;
-        const voices = synth.getVoices();
-        const enVoice = voices.find(v => v.lang.startsWith('en'));
-        if (enVoice) testUtterance.voice = enVoice;
-        synth.speak(testUtterance);
-        console.log(`[AUDIO] TTS Voices available: ${voices.length}`);
+        try {
+            if (typeof window === 'undefined') return;
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+            const ctx = new AudioContextClass();
+            if (ctx.state === 'suspended') await ctx.resume();
+            
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.start();
+            oscillator.stop(ctx.currentTime + 0.5);
+            console.log('[AUDIO] System Test Pulse fired.');
+            
+            if ('speechSynthesis' in window) {
+                const synth = window.speechSynthesis;
+                if (synth) {
+                    const testUtterance = new SpeechSynthesisUtterance('Audio system ready.');
+                    testUtterance.volume = 0.3;
+                    testUtterance.rate = 1.0;
+                    const voices = synth.getVoices();
+                    const enVoice = voices.find(v => v.lang.startsWith('en'));
+                    if (enVoice) testUtterance.voice = enVoice;
+                    synth.speak(testUtterance);
+                    console.log(`[AUDIO] TTS Voices available: ${voices.length}`);
+                }
+            }
+        } catch (err) {
+            console.warn('[AUDIO] Test audio system warning:', err);
+        }
     };
 
     // ── Start Call ─────────────────────────────────────────────────────────
     const startCall = async () => {
         // Resume any existing audio contexts (Chrome autoplay policy)
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            await audioCtxRef.current.resume();
+            try { await audioCtxRef.current.resume(); } catch {}
         }
         if (playbackCtxRef.current && playbackCtxRef.current.state === 'suspended') {
-            await playbackCtxRef.current.resume();
+            try { await playbackCtxRef.current.resume(); } catch {}
         }
         // Chrome workaround: calling cancel() before first speak prevents silent failure
-        window.speechSynthesis?.cancel();
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            try { window.speechSynthesis?.cancel(); } catch {}
+        }
         setError(null);
         setTranscript([]);
         setSummary(null);
