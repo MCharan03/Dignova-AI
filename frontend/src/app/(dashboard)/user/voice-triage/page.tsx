@@ -230,6 +230,7 @@ export default function VoiceTriagePage() {
 
     // Pre-load Web Speech Synthesis voices (Chrome loads them async)
     useEffect(() => {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
         const synth = window.speechSynthesis;
         if (!synth) return;
         const loadVoices = () => {
@@ -462,14 +463,17 @@ export default function VoiceTriagePage() {
         }
 
         const connectSocket = () => {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            let host = window.location.host;
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                host = `${window.location.hostname}:8000`;
+            let wsHost = 'dignova-ai.onrender.com';
+            let protocol = 'wss:';
+            if (typeof window !== 'undefined') {
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    wsHost = `${window.location.hostname}:8000`;
+                    protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                }
             }
 
-            console.log('[LIVE] Connecting to Sentient Custom Voice Agent:', `${protocol}//${host}/ws/sentient-voice`);
-            const socket = new WebSocket(`${protocol}//${host}/ws/sentient-voice`);
+            console.log('[LIVE] Connecting to Sentient Custom Voice Agent:', `${protocol}//${wsHost}/ws/sentient-voice`);
+            const socket = new WebSocket(`${protocol}//${wsHost}/ws/sentient-voice`);
             wsRef.current = socket;
 
             const connectTimeout = setTimeout(() => {
