@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Activity, ShieldCheck, LogOut, Menu, X, LayoutDashboard, History, Settings, Users, UserCircle, GraduationCap, Stethoscope, HeartPulse, Zap, Radio, Building2, Bell, Calendar, ClipboardList, FileText, BarChart3, AlertTriangle } from 'lucide-react';
+import { Activity, ShieldCheck, LogOut, Menu, X, LayoutDashboard, History, Settings, Users, UserCircle, GraduationCap, Stethoscope, HeartPulse, Zap, Radio, Building2, Bell, Calendar, ClipboardList, FileText, BarChart3, AlertTriangle, Brain } from 'lucide-react';
 import { useSentientObserver } from '@/hooks/useSentientObserver';
 import { useNetworkResilience } from '@/hooks/useNetworkResilience';
 import { useNotificationStream } from '@/hooks/useNotificationStream';
