@@ -215,7 +215,7 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
         return False
 
     if SIMULATE_EMAIL:
-        print(f"🧪 EMAIL SIMULATION: Email would be sent to {recipients}")
+        print(f"[SIMULATE] EMAIL SIMULATION: Email would be sent to {recipients}")
         print(f"Subject: {subject}")
         print(f"Body Preview: {content[:100]}...")
         return True
@@ -224,7 +224,7 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
     resend_key = os.getenv("RESEND_API_KEY")
     if resend_key:
         try:
-            print(f"📡 RESEND ATTEMPT: Sending to {to} via Resend HTTP API...")
+            print(f"[RESEND] ATTEMPT: Sending to {to} via Resend HTTP API...")
             import resend
             resend.api_key = resend_key
             
@@ -244,11 +244,11 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
             return True
         except Exception as re_err:
             print(f"[WARN] RESEND FAILURE: {re_err}")
-            print("💡 Falling back to SMTP...")
+            print("[INFO] Falling back to SMTP...")
 
     # 2. SMTP Fallback
     try:
-        print(f"📡 SMTP ATTEMPT: Sending to {recipients} via {conf.MAIL_SERVER}:{conf.MAIL_PORT}...")
+        print(f"[SMTP] ATTEMPT: Sending to {recipients} via {conf.MAIL_SERVER}:{conf.MAIL_PORT}...")
         message = MessageSchema(
             subject=subject,
             recipients=recipients,
@@ -264,9 +264,9 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
         
         # Diagnostic help
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
-            print("💡 PRO-TIP: GMAIL REJECTED PASSWORD. Check for: 1. Use 16-char App Password (2FA), 2. Remove quotes from password.")
+            print("[PRO-TIP] GMAIL REJECTED PASSWORD. Check for: 1. Use 16-char App Password (2FA), 2. Remove quotes from password.")
         elif "connection" in error_msg.lower() or "timeout" in error_msg.lower() or "10060" in error_msg:
-            print(f"💡 PRO-TIP: RENDER PORT {conf.MAIL_PORT} BLOCK. Render blocks 587. TRY PORT 465 + MAIL_USE_SSL=True.")
+            print(f"[PRO-TIP] RENDER PORT {conf.MAIL_PORT} BLOCK. Render blocks 587. TRY PORT 465 + MAIL_USE_SSL=True.")
         return False
 
 
