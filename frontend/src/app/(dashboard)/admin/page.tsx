@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
     const [auditLog, setAuditLog] = useState<any[]>([]);
     const logEndRef = useRef<HTMLDivElement>(null);
 
-    const apiBaseURL = "/api";
+    const apiBaseURL = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '')}/api` : 'https://dignova-ai.onrender.com/api';
 
     const addLog = useCallback((msg: string) => {
         const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
