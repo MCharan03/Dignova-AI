@@ -443,6 +443,90 @@ export default function VoiceTriagePage() {
         speakText(greeting, () => listenForUser());
     }, [addLine, speakText]);
 
+    // ── Pro Audio Playback (Raw PCM with Scheduling Queue) ────────────────
+    const playProPCMAudio = useCallback(async (base64: string) => {
+        // Use the dedicated playback context (native sample rate) instead of the 16kHz capture context
+        const playCtx = playbackCtxRef.current;
+        if (!playCtx || isSpeakerOff) return;
+
+        try {
+            // Resume if suspended (Chrome autoplay policy)
+            if (playCtx.state === 'suspended') await playCtx.resume();
+
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+
+            // Fix potential Int16Array alignment issue
+            const bufferLen = len % 2 === 0 ? len : len - 1;
+            const bytes = new Uint8Array(bufferLen);
+            for (let i = 0; i < bufferLen; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const int16Data = new Int16Array(bytes.buffer);
+
+            // Convert Int16 PCM to Float32
+            const floatData = new Float32Array(int16Data.length);
+            for (let i = 0; i < int16Data.length; i++) {
+                floatData[i] = int16Data[i] / (int16Data[i] < 0 ? 0x8000 : 0x7FFF);
+            }
+
+            // Resample from 16kHz source to the playback context's native sample rate
+            const sourceSampleRate = 16000;
+            const targetSampleRate = playCtx.sampleRate;
+
+            let outputData: Float32Array;
+            if (sourceSampleRate !== targetSampleRate) {
+                // Use OfflineAudioContext for high-quality resampling
+                const offlineCtx = new OfflineAudioContext(1, Math.ceil(floatData.length * targetSampleRate / sourceSampleRate), targetSampleRate);
+                const srcBuffer = offlineCtx.createBuffer(1, floatData.length, sourceSampleRate);
+                srcBuffer.getChannelData(0).set(floatData);
+                const srcNode = offlineCtx.createBufferSource();
+                srcNode.buffer = srcBuffer;
+                srcNode.connect(offlineCtx.destination);
+                srcNode.start();
+                const rendered = await offlineCtx.startRendering();
+                outputData = rendered.getChannelData(0);
+            } else {
+                outputData = floatData;
+            }
+
+            const buffer = playCtx.createBuffer(1, outputData.length, targetSampleRate);
+            buffer.getChannelData(0).set(outputData);
+
+            const source = playCtx.createBufferSource();
+            source.buffer = buffer;
+
+            const gainNode = playCtx.createGain();
+            gainNode.gain.value = 1.0;
+            source.connect(gainNode);
+            gainNode.connect(playCtx.destination);
+
+            setSpeechState('SPEAKING');
+
+            // --- SCHEDULING ---
+            const now = playCtx.currentTime;
+            if (nextPlayTimeRef.current < now) {
+                nextPlayTimeRef.current = now + 0.05; // Small lookahead
+            }
+
+            const scheduledStart = nextPlayTimeRef.current;
+            source.start(scheduledStart);
+            nextPlayTimeRef.current += buffer.duration;
+
+            // When this buffer ends, check if the full audio queue has drained
+            source.onended = () => {
+                const stillPlaying = playbackCtxRef.current &&
+                    nextPlayTimeRef.current > playbackCtxRef.current.currentTime + 0.05;
+                if (!stillPlaying && pendingTurnCompleteRef.current) {
+                    pendingTurnCompleteRef.current = false;
+                    setSpeechState('LISTENING');
+                }
+            };
+        } catch (e) {
+            console.error('[LIVE] Playback error:', e);
+        }
+    }, [isSpeakerOff]);
+
     // ── LIVE MODE: Gemini Live WebSocket ───────────────────────────────────
     const startLiveMode = useCallback(async (callId: number) => {
         setAudioMode('LIVE');
@@ -619,89 +703,6 @@ export default function VoiceTriagePage() {
         }
     };
 
-    // ── Pro Audio Playback (Raw PCM with Scheduling Queue) ────────────────
-    const playProPCMAudio = useCallback(async (base64: string) => {
-        // Use the dedicated playback context (native sample rate) instead of the 16kHz capture context
-        const playCtx = playbackCtxRef.current;
-        if (!playCtx || isSpeakerOff) return;
-
-        try {
-            // Resume if suspended (Chrome autoplay policy)
-            if (playCtx.state === 'suspended') await playCtx.resume();
-
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-
-            // Fix potential Int16Array alignment issue
-            const bufferLen = len % 2 === 0 ? len : len - 1;
-            const bytes = new Uint8Array(bufferLen);
-            for (let i = 0; i < bufferLen; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const int16Data = new Int16Array(bytes.buffer);
-
-            // Convert Int16 PCM to Float32
-            const floatData = new Float32Array(int16Data.length);
-            for (let i = 0; i < int16Data.length; i++) {
-                floatData[i] = int16Data[i] / (int16Data[i] < 0 ? 0x8000 : 0x7FFF);
-            }
-
-            // Resample from 16kHz source to the playback context's native sample rate
-            const sourceSampleRate = 16000;
-            const targetSampleRate = playCtx.sampleRate;
-
-            let outputData: Float32Array;
-            if (sourceSampleRate !== targetSampleRate) {
-                // Use OfflineAudioContext for high-quality resampling
-                const offlineCtx = new OfflineAudioContext(1, Math.ceil(floatData.length * targetSampleRate / sourceSampleRate), targetSampleRate);
-                const srcBuffer = offlineCtx.createBuffer(1, floatData.length, sourceSampleRate);
-                srcBuffer.getChannelData(0).set(floatData);
-                const srcNode = offlineCtx.createBufferSource();
-                srcNode.buffer = srcBuffer;
-                srcNode.connect(offlineCtx.destination);
-                srcNode.start();
-                const rendered = await offlineCtx.startRendering();
-                outputData = rendered.getChannelData(0);
-            } else {
-                outputData = floatData;
-            }
-
-            const buffer = playCtx.createBuffer(1, outputData.length, targetSampleRate);
-            buffer.getChannelData(0).set(outputData);
-
-            const source = playCtx.createBufferSource();
-            source.buffer = buffer;
-
-            const gainNode = playCtx.createGain();
-            gainNode.gain.value = 1.0;
-            source.connect(gainNode);
-            gainNode.connect(playCtx.destination);
-
-            setSpeechState('SPEAKING');
-
-            // --- SCHEDULING ---
-            const now = playCtx.currentTime;
-            if (nextPlayTimeRef.current < now) {
-                nextPlayTimeRef.current = now + 0.05; // Small lookahead
-            }
-
-            const scheduledStart = nextPlayTimeRef.current;
-            source.start(scheduledStart);
-            nextPlayTimeRef.current += buffer.duration;
-
-            // When this buffer ends, check if the full audio queue has drained
-            source.onended = () => {
-                const stillPlaying = playbackCtxRef.current &&
-                    nextPlayTimeRef.current > playbackCtxRef.current.currentTime + 0.05;
-                if (!stillPlaying && pendingTurnCompleteRef.current) {
-                    pendingTurnCompleteRef.current = false;
-                    setSpeechState('LISTENING');
-                }
-            };
-        } catch (e) {
-            console.error('[LIVE] Playback error:', e);
-        }
-    }, [isSpeakerOff]);
     const testAudioSystem = async () => {
         try {
             if (typeof window === 'undefined') return;

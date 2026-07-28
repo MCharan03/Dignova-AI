@@ -115,35 +115,13 @@ Controlled Revelation Rules:
 
     # ── Ollama Local LLM ─────────────────────────────────────────────────
     def _process_ollama_stream(self, prompt: str):
-        """Stream text from Ollama's OpenAI-compatible API. Yields chunks."""
-        payload = {
-            "model": OLLAMA_MODEL,
-            "messages": [
-                {"role": "system", "content": self.system_instruction},
-                {"role": "user", "content": prompt}
-            ],
-            "stream": True
-        }
-        
-        with httpx.Client(timeout=120.0) as http_client:
-            with http_client.stream(
-                "POST",
-                f"{OLLAMA_BASE_URL}/v1/chat/completions",
-                json=payload
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            chunk_data = json.loads(data_str)
-                            content = chunk_data["choices"][0]["delta"].get("content", "")
-                            if content:
-                                yield content
-                        except Exception:
-                            pass
+        from app.local_agent.ollama_streamer import process_ollama_stream
+        return process_ollama_stream(
+            base_url=OLLAMA_BASE_URL,
+            model=OLLAMA_MODEL,
+            system_instruction=self.system_instruction,
+            prompt=prompt
+        )
 
     def _process_ollama_json(self, prompt: str, system_prompt: str = None) -> dict:
         """Non-streaming Ollama call that returns a parsed JSON response."""
