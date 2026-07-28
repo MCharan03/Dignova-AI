@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { Users, Search, Activity, HeartPulse, Droplets, Clock, ChevronRight, Filter, AlertTriangle } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Patient {
     id: number; name: string; email: string;
@@ -24,8 +25,8 @@ export default function PatientsPage() {
 
     const fetchPatients = useCallback(async () => {
         try {
-            const res = await fetch('/api/org/patients', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setPatients(await res.json());
+            const res = await fetch(apiUrl('/api/org/patients'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setPatients(await res.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [token]);

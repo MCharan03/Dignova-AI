@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Clock, ShieldAlert, Cpu, Activity, CheckCircle2 } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface CallData {
     call_id: number;
@@ -24,11 +25,11 @@ export default function DoctorHistoryPage() {
         const fetchCalls = async () => {
             const token = localStorage.getItem('access_token');
             try {
-                const res = await fetch('/api/calls', {
+                const res = await fetch(apiUrl('/api/calls'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
                     // Filter for completed/evaluation calls to show history
                     const historyCalls = data.filter((c: CallData) => c.state !== 'active');
                     setCalls(historyCalls);

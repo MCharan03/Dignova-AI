@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText } from '@/components/ui/SentientMotion';
 import { Calendar, Plus, Trash2, Clock, Stethoscope, Filter } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_ABBR = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
@@ -40,12 +41,12 @@ export default function SchedulesPage() {
     const fetchData = useCallback(async () => {
         try {
             const [schedRes, docRes] = await Promise.all([
-                fetch('/api/org/schedules', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/users?role=doctor', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/org/schedules'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/users?role=doctor'), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (schedRes.ok) setSchedules(await schedRes.json());
+            if (schedRes.ok) setSchedules(await schedRes.json().catch(() => ({})));
             if (docRes.ok) {
-                const userData = await docRes.json();
+                const userData = await docRes.json().catch(() => ({}));
                 setDoctors(Array.isArray(userData) ? userData : userData.users || []);
             }
         } catch (err) { console.error(err); }
@@ -58,7 +59,7 @@ export default function SchedulesPage() {
         e.preventDefault();
         if (!formDoctor) return;
         try {
-            await fetch('/api/org/schedules', {
+            await fetch(apiUrl('/api/org/schedules'), {
                 method: 'POST', headers: authHeaders,
                 body: JSON.stringify({ doctor_id: parseInt(formDoctor), day_of_week: formDay, start_time: formStart, end_time: formEnd })
             });
@@ -69,7 +70,7 @@ export default function SchedulesPage() {
 
     const handleDelete = async (schedId: number) => {
         try {
-            await fetch(`/api/org/schedules/${schedId}`, { method: 'DELETE', headers: authHeaders });
+            await fetch(apiUrl(`/api/org/schedules/${schedId}`), { method: 'DELETE', headers: authHeaders });
             fetchData();
         } catch (err) { console.error(err); }
     };

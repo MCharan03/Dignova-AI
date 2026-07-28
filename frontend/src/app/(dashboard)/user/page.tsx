@@ -10,6 +10,7 @@ import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import EmotionalTelemetry from '@/components/dashboard/EmotionalTelemetry';
 import BeaconStatus from '@/components/dashboard/BeaconStatus';
 import IntentActionNode from '@/components/dashboard/IntentActionNode';
+import { apiUrl } from '@/lib/api';
 
 interface UserStats {
     vitals: {
@@ -52,10 +53,10 @@ export default function UserDashboard() {
 
             try {
                 const [statsRes, timelineRes, tipsRes, admRes] = await Promise.all([
-                    fetch('/api/stats/user', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/user/timeline', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/user/health-tips', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/user/admission/current', { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch(apiUrl('/api/stats/user'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(apiUrl('/api/user/timeline'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(apiUrl('/api/user/health-tips'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(apiUrl('/api/user/admission/current'), { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
                 
                 if (statsRes.status === 401) {
@@ -65,17 +66,17 @@ export default function UserDashboard() {
                 }
 
                 if (statsRes.ok) {
-                    setStats(await statsRes.json());
+                    setStats(await statsRes.json().catch(() => ({})));
                 } else {
                     console.error("Stats fetch failed with status:", statsRes.status);
                 }
 
-                if (timelineRes.ok) setTimeline(await timelineRes.json());
+                if (timelineRes.ok) setTimeline(await timelineRes.json().catch(() => ({})));
                 if (tipsRes.ok) {
-                    const tipsData = await tipsRes.json();
+                    const tipsData = await tipsRes.json().catch(() => ({}));
                     setHealthTips(tipsData.tips);
                 }
-                if (admRes.ok) setAdmission(await admRes.json());
+                if (admRes.ok) setAdmission(await admRes.json().catch(() => ({})));
             } catch (err) {
                 console.error('Critical failure during neural sync:', err);
             } finally {

@@ -10,6 +10,7 @@ import {
     ChevronRight, X, User
 } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 
 interface Admission {
     id: number;
@@ -40,11 +41,11 @@ export default function SentientWardDashboard() {
     const fetchAdmissions = async () => {
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch('/api/reception/active-admissions', {
+            const res = await fetch(apiUrl('/api/reception/active-admissions'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 // Adding mock severity for Sentient UI effect
                 const enriched = data.map((a: any) => ({
                     ...a,

@@ -6,6 +6,7 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { CheckCircle, Trash2, Users, AlertTriangle, X, Search, Stethoscope, UserCircle, Building2, ShieldCheck, Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiUrl } from '@/lib/api';
 
 interface User {
     id: number;
@@ -39,11 +40,11 @@ export default function UserManagementPage() {
         try {
             const token = localStorage.getItem('access_token');
             const [usersRes, orgsRes] = await Promise.all([
-                fetch('/api/auth/users', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/organizations', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/auth/users'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/organizations'), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (usersRes.ok) setUsers(await usersRes.json());
-            if (orgsRes.ok) setOrgs(await orgsRes.json());
+            if (usersRes.ok) setUsers(await usersRes.json().catch(() => ({})));
+            if (orgsRes.ok) setOrgs(await orgsRes.json().catch(() => ({})));
         } catch (err: unknown) {
             if (err instanceof Error) setErrorMsg(err.message);
         } finally {
@@ -60,7 +61,7 @@ export default function UserManagementPage() {
     const approveUser = async (userId: number) => {
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/auth/approve/${userId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(apiUrl(`/api/auth/approve/${userId}`), { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) fetchData();
         } catch {}
     };
@@ -69,7 +70,7 @@ export default function UserManagementPage() {
         setDeleting(true);
         try {
             const token = localStorage.getItem('access_token');
-            const res = await fetch(`/api/auth/users/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(apiUrl(`/api/auth/users/${userId}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok || res.status === 204) { setDeleteTarget(null); fetchData(); }
             else { const err = await res.json().catch(() => ({ detail: 'Error' })); alert(err.detail); }
         } catch (err: unknown) { if (err instanceof Error) alert(err.message); }
@@ -79,7 +80,7 @@ export default function UserManagementPage() {
     const changeRole = async (userId: number, newRole: string) => {
         const token = localStorage.getItem('access_token');
         try {
-            await fetch(`/api/auth/users/${userId}/role`, {
+            await fetch(apiUrl(`/api/auth/users/${userId}/role`), {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role: newRole })

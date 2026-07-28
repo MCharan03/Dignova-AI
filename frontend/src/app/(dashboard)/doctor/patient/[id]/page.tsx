@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import {
     ArrowLeft, HeartPulse, Activity, Droplets, Thermometer, Wind,
     Brain, TrendingUp, TrendingDown, AlertTriangle, FileText,
@@ -61,18 +62,18 @@ export default function PatientDeepView() {
     const fetchData = useCallback(async () => {
         try {
             const [profileRes, vitalsRes, callsRes, notesRes] = await Promise.all([
-                fetch(`/api/users/${patientId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`/api/org/vitals/history?user_id=${patientId}&limit=50`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`/api/calls?user_id=${patientId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`/api/hospital/notes/${patientId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/users/${patientId}`), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/org/vitals/history?user_id=${patientId}&limit=50`), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/calls?user_id=${patientId}`), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/hospital/notes/${patientId}`), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (profileRes.ok) setPatient(await profileRes.json());
-            if (vitalsRes.ok) setVitals(await vitalsRes.json());
+            if (profileRes.ok) setPatient(await profileRes.json().catch(() => ({})));
+            if (vitalsRes.ok) setVitals(await vitalsRes.json().catch(() => ({})));
             if (callsRes.ok) {
-                const callData = await callsRes.json();
+                const callData = await callsRes.json().catch(() => ({}));
                 setCalls(Array.isArray(callData) ? callData : []);
             }
-            if (notesRes.ok) setNotes(await notesRes.json());
+            if (notesRes.ok) setNotes(await notesRes.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [patientId, token]);
@@ -81,15 +82,15 @@ export default function PatientDeepView() {
 
     const fetchPrediction = async () => {
         try {
-            const res = await fetch(`/api/ai/predict/${patientId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setPrediction(await res.json());
+            const res = await fetch(apiUrl(`/api/ai/predict/${patientId}`), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setPrediction(await res.json().catch(() => ({})));
         } catch (err) { console.error(err); }
     };
 
     const handleAddNote = async () => {
         if (!noteText.trim()) return;
         try {
-            await fetch(`/api/hospital/notes/${patientId}`, {
+            await fetch(apiUrl(`/api/hospital/notes/${patientId}`), {
                 method: 'POST', headers,
                 body: JSON.stringify({ content: noteText, type: 'clinical' })
             });

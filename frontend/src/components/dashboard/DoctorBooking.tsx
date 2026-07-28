@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, Stethoscope, Star } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Doctor { id: number; name: string; specialty: string; qualification: string; department: string; experience_years: number; consultation_fee: number; is_online: boolean; bio: string; available_days: { day: number; start: string; end: string }[]; }
 interface TimeSlot { hour: number; label: string; available: boolean; }
@@ -36,8 +37,8 @@ export function AppointmentBooking({ doctors, onBooked }: { doctors?: Doctor[]; 
 
     useEffect(() => {
         if (!doctors || doctors.length === 0) {
-            fetch('/api/appointments/doctors', { headers: { Authorization: `Bearer ${token()}` } })
-                .then(r => r.ok ? r.json() : []).then(setAllDoctors);
+            fetch(apiUrl('/api/appointments/doctors'), { headers: { Authorization: `Bearer ${token()}` } })
+                .then(r => r.ok ? r.json().catch(() => ({})) : []).then(setAllDoctors);
         }
     }, [doctors]);
 
@@ -73,7 +74,7 @@ export function AppointmentBooking({ doctors, onBooked }: { doctors?: Doctor[]; 
         const [h, m] = selectedSlot.split(':').map(Number);
         slotTime.setHours(h, m, 0, 0);
         try {
-            const res = await fetch('/api/appointments/book', {
+            const res = await fetch(apiUrl('/api/appointments/book'), {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ doctor_id: selectedDoc.id, slot_time: slotTime.toISOString(), notes })

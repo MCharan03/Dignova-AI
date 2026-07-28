@@ -9,6 +9,7 @@ import {
     Stethoscope, Send
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { apiUrl } from '@/lib/api';
 
 interface CallDetails {
     call_id: number;
@@ -40,11 +41,11 @@ export default function InterventionClient() {
         const fetchCallDetails = async () => {
             const token = localStorage.getItem('access_token');
             try {
-                const res = await fetch(`/api/calls/${callId}`, {
+                const res = await fetch(apiUrl(`/api/calls/${callId}`), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
                     setCall(data);
                     const lines = data.transcript?.split('\n') || [];
                     const parsed = lines.map((l: string) => {

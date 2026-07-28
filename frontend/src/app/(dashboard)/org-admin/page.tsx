@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import { 
     Building2, Users, Stethoscope, Activity, AlertTriangle, Bed, 
     Calendar, ClipboardList, TrendingUp, Shield, RefreshCcw, 
@@ -92,11 +93,11 @@ export default function OrgAdminDashboard() {
         const token = localStorage.getItem('access_token');
         try {
             const [dashRes, notifRes] = await Promise.all([
-                fetch('/api/org/dashboard', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/notifications?limit=5', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/org/dashboard'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/notifications?limit=5'), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (dashRes.ok) setData(await dashRes.json());
-            if (notifRes.ok) setNotifications(await notifRes.json());
+            if (dashRes.ok) setData(await dashRes.json().catch(() => ({})));
+            if (notifRes.ok) setNotifications(await notifRes.json().catch(() => ({})));
         } catch (err) {
             console.error('Dashboard fetch failed:', err);
         } finally {
@@ -114,7 +115,7 @@ export default function OrgAdminDashboard() {
         if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
         const token = localStorage.getItem('access_token');
         try {
-            await fetch('/api/notifications/broadcast', {
+            await fetch(apiUrl('/api/notifications/broadcast'), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title: broadcastTitle, message: broadcastMessage, type: 'info', category: 'system' })

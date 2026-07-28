@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { apiUrl } from '@/lib/api';
 import { 
     MessageSquare, Send, X, Camera, Activity, 
     ShieldCheck, Clock, CheckCircle2, Ambulance, 
@@ -53,19 +54,19 @@ export default function ChatTriagePage() {
     const pollStatus = async () => {
         try {
             const token = localStorage.getItem('access_token');
-            const callsRes = await fetch('/api/calls', {
+            const callsRes = await fetch(apiUrl('/api/calls'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!callsRes.ok) throw new Error("Fetch failed");
             
-            const calls = await callsRes.json();
+            const calls = await callsRes.json().catch(() => ({}));
             const active = calls.find((c: any) => c.state === 'active' || c.state === 'evaluation');
             setActiveCall(active || null);
 
-            const bookingsRes = await fetch('/api/bookings', {
+            const bookingsRes = await fetch(apiUrl('/api/bookings'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const allBookings = await bookingsRes.json();
+            const allBookings = await bookingsRes.json().catch(() => ({}));
             if (active) {
                 setBookings(allBookings.filter((b: any) => b.call_id === active.call_id));
             } else {
@@ -92,12 +93,12 @@ export default function ChatTriagePage() {
             setMessages([{ role: 'assistant', text: 'Establishing Neural Uplink... Please wait.' }]);
             
             const token = localStorage.getItem('access_token');
-            const meRes = await fetch('/api/auth/me', {
+            const meRes = await fetch(apiUrl('/api/auth/me'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const userData = await meRes.json();
+            const userData = await meRes.json().catch(() => ({}));
 
-            const startRes = await fetch('/api/calls/start', {
+            const startRes = await fetch(apiUrl('/api/calls/start'), {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -106,7 +107,7 @@ export default function ChatTriagePage() {
                 body: JSON.stringify({ user_id: userData.id })
             });
             if (!startRes.ok) throw new Error("Failed to initialize call session");
-            const callData = await startRes.json();
+            const callData = await startRes.json().catch(() => ({}));
             setSimCallId(callData.call_id);
 
             setMessages([{ role: 'assistant', text: 'Connecting to Dignova AI... Please describe your symptoms or medical concern.' }]);
@@ -145,7 +146,7 @@ export default function ChatTriagePage() {
 
         try {
             const token = localStorage.getItem('access_token');
-            const response = await fetch(`/api/calls/${simCallId}/chat`, {
+            const response = await fetch(apiUrl(`/api/calls/${simCallId}/chat`), {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -158,7 +159,7 @@ export default function ChatTriagePage() {
 
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
                 setMessages(prev => {
                     const newMessages = [...prev];
                     newMessages[newMessages.length - 1] = { role: 'assistant', text: data.response };
@@ -204,13 +205,13 @@ export default function ChatTriagePage() {
             formData.append('file', file);
 
             const token = localStorage.getItem('access_token');
-            const res = await fetch(`/api/calls/${simCallId}/vision`, {
+            const res = await fetch(apiUrl(`/api/calls/${simCallId}/vision`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             setIsScanning(false);
             setMessages(prev => [...prev, { role: 'assistant', text: `[ANALYSIS COMPLETE]: ${data.analysis}` }]);
             
@@ -233,7 +234,7 @@ export default function ChatTriagePage() {
 
         try {
             const token = localStorage.getItem('access_token');
-            await fetch(`/api/calls/${callId}/terminate`, {
+            await fetch(apiUrl(`/api/calls/${callId}/terminate`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

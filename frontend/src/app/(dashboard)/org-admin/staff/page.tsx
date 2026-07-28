@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SplitText } from '@/components/ui/SentientMotion';
 import { Stethoscope, Users, Search, Shield, UserCheck, UserX, Mail, Clock } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface StaffMember {
     id: number; name: string; email: string; role: string;
@@ -22,9 +23,9 @@ export default function StaffPage() {
 
     const fetchStaff = useCallback(async () => {
         try {
-            const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(apiUrl('/api/users'), { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 const users = Array.isArray(data) ? data : data.users || [];
                 // Filter to only show staff (doctors, org_admins) — not patients
                 setStaff(users.filter((u: StaffMember) => u.role !== 'user'));

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Shield, Lock, Activity, Cpu, Terminal, Eye, AlertCircle } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface SecurityEvent {
     id: number;
@@ -33,12 +34,12 @@ export default function SecurityStatus() {
 
             try {
                 const [eventsRes, statusRes] = await Promise.all([
-                    fetch('/api/security/events', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/security/status', { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch(apiUrl('/api/security/events'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(apiUrl('/api/security/status'), { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
-                if (eventsRes.ok) setEvents(await eventsRes.json());
-                if (statusRes.ok) setStatus(await statusRes.json());
+                if (eventsRes.ok) setEvents(await eventsRes.json().catch(() => ({})));
+                if (statusRes.ok) setStatus(await statusRes.json().catch(() => ({})));
             } catch (err) {
                 console.error('Failed to sync security telemetry:', err);
             } finally {

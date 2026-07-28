@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import {
     MessageCircle, Send, Search, Users, Circle, ChevronRight,
     ArrowLeft, Paperclip, Star, Clock, CheckCheck, Bot
@@ -37,8 +38,8 @@ export default function MessagesPage() {
 
     const fetchConversations = useCallback(async () => {
         try {
-            const res = await fetch('/api/messages/conversations', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setConversations(await res.json());
+            const res = await fetch(apiUrl('/api/messages/conversations'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setConversations(await res.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [token]);
@@ -58,9 +59,9 @@ export default function MessagesPage() {
     const loadMessages = async (convo: Conversation) => {
         setActiveConvo(convo);
         try {
-            const res = await fetch(`/api/messages/${convo.other_user_id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(apiUrl(`/api/messages/${convo.other_user_id}`), { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) {
-                setMessages(await res.json());
+                setMessages(await res.json().catch(() => ({})));
                 setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }
         } catch (err) { console.error(err); }
@@ -69,7 +70,7 @@ export default function MessagesPage() {
     const sendMessage = async () => {
         if (!newMessage.trim() || !activeConvo) return;
         try {
-            const res = await fetch(`/api/messages/${activeConvo.other_user_id}`, {
+            const res = await fetch(apiUrl(`/api/messages/${activeConvo.other_user_id}`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: newMessage })

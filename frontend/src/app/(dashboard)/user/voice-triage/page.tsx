@@ -391,7 +391,7 @@ export default function VoiceTriagePage() {
 
                 const contentType = res.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
                     addLine('ai', data.text);
                     setSpeechState('SPEAKING');
                     speakText(data.text, () => listenForUser());
@@ -776,7 +776,7 @@ export default function VoiceTriagePage() {
                 throw new Error(d.detail || 'Failed to start call');
             }
 
-            const callData = await res.json();
+            const callData = await res.json().catch(() => ({}));
             setActiveCallId(callData.call_id);
             activeCallIdRef.current = callData.call_id;
 

@@ -11,6 +11,7 @@ import { useNetworkResilience } from '@/hooks/useNetworkResilience';
 import { useNotificationStream } from '@/hooks/useNotificationStream';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { CherryHUD } from '@/components/dashboard/CherryHUD';
+import { apiUrl } from '@/lib/api';
 import './dashboard.css';
 
 interface UserState { id: number; name: string; email: string; role: string; tier?: string; organization_id?: number; is_verified: boolean; avg_stress_level: number; diagnostic_accuracy: number; }
@@ -72,22 +73,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (userFetchedRef.current && user) { setLoading(false); return; }
         const fetchData = async () => {
             try {
-                const meRes = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+                const meRes = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
                 if (!meRes.ok) throw new Error('Invalid session');
-                const userData = await meRes.json();
+                const userData = await meRes.json().catch(() => null);
+                if (!userData) throw new Error('Invalid session response');
                 setUser(userData);
                 if (userData.organization_id) {
-                    const orgRes = await fetch('/api/hospital/organization/me', { headers: { Authorization: `Bearer ${token}` } });
+                    const orgRes = await fetch(apiUrl('/api/hospital/organization/me'), { headers: { Authorization: `Bearer ${token}` } });
                     if (orgRes.ok) {
-                        const orgData = await orgRes.json();
-                        setOrg(orgData);
-                        document.documentElement.style.setProperty('--org-primary', orgData.primary_color);
-                        document.documentElement.style.setProperty('--org-accent', orgData.accent_color);
+                        const orgData = await orgRes.json().catch(() => null);
+                        if (orgData) {
+                            setOrg(orgData);
+                            document.documentElement.style.setProperty('--org-primary', orgData.primary_color);
+                            document.documentElement.style.setProperty('--org-accent', orgData.accent_color);
+                        }
                     }
                 }
                 try {
-                    const notifRes = await fetch('/api/notifications/count', { headers: { Authorization: `Bearer ${token}` } });
-                    if (notifRes.ok) { const d = await notifRes.json(); setUnreadCount(d.unread_count || 0); }
+                    const notifRes = await fetch(apiUrl('/api/notifications/count'), { headers: { Authorization: `Bearer ${token}` } });
+                    if (notifRes.ok) { const d = await notifRes.json().catch(() => ({})); setUnreadCount(d.unread_count || 0); }
                 } catch {}
                 userFetchedRef.current = true;
                 setLoading(false);

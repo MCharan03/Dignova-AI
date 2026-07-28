@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassInput } from '@/components/ui/GlassInput';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import { 
     Building2, Plus, Palette, Hash, Trash2, Search,
     Users, Stethoscope, Activity, Shield, ChevronRight,
@@ -44,8 +45,8 @@ export default function OrganizationManagement() {
 
     const fetchOrgs = useCallback(async () => {
         try {
-            const res = await fetch('/api/organizations', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setOrganizations(await res.json());
+            const res = await fetch(apiUrl('/api/organizations'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setOrganizations(await res.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [token]);
@@ -55,7 +56,7 @@ export default function OrganizationManagement() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('/api/organizations', { method: 'POST', headers: authHeaders, body: JSON.stringify(form) });
+            const res = await fetch(apiUrl('/api/organizations'), { method: 'POST', headers: authHeaders, body: JSON.stringify(form) });
             if (res.ok) {
                 setShowAdd(false);
                 resetForm();
@@ -66,7 +67,7 @@ export default function OrganizationManagement() {
 
     const handleUpdate = async (orgId: number) => {
         try {
-            await fetch(`/api/organizations/${orgId}`, { method: 'PUT', headers: authHeaders, body: JSON.stringify(form) });
+            await fetch(apiUrl(`/api/organizations/${orgId}`), { method: 'PUT', headers: authHeaders, body: JSON.stringify(form) });
             setEditId(null);
             fetchOrgs();
         } catch (err) { console.error(err); }
@@ -74,7 +75,7 @@ export default function OrganizationManagement() {
 
     const handleToggleSuspend = async (orgId: number) => {
         try {
-            await fetch(`/api/organizations/${orgId}/suspend`, { method: 'PATCH', headers: authHeaders });
+            await fetch(apiUrl(`/api/organizations/${orgId}/suspend`), { method: 'PATCH', headers: authHeaders });
             fetchOrgs();
         } catch (err) { console.error(err); }
     };
@@ -82,7 +83,7 @@ export default function OrganizationManagement() {
     const handleDelete = async (orgId: number) => {
         if (!confirm('Permanently DELETE this organization? All linked users will be unlinked.')) return;
         try {
-            await fetch(`/api/organizations/${orgId}`, { method: 'DELETE', headers: authHeaders });
+            await fetch(apiUrl(`/api/organizations/${orgId}`), { method: 'DELETE', headers: authHeaders });
             fetchOrgs();
         } catch (err) { console.error(err); }
     };

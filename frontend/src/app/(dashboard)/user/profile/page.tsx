@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { apiUrl } from '@/lib/api';
 import { 
     User, Save, ShieldAlert, Activity, Cpu, Fingerprint, 
     Stethoscope, Award, Briefcase, CreditCard, Clock, Globe,
@@ -57,11 +58,11 @@ export default function UserProfilePage() {
         setSyncLoading(true);
         try {
             const token = localStorage.getItem('access_token');
-            const res = await fetch('/api/auth/telegram-sync-token', {
+            const res = await fetch(apiUrl('/api/auth/telegram-sync-token'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!res.ok) throw new Error('Failed to generate sync token');
-            const { sync_token } = await res.json();
+            const { sync_token } = await res.json().catch(() => ({}));
             
             // Launch bot with deep-link token
             window.open(`https://t.me/dignovaai_bot?start=${sync_token}`, '_blank');
@@ -75,11 +76,11 @@ export default function UserProfilePage() {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('access_token');
-            const response = await fetch('/api/auth/me', {
+            const response = await fetch(apiUrl('/api/auth/me'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to load profile');
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
             setProfile({
                 ...data,
                 name: data.name || '',

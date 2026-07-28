@@ -396,7 +396,7 @@ function LoginContent() {
                                                                 placeholder="Emergency Contact" 
                                                                 icon={<Contact2 size={16} />} 
                                                                 value={emergencyContact} 
-                                                                onChange={e => handlePhoneChange(e.target.value)} 
+                                                                onChange={e => setEmergencyContact(e.target.value)} 
                                                                 isValid={validatePhone(emergencyContact)}
                                                                 isInvalid={emergencyContact.length > 5 && !validatePhone(emergencyContact)}
                                                                 errorText={getPhoneRegion(emergencyContact)}

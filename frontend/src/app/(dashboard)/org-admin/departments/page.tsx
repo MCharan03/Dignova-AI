@@ -7,6 +7,7 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassInput } from '@/components/ui/GlassInput';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { ClipboardList, Plus, Users, Stethoscope, Layers, Trash2, Edit3, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Department {
     id: number; organization_id: number; name: string;
@@ -31,8 +32,8 @@ export default function DepartmentsPage() {
 
     const fetchDepartments = useCallback(async () => {
         try {
-            const res = await fetch('/api/org/departments', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setDepartments(await res.json());
+            const res = await fetch(apiUrl('/api/org/departments'), { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setDepartments(await res.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [token]);
@@ -42,7 +43,7 @@ export default function DepartmentsPage() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('/api/org/departments', {
+            const res = await fetch(apiUrl('/api/org/departments'), {
                 method: 'POST', headers,
                 body: JSON.stringify({ name: form.name, floor: form.floor || null, description: form.description || null, bed_count: form.bed_count })
             });
@@ -52,7 +53,7 @@ export default function DepartmentsPage() {
 
     const handleUpdate = async (deptId: number) => {
         try {
-            await fetch(`/api/org/departments/${deptId}`, {
+            await fetch(apiUrl(`/api/org/departments/${deptId}`), {
                 method: 'PUT', headers,
                 body: JSON.stringify({ name: form.name, floor: form.floor || null, description: form.description || null, bed_count: form.bed_count })
             });
@@ -64,7 +65,7 @@ export default function DepartmentsPage() {
     const handleDelete = async (deptId: number) => {
         if (!confirm('Permanently delete this department?')) return;
         try {
-            await fetch(`/api/org/departments/${deptId}`, { method: 'DELETE', headers });
+            await fetch(apiUrl(`/api/org/departments/${deptId}`), { method: 'DELETE', headers });
             fetchDepartments();
         } catch (err) { console.error(err); }
     };

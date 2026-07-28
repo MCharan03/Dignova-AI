@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, CheckCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
+import { apiUrl } from '@/lib/api';
 
 interface AdmissionModalProps {
     onClose: () => void;
@@ -20,10 +21,10 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ onClose, onSucce
         if (!lookupQuery) return;
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/reception/lookup-patient?query=${lookupQuery}`, {
+            const res = await fetch(apiUrl(`/api/reception/lookup-patient?query=${lookupQuery}`), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (data && data.id) {
                 setPatient(data);
                 setIsNewPatient(false);
@@ -49,22 +50,22 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ onClose, onSucce
             let patientId = foundPatient?.id;
             
             if (isNewPatient) {
-                const regRes = await fetch('/api/reception/quick-register', {
+                const regRes = await fetch(apiUrl('/api/reception/quick-register'), {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(registerForm)
                 });
                 if (regRes.ok) {
-                    const regData = await regRes.json();
+                    const regData = await regRes.json().catch(() => ({}));
                     patientId = regData.id;
                 } else {
-                    const err = await regRes.json();
+                    const err = await regRes.json().catch(() => ({}));
                     alert(err.detail || 'Registration failed');
                     return;
                 }
             }
 
-            const res = await fetch('/api/reception/admit', {
+            const res = await fetch(apiUrl('/api/reception/admit'), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -76,8 +77,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ onClose, onSucce
             });
             
             if (res.ok) {
-                const admData = await res.json();
-                await fetch(`/api/reception/billing/${admData.id}/item`, {
+                const admData = await res.json().catch(() => ({}));
+                await fetch(apiUrl(`/api/reception/billing/${admData.id}/item`), {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -89,7 +90,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ onClose, onSucce
                 });
                 onSuccess();
             } else {
-                const err = await res.json();
+                const err = await res.json().catch(() => ({}));
                 alert(err.detail || 'Admission failed');
             }
         } catch (err) {

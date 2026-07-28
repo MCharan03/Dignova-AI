@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import {
     HeartPulse, Activity, Droplets, Thermometer, Wind, Plus,
     TrendingUp, TrendingDown, Clock, Save, RefreshCcw, Brain,
@@ -45,11 +46,11 @@ export default function VitalsPage() {
     const fetchData = useCallback(async () => {
         try {
             const [vitalsRes, predRes] = await Promise.all([
-                fetch('/api/org/vitals/history?limit=30', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/ai/predict/me', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/org/vitals/history?limit=30'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/ai/predict/me'), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (vitalsRes.ok) setVitals(await vitalsRes.json());
-            if (predRes.ok) setPrediction(await predRes.json());
+            if (vitalsRes.ok) setVitals(await vitalsRes.json().catch(() => ({})));
+            if (predRes.ok) setPrediction(await predRes.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [token]);
@@ -72,7 +73,7 @@ export default function VitalsPage() {
         body.source = 'manual';
 
         try {
-            const res = await fetch('/api/org/vitals', {
+            const res = await fetch(apiUrl('/api/org/vitals'), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

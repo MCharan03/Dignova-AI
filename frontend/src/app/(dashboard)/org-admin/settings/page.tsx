@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { Settings, Shield, Palette, Brain, Activity, Save, RefreshCcw, ChevronRight, Sliders } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface OrgSettings {
     id: number; name: string; org_code: string;
@@ -31,9 +32,9 @@ export default function OrgSettingsPage() {
 
     const fetchSettings = useCallback(async () => {
         try {
-            const res = await fetch('/api/org/dashboard', { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(apiUrl('/api/org/dashboard'), { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 const o = data.organization;
                 setOrg(o);
                 setForm({
@@ -56,7 +57,7 @@ export default function OrgSettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            const res = await fetch('/api/org/settings', {
+            const res = await fetch(apiUrl('/api/org/settings'), {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)

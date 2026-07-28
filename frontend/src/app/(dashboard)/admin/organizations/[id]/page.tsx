@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
+import { apiUrl } from '@/lib/api';
 import { 
     Building2, ArrowLeft, Users, Stethoscope, Activity, Shield, 
     TrendingUp, AlertTriangle, ChevronRight, Clock, Mail, 
@@ -56,11 +57,11 @@ export default function OrgDrilldownPage() {
     const fetchData = useCallback(async () => {
         try {
             const [statsRes, membersRes] = await Promise.all([
-                fetch(`/api/organizations/${orgId}/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`/api/organizations/${orgId}/members`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/organizations/${orgId}/stats`), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl(`/api/organizations/${orgId}/members`), { headers: { 'Authorization': `Bearer ${token}` } }),
             ]);
-            if (statsRes.ok) setStats(await statsRes.json());
-            if (membersRes.ok) setMembers(await membersRes.json());
+            if (statsRes.ok) setStats(await statsRes.json().catch(() => ({})));
+            if (membersRes.ok) setMembers(await membersRes.json().catch(() => ({})));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [orgId, token]);
@@ -69,7 +70,7 @@ export default function OrgDrilldownPage() {
 
     const handleToggleSuspend = async () => {
         try {
-            await fetch(`/api/organizations/${orgId}/suspend`, { method: 'PATCH', headers: authHeaders });
+            await fetch(apiUrl(`/api/organizations/${orgId}/suspend`), { method: 'PATCH', headers: authHeaders });
             fetchData();
         } catch (err) { console.error(err); }
     };
@@ -77,7 +78,7 @@ export default function OrgDrilldownPage() {
     const handleDelete = async () => {
         if (!confirm('PERMANENTLY DELETE this organization? This cannot be undone.')) return;
         try {
-            await fetch(`/api/organizations/${orgId}`, { method: 'DELETE', headers: authHeaders });
+            await fetch(apiUrl(`/api/organizations/${orgId}`), { method: 'DELETE', headers: authHeaders });
             router.push('/admin/organizations');
         } catch (err) { console.error(err); }
     };

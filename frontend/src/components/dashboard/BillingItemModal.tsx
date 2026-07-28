@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
+import { apiUrl } from '@/lib/api';
 
 interface BillingItemModalProps {
     admissionId: number;
@@ -22,7 +23,7 @@ export const BillingItemModal: React.FC<BillingItemModalProps> = ({ admissionId,
         e.preventDefault();
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/reception/billing/${admissionId}/item`, {
+            const res = await fetch(apiUrl(`/api/reception/billing/${admissionId}/item`), {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,

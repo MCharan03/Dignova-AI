@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FileText, Download, Pill, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Medication { name: string; dosage: string; frequency: string; duration: string; instructions: string; }
 interface Prescription { id: number; doctor_id: number; diagnosis: string; medications: Medication[]; notes: string; created_at: string; pdf_path: string; }
@@ -14,8 +15,8 @@ export default function PatientPrescriptionsPage() {
     const token = () => localStorage.getItem('access_token') || '';
 
     useEffect(() => {
-        fetch('/api/hospital/prescriptions/me', { headers: { Authorization: `Bearer ${token()}` } })
-            .then(r => r.ok ? r.json() : [])
+        fetch(apiUrl('/api/hospital/prescriptions/me'), { headers: { Authorization: `Bearer ${token()}` } })
+            .then(r => r.ok ? r.json().catch(() => ({})) : [])
             .then(setPrescriptions)
             .finally(() => setLoading(false));
     }, []);

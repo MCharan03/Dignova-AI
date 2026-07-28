@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Settings, Shield, Cpu, Zap, Key, Save, Server, Globe, CheckCircle, AlertCircle } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 export default function AdminSettingsPage() {
     const [aiEnabled, setAiEnabled] = useState(true);
@@ -44,11 +45,11 @@ export default function AdminSettingsPage() {
         const fetchSettings = async () => {
             try {
                 const token = localStorage.getItem('access_token');
-                const res = await fetch('/api/settings', {
+                const res = await fetch(apiUrl('/api/settings'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error('Failed to load settings');
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
 
                 // Telemetry
                 setAiEnabled(data.ai_auto_triage === 'true');
@@ -120,7 +121,7 @@ export default function AdminSettingsPage() {
                 sandbox_mode: sandboxMode ? 'true' : 'false',
                 api_verbosity: apiVerbosity
             };
-            const res = await fetch('/api/settings', {
+            const res = await fetch(apiUrl('/api/settings'), {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

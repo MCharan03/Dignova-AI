@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { FileText, Plus, Download, User, Pill, Stethoscope, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Medication { name: string; dosage: string; frequency: string; duration: string; instructions: string; }
 interface Prescription { id: number; patient_id: number; doctor_id: number; diagnosis: string; medications: Medication[]; notes: string; created_at: string; pdf_path: string; }
@@ -26,8 +27,8 @@ export default function DoctorPrescriptionsPage() {
 
     useEffect(() => {
         Promise.all([
-            fetch('/api/hospital/prescriptions/doctor', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.ok ? r.json() : []),
-            fetch('/api/hospital/patients', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.ok ? r.json() : []),
+            fetch(apiUrl('/api/hospital/prescriptions/doctor'), { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.ok ? r.json().catch(() => ({})) : []),
+            fetch(apiUrl('/api/hospital/patients'), { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.ok ? r.json().catch(() => ({})) : []),
         ]).then(([rx, pts]) => { setPrescriptions(rx); setPatients(pts); }).finally(() => setLoading(false));
     }, []);
 
@@ -39,13 +40,13 @@ export default function DoctorPrescriptionsPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const res = await fetch('/api/hospital/prescriptions/create', {
+            const res = await fetch(apiUrl('/api/hospital/prescriptions/create'), {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ patient_id: parseInt(form.patient_id), diagnosis: form.diagnosis, notes: form.notes, medications: meds })
             });
             if (res.ok) {
-                const newRx = await res.json();
+                const newRx = await res.json().catch(() => ({}));
                 setPrescriptions(p => [newRx, ...p]);
                 setShowForm(false);
                 setForm({ patient_id: '', diagnosis: '', notes: '' });

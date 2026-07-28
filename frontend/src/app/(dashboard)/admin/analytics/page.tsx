@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { BarChart3, TrendingUp, Users, Activity, Brain, AlertTriangle, Zap, Building2 } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface AnalyticsData {
     call_volume_trend: { date: string; calls: number }[];
@@ -63,8 +64,8 @@ export default function AnalyticsDashboard() {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`/api/stats/analytics/overview?days=${days}`, { headers: { Authorization: `Bearer ${token()}` } })
-            .then(r => r.ok ? r.json() : null)
+        fetch(apiUrl(`/api/stats/analytics/overview?days=${days}`), { headers: { Authorization: `Bearer ${token()}` } })
+            .then(r => r.ok ? r.json().catch(() => ({})) : null)
             .then(setData)
             .finally(() => setLoading(false));
     }, [days]);

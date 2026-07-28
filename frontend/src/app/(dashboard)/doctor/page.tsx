@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Activity, Users, Clock, Shield, AlertTriangle, ChevronRight, Search, Bell, UserCircle, Zap, CheckCircle, Calendar, Sparkles, Stethoscope, X } from 'lucide-react';
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import SecurityStatus from '@/components/dashboard/SecurityStatus';
+import { apiUrl } from '@/lib/api';
 
 interface DoctorStats {
     triage_volume: { date: string; count: number }[];
@@ -50,16 +51,16 @@ export default function DoctorDashboard() {
         const token = localStorage.getItem('access_token');
         try {
             const [statsRes, apptsRes, escRes, wardRes] = await Promise.all([
-                fetch('/api/stats/doctor', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/appointments/me', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/hospital/escalations/active', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/doctor/ward/admitted', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(apiUrl('/api/stats/doctor'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/appointments/me'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/hospital/escalations/active'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(apiUrl('/api/doctor/ward/admitted'), { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
-            if (statsRes.ok) setStats(await statsRes.json());
-            if (apptsRes.ok) setAppointments(await apptsRes.json());
-            if (escRes.ok) setEscalations(await escRes.json());
-            if (wardRes.ok) setAdmittedPatients(await wardRes.json());
+            if (statsRes.ok) setStats(await statsRes.json().catch(() => ({})));
+            if (apptsRes.ok) setAppointments(await apptsRes.json().catch(() => ({})));
+            if (escRes.ok) setEscalations(await escRes.json().catch(() => ({})));
+            if (wardRes.ok) setAdmittedPatients(await wardRes.json().catch(() => ({})));
         } catch (err) {
             console.error('Failed to fetch doctor data:', err);
         } finally {
@@ -70,10 +71,10 @@ export default function DoctorDashboard() {
     const fetchEhrHistory = async (admissionId: number) => {
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/doctor/ward/ehr/${admissionId}`, {
+            const res = await fetch(apiUrl(`/api/doctor/ward/ehr/${admissionId}`), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (res.ok) setEhrHistory(await res.json());
+            if (res.ok) setEhrHistory(await res.json().catch(() => ({})));
         } catch (err) {
             console.error('EHR fetch error:', err);
         }
@@ -84,7 +85,7 @@ export default function DoctorDashboard() {
         if (!selectedAdmission) return;
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/doctor/ward/ehr/${selectedAdmission}`, {
+            const res = await fetch(apiUrl(`/api/doctor/ward/ehr/${selectedAdmission}`), {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -110,7 +111,7 @@ export default function DoctorDashboard() {
     const handleApproveEscalation = async (callId: number) => {
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/hospital/escalations/${callId}/approve`, {
+            const res = await fetch(apiUrl(`/api/hospital/escalations/${callId}/approve`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

@@ -23,8 +23,9 @@ function VerifyContent() {
 
         const verifyToken = async () => {
             try {
-                const res = await fetch(`/api/auth/verify?token=${token}`);
-                const data = await res.json();
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://dignova-ai.onrender.com';
+                const res = await fetch(`${baseUrl}/api/auth/verify?token=${token}`);
+                const data = await res.json().catch(() => ({}));
                 
                 if (res.ok) {
                     setStatus('success');

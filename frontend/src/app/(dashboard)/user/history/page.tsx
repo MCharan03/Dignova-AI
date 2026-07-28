@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { History, Activity, Clock, CheckCircle2, AlertCircle, PhoneIncoming, ChevronRight, X, FileText, Download, User, Shield, Heart as HeartPulse } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Call {
     call_id: number;
@@ -37,12 +38,12 @@ export default function UserHistoryPage() {
             try {
                 const token = localStorage.getItem('access_token');
                 const [callsRes, rxRes] = await Promise.all([
-                    fetch('/api/calls', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/hospital/prescriptions/me', { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch(apiUrl('/api/calls'), { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(apiUrl('/api/hospital/prescriptions/me'), { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
-                if (callsRes.ok) setCalls(await callsRes.json());
-                if (rxRes.ok) setPrescriptions(await rxRes.json());
+                if (callsRes.ok) setCalls(await callsRes.json().catch(() => ({})));
+                if (rxRes.ok) setPrescriptions(await rxRes.json().catch(() => ({})));
             } catch (err: any) {
                 setError(err.message);
             } finally {

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Calendar, Clock, Check, X, Plus } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2,'0')}:00`);
@@ -20,8 +21,8 @@ export default function DoctorAvailabilityPage() {
     const token = () => localStorage.getItem('access_token') || '';
 
     useEffect(() => {
-        fetch('/api/appointments/schedule/me', { headers: { Authorization: `Bearer ${token()}` } })
-            .then(r => r.ok ? r.json() : [])
+        fetch(apiUrl('/api/appointments/schedule/me'), { headers: { Authorization: `Bearer ${token()}` } })
+            .then(r => r.ok ? r.json().catch(() => ({})) : [])
             .then((slots: ScheduleSlot[]) => {
                 const map: Record<number, { start: string; end: string } | null> = {};
                 for (let i = 0; i < 7; i++) map[i] = null;
@@ -32,7 +33,7 @@ export default function DoctorAvailabilityPage() {
 
     const saveSlot = async (day: number) => {
         setSaving(day);
-        await fetch('/api/appointments/schedule/set', {
+        await fetch(apiUrl('/api/appointments/schedule/set'), {
             method: 'POST', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ day_of_week: day, start_time: editStart, end_time: editEnd })
         });
@@ -42,7 +43,7 @@ export default function DoctorAvailabilityPage() {
     };
 
     const removeSlot = async (day: number) => {
-        await fetch(`/api/appointments/schedule/${day}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
+        await fetch(apiUrl(`/api/appointments/schedule/${day}`), { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
         setSchedule(s => ({ ...s, [day]: null }));
     };
 

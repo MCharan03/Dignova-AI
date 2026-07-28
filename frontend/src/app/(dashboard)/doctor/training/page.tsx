@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
+import { apiUrl } from '@/lib/api';
 import {
     GraduationCap, Plus, Brain, ChevronRight, Users, BarChart3,
     Edit3, Archive, X, Save, Activity, Target, TrendingUp,
@@ -92,16 +93,16 @@ export default function DoctorTrainingLabPage() {
     const fetchData = async () => {
         try {
             const [scenariosRes, perfRes] = await Promise.all([
-                fetch('/api/hospital/training/scenarios', { headers }),
-                fetch('/api/hospital/training/intern-performance', { headers }),
+                fetch(apiUrl('/api/hospital/training/scenarios'), { headers }),
+                fetch(apiUrl('/api/hospital/training/intern-performance'), { headers }),
             ]);
 
             if (scenariosRes.ok) {
-                const data = await scenariosRes.json();
+                const data = await scenariosRes.json().catch(() => ({}));
                 setScenarios(data);
             }
             if (perfRes.ok) {
-                const data = await perfRes.json();
+                const data = await perfRes.json().catch(() => ({}));
                 setInterns(data.interns || []);
                 setScenarioStats(data.scenarios || []);
             }
@@ -142,7 +143,7 @@ export default function DoctorTrainingLabPage() {
         };
 
         try {
-            const res = await fetch('/api/hospital/training/scenarios', {
+            const res = await fetch(apiUrl('/api/hospital/training/scenarios'), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(payload),
@@ -174,7 +175,7 @@ export default function DoctorTrainingLabPage() {
         };
 
         try {
-            const res = await fetch(`/api/hospital/training/scenarios/${editingScenario.id}`, {
+            const res = await fetch(apiUrl(`/api/hospital/training/scenarios/${editingScenario.id}`), {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify(payload),
@@ -191,7 +192,7 @@ export default function DoctorTrainingLabPage() {
 
     const handleArchive = async (id: number) => {
         try {
-            await fetch(`/api/hospital/training/scenarios/${id}`, {
+            await fetch(apiUrl(`/api/hospital/training/scenarios/${id}`), {
                 method: 'DELETE',
                 headers,
             });

@@ -7,6 +7,7 @@ import { MessageSquare, Phone, ShieldCheck, Zap, Brain, Activity, PhoneCall, Loa
 import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 
 import { useRouter } from 'next/navigation';
+import { apiUrl } from '@/lib/api';
 
 type CallState = 'idle' | 'calling' | 'success' | 'error';
 
@@ -21,11 +22,11 @@ export default function TriageSelectionPage() {
             const token = localStorage.getItem('access_token');
             if (!token) return;
             try {
-                const res = await fetch('/api/auth/me', {
+                const res = await fetch(apiUrl('/api/auth/me'), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
                     if (data.phone_number) {
                         setPhone(data.phone_number);
                     }

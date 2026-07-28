@@ -137,9 +137,9 @@ export default function AdminDashboardPage() {
 
         try {
             const [resData, callData, statsData] = await Promise.all([
-                fetch(`${apiBaseURL}/resources`, { headers }).then(r => r.json()),
-                fetch(`${apiBaseURL}/calls`, { headers }).then(r => r.json()),
-                fetch(`${apiBaseURL}/stats/admin`, { headers }).then(r => r.json())
+                fetch(`${apiBaseURL}/resources`, { headers }).then(r => r.json().catch(() => ({}))),
+                fetch(`${apiBaseURL}/calls`, { headers }).then(r => r.json().catch(() => ({}))),
+                fetch(`${apiBaseURL}/stats/admin`, { headers }).then(r => r.json().catch(() => ({})))
             ]);
 
             setResources(Array.isArray(resData) ? resData : []);
@@ -150,8 +150,8 @@ export default function AdminDashboardPage() {
             // Fetch platform-wide stats and audit log
             try {
                 const [platRes, auditRes] = await Promise.all([
-                    fetch(`${apiBaseURL}/platform/stats`, { headers }).then(r => r.ok ? r.json() : null),
-                    fetch(`${apiBaseURL}/audit-log?limit=15`, { headers }).then(r => r.ok ? r.json() : []),
+                    fetch(`${apiBaseURL}/platform/stats`, { headers }).then(r => r.ok ? r.json().catch(() => ({})) : null),
+                    fetch(`${apiBaseURL}/audit-log?limit=15`, { headers }).then(r => r.ok ? r.json().catch(() => ({})) : []),
                 ]);
                 if (platRes) setPlatformStats(platRes);
                 if (Array.isArray(auditRes)) setAuditLog(auditRes);

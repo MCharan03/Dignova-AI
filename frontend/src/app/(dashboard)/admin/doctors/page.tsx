@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { apiUrl } from '@/lib/api';
 import {
     Stethoscope, Clock, Star, Globe, CreditCard, Award,
     ShieldCheck, Briefcase, Edit3, X, Save, ChevronDown,
@@ -51,11 +52,11 @@ export default function DoctorManagementPage() {
     const fetchDoctors = async () => {
         try {
             const token = localStorage.getItem('access_token');
-            const res = await fetch('/api/auth/doctors', {
+            const res = await fetch(apiUrl('/api/auth/doctors'), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 setDoctors(data);
             }
         } catch (err) {
@@ -93,7 +94,7 @@ export default function DoctorManagementPage() {
             payload.consultation_fee = payload.consultation_fee ? parseInt(payload.consultation_fee as any, 10) : null;
             payload.rating = payload.rating ? parseFloat(payload.rating as any) : null;
 
-            const res = await fetch(`/api/auth/doctor-profile/${docId}`, {
+            const res = await fetch(apiUrl(`/api/auth/doctor-profile/${docId}`), {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,

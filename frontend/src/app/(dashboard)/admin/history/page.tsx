@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { History, Filter, ChevronDown, User, Shield, Stethoscope, AlertTriangle, Calendar, Activity } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface AuditEvent {
     id: number;
@@ -37,8 +38,8 @@ export default function AdminAuditPage() {
     const token = () => localStorage.getItem('access_token') || '';
 
     useEffect(() => {
-        fetch('/api/admin/audit-log', { headers: { Authorization: `Bearer ${token()}` } })
-            .then(r => r.ok ? r.json() : [])
+        fetch(apiUrl('/api/admin/audit-log'), { headers: { Authorization: `Bearer ${token()}` } })
+            .then(r => r.ok ? r.json().catch(() => ({})) : [])
             .then(setEvents)
             .finally(() => setLoading(false));
     }, []);

@@ -12,6 +12,7 @@ import { SplitText, BlurIn } from '@/components/ui/SentientMotion';
 import { useFetchAdmissions } from '@/hooks/useFetchAdmissions';
 import { AdmissionModal } from '@/components/dashboard/AdmissionModal';
 import { BillingItemModal } from '@/components/dashboard/BillingItemModal';
+import { apiUrl } from '@/lib/api';
 
 export default function UnifiedAdmissionsDashboard() {
     const { admissions, loading, fetchAdmissions } = useFetchAdmissions();
@@ -24,7 +25,7 @@ export default function UnifiedAdmissionsDashboard() {
         if (!confirm('Are you sure you want to discharge this patient?')) return;
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/reception/discharge/${admissionId}`, {
+            const res = await fetch(apiUrl(`/api/reception/discharge/${admissionId}`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

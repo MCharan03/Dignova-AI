@@ -9,6 +9,7 @@ import {
     Settings, Play, RotateCcw, Eye, FileText, Send, CheckCircle2
 } from 'lucide-react';
 import { GlassButton } from '@/components/ui/GlassButton';
+import { apiUrl } from '@/lib/api';
 
 interface TrainingScenario { 
     id: number; 
@@ -142,16 +143,16 @@ export default function InternTrainingPage() {
             const headers = { Authorization: `Bearer ${token}` };
             try {
                 const [scenariosRes, progressRes, casesRes] = await Promise.all([
-                    fetch('/api/hospital/training/scenarios', { headers }),
-                    fetch('/api/hospital/training/progress', { headers }),
-                    fetch('/api/hospital/cases', { headers }),
+                    fetch(apiUrl('/api/hospital/training/scenarios'), { headers }),
+                    fetch(apiUrl('/api/hospital/training/progress'), { headers }),
+                    fetch(apiUrl('/api/hospital/cases'), { headers }),
                 ]);
-                const userRes = await fetch('/api/auth/me', { headers });
+                const userRes = await fetch(apiUrl('/api/auth/me'), { headers });
 
-                if (scenariosRes.ok) setScenarios(await scenariosRes.json());
-                if (progressRes.ok) setProgress(await progressRes.json());
-                if (casesRes.ok) setCases(await casesRes.json());
-                if (userRes.ok) setCurrentUser(await userRes.json());
+                if (scenariosRes.ok) setScenarios(await scenariosRes.json().catch(() => ({})));
+                if (progressRes.ok) setProgress(await progressRes.json().catch(() => ({})));
+                if (casesRes.ok) setCases(await casesRes.json().catch(() => ({})));
+                if (userRes.ok) setCurrentUser(await userRes.json().catch(() => ({})));
             } catch (error) {
                 console.error('Failed to load intern training dashboard:', error);
             } finally {
@@ -166,7 +167,7 @@ export default function InternTrainingPage() {
         setCreatingCase(true);
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch('/api/hospital/cases', {
+            const res = await fetch(apiUrl('/api/hospital/cases'), {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -181,7 +182,7 @@ export default function InternTrainingPage() {
                 })
             });
             if (res.ok) {
-                const newCase = await res.json();
+                const newCase = await res.json().catch(() => ({}));
                 setCases([newCase, ...cases]);
                 setShowCaseForm(false);
                 setCaseTitle('');
@@ -213,7 +214,7 @@ export default function InternTrainingPage() {
         setSubmitting(true);
         const token = localStorage.getItem('access_token');
         try {
-            const res = await fetch(`/api/hospital/training/submit/${activeScenario.id}`, {
+            const res = await fetch(apiUrl(`/api/hospital/training/submit/${activeScenario.id}`), {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -223,10 +224,10 @@ export default function InternTrainingPage() {
             });
             
             if (res.ok) {
-                setResult(await res.json());
+                setResult(await res.json().catch(() => ({})));
                 // Refresh progress data
-                const progRes = await fetch('/api/hospital/training/progress', { headers: { Authorization: `Bearer ${token}` } });
-                if (progRes.ok) setProgress(await progRes.json());
+                const progRes = await fetch(apiUrl('/api/hospital/training/progress'), { headers: { Authorization: `Bearer ${token}` } });
+                if (progRes.ok) setProgress(await progRes.json().catch(() => ({})));
             }
         } catch (error) {
             console.error(error);

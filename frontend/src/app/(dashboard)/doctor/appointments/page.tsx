@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface Appointment { id: number; slot_time: string; status: string; notes: string; patient: { id: number; name: string; age: number; blood_group: string; email: string } | null; }
 
@@ -16,13 +17,13 @@ export default function DoctorAppointmentsPage() {
     const token = () => localStorage.getItem('access_token') || '';
 
     const load = () => {
-        fetch('/api/appointments/doctor', { headers: { Authorization: `Bearer ${token()}` } })
-            .then(r => r.ok ? r.json() : []).then(setAppointments).finally(() => setLoading(false));
+        fetch(apiUrl('/api/appointments/doctor'), { headers: { Authorization: `Bearer ${token()}` } })
+            .then(r => r.ok ? r.json().catch(() => ({})) : []).then(setAppointments).finally(() => setLoading(false));
     };
     useEffect(load, []);
 
     const updateStatus = async (id: number, status: string) => {
-        await fetch(`/api/appointments/${id}/status`, {
+        await fetch(apiUrl(`/api/appointments/${id}/status`), {
             method: 'PUT', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ status })
         });

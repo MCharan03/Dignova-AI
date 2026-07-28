@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, ShieldAlert, Cpu, RefreshCw, Activity } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
+import { apiUrl } from '@/lib/api';
 
 interface WorkspaceContext {
     active_patient: string;
@@ -26,11 +27,11 @@ export function CherryHUD() {
         const token = localStorage.getItem('access_token');
         if (!token) return;
         try {
-            const res = await fetch('/api/awareness/context', {
+            const res = await fetch(apiUrl('/api/awareness/context'), {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 setContext(data);
             }
         } catch (err) {
@@ -43,7 +44,7 @@ export function CherryHUD() {
         if (!token) return;
         setScanning(true);
         try {
-            await fetch('/api/awareness/trigger', {
+            await fetch(apiUrl('/api/awareness/trigger'), {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
             });
