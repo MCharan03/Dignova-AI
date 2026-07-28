@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useCallback } from 'react';
+import { apiUrl, getApiBase } from '@/lib/api';
 
 interface NotificationPayload {
     type: string;
@@ -28,7 +29,7 @@ export function useNotificationStream({
         // Close existing connection
         esRef.current?.close();
 
-        const es = new EventSource(`/api/notifications/stream?token=${encodeURIComponent(token)}`);
+        const es = new EventSource(`${getApiBase()}/api/notifications/stream?token=${encodeURIComponent(token)}`);
         esRef.current = es;
 
         es.onopen = () => {
@@ -45,7 +46,7 @@ export function useNotificationStream({
                 onNotification?.(payload);
 
                 // Refresh unread count after any notification
-                fetch('/api/notifications/count', {
+                fetch(apiUrl('/api/notifications/count'), {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(r => r.ok ? r.json() : null).then(d => {
                     if (d?.unread_count !== undefined) onCountUpdate?.(d.unread_count);

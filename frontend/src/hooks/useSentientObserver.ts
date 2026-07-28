@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '@/lib/api';
 
 export function useSentientObserver() {
     const [telemetry, setTelemetry] = useState({
@@ -145,7 +146,7 @@ export function useSentientObserver() {
             const wpm = (totalKeysPressed.current / 5) * 2;
 
             try {
-                const response = await fetch('/api/telemetry/log', {
+                const response = await fetch(apiUrl('/api/telemetry/log'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -160,7 +161,7 @@ export function useSentientObserver() {
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
+                    const data = await response.json().catch(() => ({}));
                     if (data.stress_score > 0.7) {
                         console.warn(`[SENTIENT TELEMETRY] High stress detected: ${data.stress_score}`);
                     }

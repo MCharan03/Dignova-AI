@@ -141,10 +141,15 @@ function LoginContent() {
             const userData = await meRes.json().catch(() => ({}));
 
             // Decide route
-            let targetRoute = '/user/call';
-            const isAdmin = userData.role === 'admin' || userData.role === 'super_admin' || userData.role === 'org_admin';
-            if (isAdmin) targetRoute = '/admin';
-            else if (userData.role === 'doctor') targetRoute = '/doctor';
+            // Decide route based on role
+            let targetRoute = '/user';
+            const role = userData.role || '';
+            if (role === 'super_admin') targetRoute = '/admin';
+            else if (role === 'org_admin') targetRoute = '/org-admin';
+            else if (role === 'receptionist') targetRoute = '/org-admin';
+            else if (role === 'doctor') {
+                targetRoute = userData.tier === 'intern' ? '/intern' : '/doctor';
+            }
             
             triggerHyperspaceAndRoute(targetRoute);
 
