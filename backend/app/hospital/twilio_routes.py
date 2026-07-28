@@ -218,21 +218,21 @@ async def outbound_twiml(request: Request, name: str = "Patient"):
     greeting = _time_greeting()
     response = VoiceResponse()
 
-    gather = response.gather(
-        input="speech dtmf",
-        num_digits=1,
-        action=f"{BACKEND_URL}/api/twilio/phone-turn",
-        method="POST",
-        speech_timeout="3",
-        language="en-IN"
-    )
-    gather.say(
-        f"{greeting} {param_name}. This is Dr. Dignova calling from Dignova AI. How are you feeling today?",
+    # Say a quick fallback greeting in case websocket takes a second
+    response.say(
+        f"{greeting} {param_name}. Please hold while I connect you to Dr. Dignova.",
         voice="Polly.Joanna",
         language="en-US"
     )
 
-    # Fallback if no input detected
+    connect = Connect()
+    connect.stream(
+        url=f"{BACKEND_URL_WS}/ws/twilio-media",
+        track="inbound_track",
+    )
+    response.append(connect)
+
+    # Fallback if no input detected or stream fails
     response.say("I did not hear your response. Please call back or use the Dignova app. Take care.", voice="Polly.Joanna")
     return Response(content=str(response), media_type="application/xml")
 
