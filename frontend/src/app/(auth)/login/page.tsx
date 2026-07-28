@@ -159,6 +159,26 @@ function LoginContent() {
         }
     };
 
+    const handleResendVerification = async () => {
+        if (!email) {
+            setErrorMsg("Please enter your email address first.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const res = await fetch(`${apiBaseURL}/api/auth/resend-verification?email=${encodeURIComponent(email)}`, {
+                method: 'POST'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || 'Failed to resend verification');
+            setErrorMsg("Verification email resent. Please check your inbox and spam folder.");
+        } catch (err: any) {
+            setErrorMsg(err.message || String(err));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const initiateRegistration = (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg('');
@@ -311,9 +331,21 @@ function LoginContent() {
 
                                 <form onSubmit={isLogin ? handleLoginSubmit : initiateRegistration} className="space-y-4">
                                     {errorMsg && (
-                                        <div className="p-3 text-xs tracking-wide text-center rounded border border-white/10 bg-white/5 flex items-center justify-center gap-2">
-                                            <AlertCircle size={14} className={errorMsg.includes('successful') ? "text-emerald-400" : "text-rose-400"} />
-                                            <span className={errorMsg.includes('successful') ? "text-emerald-400" : "text-rose-400"}>{errorMsg}</span>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2 text-sm justify-center p-3 rounded-lg bg-black/20 border border-white/5">
+                                                <AlertCircle size={14} className={errorMsg.includes('successful') || errorMsg.includes('resent') ? "text-emerald-400" : "text-rose-400"} />
+                                                <span className={errorMsg.includes('successful') || errorMsg.includes('resent') ? "text-emerald-400" : "text-rose-400"}>{errorMsg}</span>
+                                            </div>
+                                            {errorMsg.toLowerCase().includes('verify') && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleResendVerification}
+                                                    disabled={loading}
+                                                    className="text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer self-center"
+                                                >
+                                                    Not getting verification emails? Resend
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                     <AnimatePresence>
