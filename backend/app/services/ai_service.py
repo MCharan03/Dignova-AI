@@ -25,16 +25,15 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 def _check_ollama_available() -> bool:
     """Quick health check - is Ollama running?"""
     try:
-        r = httpx.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2.0)
+        r = httpx.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=1.0)
         return r.status_code == 200
     except Exception:
         return False
 
-OLLAMA_AVAILABLE = _check_ollama_available()
-if OLLAMA_AVAILABLE:
-    print(f"[OLLAMA] Ollama is ONLINE at {OLLAMA_BASE_URL} -- model: {OLLAMA_MODEL}")
-else:
-    print(f"[WARN] Ollama not reachable at {OLLAMA_BASE_URL}. Will use cloud fallbacks.")
+# Evaluate lazily when needed to avoid locking out local dev if started late
+def get_ollama_available() -> bool:
+    if not OLLAMA_BASE_URL: return False
+    return _check_ollama_available()
 
 # Simple memory cache for health tips to prevent quota exhaustion
 _health_tips_cache = {}
@@ -114,13 +113,14 @@ Controlled Revelation Rules:
 """
 
     # ── Ollama Local LLM ─────────────────────────────────────────────────
-    def _process_ollama_stream(self, prompt: str):
+    def _process_ollama_stream(self, prompt: str, is_voice: bool = True):
         from app.local_agent.ollama_streamer import process_ollama_stream
         return process_ollama_stream(
             base_url=OLLAMA_BASE_URL,
             model=OLLAMA_MODEL,
             system_instruction=self.system_instruction,
-            prompt=prompt
+            prompt=prompt,
+            is_voice=is_voice
         )
 
     def _process_ollama_json(self, prompt: str, system_prompt: str = None) -> dict:
@@ -189,7 +189,7 @@ Controlled Revelation Rules:
                         except Exception:
                             pass
 
-    def process_message_stream(self, transcript: str, new_user_message: str):
+    def process_message_stream(self, transcript: str, new_user_message: str, is_voice: bool = True):
         """
         Generates a streaming response based on the active persona and conversation history.
         Yields text chunks as they are generated.
@@ -198,11 +198,11 @@ Controlled Revelation Rules:
         prompt = f"Previous conversation history:\n{transcript}\n\nPatient's latest message: {new_user_message}"
         
         # ── 1st: Try Ollama (local, free, fast) ──────────────────────────
-        if OLLAMA_AVAILABLE:
+        if get_ollama_available():
             try:
                 print(f"[OLLAMA] Streaming via {OLLAMA_MODEL}...")
                 chunk_count = 0
-                for chunk in self._process_ollama_stream(prompt):
+                for chunk in self._process_ollama_stream(prompt, is_voice=is_voice):
                     chunk_count += 1
                     yield chunk
                 if chunk_count > 0:
@@ -345,7 +345,7 @@ Controlled Revelation Rules:
         }}
         """
         # 1st: Ollama
-        if OLLAMA_AVAILABLE:
+        if get_ollama_available():
             try:
                 print("[OLLAMA] Summarizing report...")
                 return self._process_ollama_json(prompt, "You are a Medical Report Analyst. Respond ONLY with valid JSON.")
@@ -411,7 +411,7 @@ Controlled Revelation Rules:
         """
 
         # 1st: Ollama
-        if OLLAMA_AVAILABLE:
+        if get_ollama_available():
             try:
                 print("[OLLAMA] Generating health tips...")
                 result = self._process_ollama_json(prompt, "You are a health advisor. Respond with a JSON array of tip strings.")
@@ -517,7 +517,7 @@ Output a STRICT JSON object:
 """
 
         # 1st: Ollama
-        if OLLAMA_AVAILABLE:
+        if get_ollama_available():
             try:
                 print("[OLLAMA] Evaluating performance...")
                 return self._process_ollama_json(eval_prompt, "You are a medical evaluator. Respond ONLY with valid JSON.")

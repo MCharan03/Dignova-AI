@@ -118,7 +118,7 @@ async def chat_with_agent(call_id: int, request: ChatRequest, db: AsyncSession =
         import asyncio
         full_response = ""
         # The agent returns a synchronous generator, we iterate it
-        for chunk in agent.process_message_stream(db_call.transcript or "", request.message):
+        for chunk in agent.process_message_stream(db_call.transcript or "", request.message, is_voice=False):
             full_response += chunk
             yield chunk
             await asyncio.sleep(0.01) # Yield to event loop
