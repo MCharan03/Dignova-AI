@@ -194,6 +194,10 @@ Controlled Revelation Rules:
                 },
                 json=payload
             ) as response:
+                if response.status_code != 200:
+                    response.read() # Load the error body
+                    raise ValueError(f"OpenRouter HTTP {response.status_code}: {response.text}")
+                    
                 for line in response.iter_lines():
                     if line.startswith("data: "):
                         data_str = line[6:].strip()
