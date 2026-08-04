@@ -220,31 +220,8 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
         print(f"Body Preview: {content[:100]}...")
         return True
 
-    # 1. Try Resend HTTP API if key is present (Render Free tier friendly)
-    resend_key = os.getenv("RESEND_API_KEY")
-    if resend_key:
-        try:
-            print(f"[RESEND] ATTEMPT: Sending to {to} via Resend HTTP API...")
-            import resend
-            resend.api_key = resend_key
-            
-            mail_from = os.getenv("MAIL_FROM") or "onboarding@resend.dev"
-            mail_from_name = os.getenv("MAIL_FROM_NAME") or "Dignova AI"
-            formatted_from = f"{mail_from_name} <{mail_from}>" if mail_from_name else mail_from
-            
-            params = {
-                "from": formatted_from,
-                "to": recipients,
-                "subject": subject,
-                "html": html or body
-            }
-            # Run the blocking Resend HTTP call in a background threadpool so it doesn't block the FastAPI event loop
-            await asyncio.to_thread(resend.Emails.send, params)
-            print(f"[OK] RESEND SUCCESS: Email dispatched.")
-            return True
-        except Exception as re_err:
-            print(f"[WARN] RESEND FAILURE: {re_err}")
-            print("[INFO] Falling back to SMTP...")
+    # Resend Logic removed because Sandbox mode blocks non-admin emails
+    # Forcing SMTP via Gmail port 465
 
     # 2. SMTP Fallback
     try:
