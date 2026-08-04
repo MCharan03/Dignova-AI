@@ -620,6 +620,12 @@ export default function VoiceTriagePage() {
                         setSpeechState('LISTENING');
                     }
                 }
+                if (data.event === 'diagnosis_ready') {
+                    console.log('[LIVE] Diagnosis ready received');
+                    setTimeout(() => {
+                        handleEndCall();
+                    }, 5000); // Give it time to finish speaking the diagnosis
+                }
             };
 
             socket.onerror = () => {

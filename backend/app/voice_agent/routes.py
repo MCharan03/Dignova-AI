@@ -426,7 +426,7 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
     # Generate opening doctor greeting
     greeting_text = "Hello, I am Dr. Dignova, your senior medical consultant. I am right here with you. Take a deep breath and tell me-what's been bothering you or how are you feeling today?"
     greeting_audio = await agent.generate_speech_audio(greeting_text)
-    accumulated_transcript += f"ASSISTANT: {greeting_text}\n"
+    accumulated_transcript += f"Dr. Dignova: {greeting_text}\n"
 
     await websocket.send_json({
         "event": "ai_response_chunk",
@@ -446,12 +446,12 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
                 if not patient_text:
                     continue
 
-                accumulated_transcript += f"USER: {patient_text}\n"
+                accumulated_transcript += f"Patient: {patient_text}\n"
                 await websocket.send_json({"event": "speech_state", "state": "PROCESSING"})
 
                 async for frame in agent.process_patient_turn(accumulated_transcript, patient_text, user_id=user_id):
                     if frame.get("event") == "ai_response_chunk":
-                        accumulated_transcript += f"ASSISTANT: {frame.get('text', '')}\n"
+                        accumulated_transcript += f"Dr. Dignova: {frame.get('text', '')}\n"
                         await websocket.send_json({
                             "event": "transcript",
                             "role": "ai",
@@ -465,6 +465,8 @@ async def sentient_custom_voice_handler(websocket: WebSocket):
                     elif frame.get("event") == "emergency_detected":
                         await _escalate_emergency(call_id, accumulated_transcript)
                         await websocket.send_json({"event": "emergency_banner"})
+                    elif frame.get("event") == "diagnosis_ready":
+                        await websocket.send_json({"event": "diagnosis_ready"})
 
                 await websocket.send_json({"event": "turn_complete"})
                 if call_id:

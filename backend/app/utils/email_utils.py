@@ -9,10 +9,10 @@ import socket
 load_dotenv()
 
 # --- SMTP Configuration (Optimized for Gmail + Render) ---
-# Pro-Tip: If Port 587 is blocked on Render, use Port 465 with MAIL_SSL_TLS=True
-MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-MAIL_SSL_TLS = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
-MAIL_STARTTLS = os.getenv("MAIL_USE_TLS", "True").lower() == "true"
+# Pro-Tip: Port 587 is blocked on Render, use Port 465 with MAIL_SSL_TLS=True
+MAIL_PORT = 465
+MAIL_SSL_TLS = True
+MAIL_STARTTLS = False
 
 # Simulation / Dry Run Mode
 SIMULATE_EMAIL = os.getenv("SIMULATE_EMAIL", "False").lower() == "true"
