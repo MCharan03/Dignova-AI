@@ -211,6 +211,7 @@ export default function VoiceTriagePage() {
     const voicesLoadedRef = useRef(false);
     const callStateRef = useRef<CallState>('IDLE');
     const pendingTurnCompleteRef = useRef(false); // set when backend signals turn_complete
+    const listenForUserRef = useRef<() => void>(() => {});
 
     useEffect(() => { activeCallIdRef.current = activeCallId; }, [activeCallId]);
     useEffect(() => { isSpeakingFallbackRef.current = isAiSpeakingFallback; }, [isAiSpeakingFallback]);
@@ -574,7 +575,113 @@ export default function VoiceTriagePage() {
                 reconnectAttemptsRef.current = 0;
                 console.log('[LIVE] Custom Voice Agent WebSocket Connected.');
                 socket.send(JSON.stringify({ event: 'init', persona: 'TRIAGE', call_id: callId }));
-                if (!streamRef.current) startProMicStreaming();
+                
+                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    setError('Voice recognition not supported in this browser. Please use Chrome.');
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'en-IN'; // or 'en-US'
+                recognitionRef.current = recognition;
+
+                let isRecognizing = false;
+                const listenForUser = () => {
+                    if (!recognitionRef.current || callStateRef.current === 'ENDED') return;
+                    if (isRecognizing) return;
+                    try {
+                        isRecognizing = true;
+                        setSpeechState('LISTENING');
+                        recognition.start();
+                    } catch { 
+                        isRecognizing = false;
+                    }
+                };
+                listenForUserRef.current = listenForUser;
+
+                let finalText = '';
+
+                recognition.onstart = () => { 
+                    isRecognizing = true;
+                    setSpeechState('LISTENING'); 
+                };
+
+                recognition.onresult = (e: any) => {
+                    let interim = '';
+                    finalText = '';
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+                        else interim += e.results[i][0].transcript;
+                    }
+                };
+
+                recognition.onspeechend = () => { 
+                    try { recognition.stop(); } catch {} 
+                };
+
+                recognition.onend = () => {
+                    isRecognizing = false;
+                    if (callStateRef.current === 'ENDED') return;
+                    const text = finalText.trim();
+                    if (!text) { 
+                        if (!isSpeakingFallbackRef.current && !pendingTurnCompleteRef.current) {
+                            listenForUser(); 
+                        }
+                        return; 
+                    }
+
+                    addLine('user', text);
+                    setSpeechState('PROCESSING');
+                    
+                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                        wsRef.current.send(JSON.stringify({ event: 'user_message', text }));
+                    }
+                };
+
+                recognition.onerror = (e: any) => {
+                    isRecognizing = false;
+                    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                        console.warn('[STT] Error:', e.error);
+                    }
+                    if (callStateRef.current !== 'ENDED' && !isSpeakingFallbackRef.current && !pendingTurnCompleteRef.current) {
+                        setTimeout(listenForUser, 500);
+                    }
+                };
+            };
+
+            // Audio Queue for smooth playback
+            const audioQueue: string[] = [];
+            let isPlayingQueue = false;
+
+            const playNextInQueue = () => {
+                if (audioQueue.length === 0) {
+                    isPlayingQueue = false;
+                    setSpeechState('LISTENING');
+                    if (pendingTurnCompleteRef.current) {
+                        pendingTurnCompleteRef.current = false;
+                        listenForUserRef.current();
+                    }
+                    return;
+                }
+                isPlayingQueue = true;
+                const audioData = audioQueue.shift();
+                try {
+                    const audioUrl = `data:audio/mp3;base64,${audioData}`;
+                    const audio = new Audio(audioUrl);
+                    setSpeechState('SPEAKING');
+                    audio.play().catch(e => {
+                        console.warn('[AUDIO] Play error:', e);
+                        playNextInQueue();
+                    });
+                    audio.onended = () => {
+                        playNextInQueue();
+                    };
+                } catch {
+                    playNextInQueue();
+                }
             };
 
             socket.onmessage = async (event) => {
@@ -584,26 +691,14 @@ export default function VoiceTriagePage() {
                 }
                 if (data.event === 'audio' && data.payload) {
                     setLastPacketTime(Date.now());
-                    try {
-                        const audioUrl = `data:audio/mp3;base64,${data.payload}`;
-                        const audio = new Audio(audioUrl);
-                        setSpeechState('SPEAKING');
-                        audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
-                        audio.onended = () => setSpeechState('LISTENING');
-                    } catch {
-                        playProPCMAudio(data.payload);
-                    }
+                    audioQueue.push(data.payload);
+                    if (!isPlayingQueue) playNextInQueue();
                 }
                 if (data.event === 'ai_response_chunk' && data.audio) {
                     setLastPacketTime(Date.now());
                     if (data.text) addLine('ai', data.text);
-                    try {
-                        const audioUrl = `data:audio/mp3;base64,${data.audio}`;
-                        const audio = new Audio(audioUrl);
-                        setSpeechState('SPEAKING');
-                        audio.play().catch(e => console.warn('[AUDIO] Play error:', e));
-                        audio.onended = () => setSpeechState('LISTENING');
-                    } catch {}
+                    audioQueue.push(data.audio);
+                    if (!isPlayingQueue) playNextInQueue();
                 }
                 if (data.event === 'transcript') {
                     console.log(`[LIVE] ${data.role} says:`, data.text);
@@ -613,11 +708,11 @@ export default function VoiceTriagePage() {
                 }
                 if (data.event === 'turn_complete') {
                     console.log('[LIVE] Turn complete received');
-                    const playCtx = playbackCtxRef.current;
-                    if (playCtx && nextPlayTimeRef.current > playCtx.currentTime + 0.05) {
+                    if (isPlayingQueue) {
                         pendingTurnCompleteRef.current = true;
                     } else {
                         setSpeechState('LISTENING');
+                        listenForUserRef.current();
                     }
                 }
                 if (data.event === 'diagnosis_ready') {
@@ -660,53 +755,9 @@ export default function VoiceTriagePage() {
     }, [addLine, startFallbackMode, cleanupAll, playProPCMAudio]);
 
     // ── Pro Audio Streaming (Worklet based) ───────────────────────────────
+    // Replaced by SpeechRecognition in startLiveMode to use Local AI text pipeline
     const startProMicStreaming = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-            });
-            streamRef.current = stream;
-
-            const audioCtx = audioCtxRef.current!;
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-            const source = audioCtx.createMediaStreamSource(stream);
-            try {
-                const workletNode = new AudioWorkletNode(audioCtx, 'dignova-audio-processor');
-                workletNode.port.onmessage = (event) => {
-                    if (event.data.event === 'capture') {
-                        const b64 = btoa(String.fromCharCode(...new Uint8Array(event.data.buffer)));
-                        const currentSocket = wsRef.current;
-                        if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-                            currentSocket.send(JSON.stringify({ event: 'audio', payload: b64 }));
-                        }
-                    }
-                };
-                source.connect(workletNode);
-                workletNode.connect(audioCtx.destination);
-            } catch (workletErr) {
-                console.warn('[LIVE] AudioWorklet not registered, falling back to ScriptProcessor:', workletErr);
-                const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-                processorRef.current = processor;
-                processor.onaudioprocess = (e) => {
-                    const inputData = e.inputBuffer.getChannelData(0);
-                    const pcm16 = new Int16Array(inputData.length);
-                    for (let i = 0; i < inputData.length; i++) {
-                        pcm16[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-                    }
-                    const b64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
-                    const currentSocket = wsRef.current;
-                    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-                        currentSocket.send(JSON.stringify({ event: 'audio', payload: b64 }));
-                    }
-                };
-                source.connect(processor);
-                processor.connect(audioCtx.destination);
-            }
-        } catch (err) {
-            console.error('[LIVE] Mic error:', err);
-            setError('Microphone access denied.');
-        }
+        // Obsolete: Kept for reference but no longer called
     };
 
     const testAudioSystem = async () => {
