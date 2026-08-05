@@ -244,17 +244,11 @@ async def register(request: Request, user_in: UserCreate, background_tasks: Back
     verify_url = f"{FRONTEND_URL}/verify?token={token}"
     print(f"[AUTH] New signup {user.email}. Dynamic verification URL: {verify_url}")
 
-    # MX check - only queue email if the domain can actually receive mail
-    domain = user.email.split("@")[1]
-    try:
-        import socket
-        socket.getaddrinfo(domain, None)
-        background_tasks.add_task(
-            send_welcome_email,
-            user.email, user.name, verify_url, user.role.value
-        )
-    except Exception as e:
-        print(f"[MX BLOCK] Could not send verification email: {e}")
+    # Queue verification email directly
+    background_tasks.add_task(
+        send_welcome_email,
+        user.email, user.name, verify_url, user.role.value
+    )
 
     return user
 

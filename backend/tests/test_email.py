@@ -3,16 +3,16 @@ import os
 from app.utils.email_utils import send_welcome_email
 
 async def main():
-    test_email = input("Enter email address to send test to: ")
+    test_email = os.getenv("TEST_EMAIL", "testuser@gmail.com")
     print(f"\n--- Dignova SMTP Diagnostic Tool ---")
+    print(f"Target Email: {test_email}")
     print(f"SIMULATE_EMAIL: {os.getenv('SIMULATE_EMAIL', 'False')}")
     print(f"MAIL_SERVER: {os.getenv('MAIL_SERVER', 'smtp.gmail.com')}")
-    print(f"MAIL_PORT: {os.getenv('MAIL_PORT', '587')}")
-    print(f"MAIL_USERNAME: {os.getenv('MAIL_USERNAME')}")
+    print(f"MAIL_PORT: {os.getenv('MAIL_PORT', '465')}")
     print(f"-------------------------------------\n")
     
     print("Attempting to send branded welcome email via SMTP...")
-    send_welcome_email(
+    await send_welcome_email(
         to=test_email,
         user_name="Test User",
         verify_url="https://dignova.ai/verify-test",

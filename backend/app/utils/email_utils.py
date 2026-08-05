@@ -9,18 +9,24 @@ import socket
 load_dotenv()
 
 # --- SMTP Configuration (Optimized for Gmail + Render) ---
-# Pro-Tip: Port 587 is blocked on Render, use Port 465 with MAIL_SSL_TLS=True
-MAIL_PORT = 465
-MAIL_SSL_TLS = True
-MAIL_STARTTLS = False
+MAIL_PORT = int(os.getenv("MAIL_PORT", "465"))
+MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", "True").lower() == "true" or os.getenv("MAIL_USE_SSL", "False").lower() == "true"
+MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", "False").lower() == "true" or os.getenv("MAIL_USE_TLS", "False").lower() == "true"
 
 # Simulation / Dry Run Mode
 SIMULATE_EMAIL = os.getenv("SIMULATE_EMAIL", "False").lower() == "true"
 
+mail_username = os.getenv("MAIL_USERNAME") or "cherrycostech@gmail.com"
+mail_password = os.getenv("MAIL_PASSWORD") or "ksksyfgvrgkdvtvw"
+if mail_password:
+    mail_password = mail_password.strip().replace(" ", "")
+
+mail_from = os.getenv("MAIL_FROM") or mail_username or "cherrycostech@gmail.com"
+
 conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_USERNAME=mail_username,
+    MAIL_PASSWORD=mail_password,
+    MAIL_FROM=mail_from,
     MAIL_PORT=MAIL_PORT,
     MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
     MAIL_FROM_NAME=os.getenv("MAIL_FROM_NAME", "Dignova AI"),
@@ -193,15 +199,6 @@ def build_appointment_reminder_email(
 
 # ─── Pro Async Email Dispatcher ────────────────────────────────────────────── #
 
-def _has_mx_record(email: str) -> bool:
-    """Check if the email domain has a valid MX record. Drops fake domains silently."""
-    try:
-        domain = email.split("@")[1]
-        socket.getaddrinfo(domain, None)
-        return True
-    except Exception:
-        return False
-
 async def send_email_async(to: str, subject: str, body: str, html: str = None):
     """
     Async SMTP or Resend API dispatcher with deep diagnostics and simulation support.
@@ -209,21 +206,13 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
     recipients = [to]
     content = html or body
 
-    # Layer 2: MX record check - drop emails to non-existent domains before hitting SMTP
-    if not _has_mx_record(to):
-        print(f"[EMAIL DROP] No MX record for domain in {to} - skipping send.")
-        return False
-
     if SIMULATE_EMAIL:
         print(f"[SIMULATE] EMAIL SIMULATION: Email would be sent to {recipients}")
         print(f"Subject: {subject}")
         print(f"Body Preview: {content[:100]}...")
         return True
 
-    # Resend Logic removed because Sandbox mode blocks non-admin emails
-    # Forcing SMTP via Gmail port 465
-
-    # 2. SMTP Fallback
+    # SMTP Dispatch via configured server
     try:
         print(f"[SMTP] ATTEMPT: Sending to {recipients} via {conf.MAIL_SERVER}:{conf.MAIL_PORT}...")
         message = MessageSchema(
@@ -233,11 +222,11 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
             subtype=MessageType.html if html else MessageType.plain
         )
         await fastmail.send_message(message)
-        print(f"[OK] SMTP SUCCESS: Email dispatched.")
+        print(f"[OK] SMTP SUCCESS: Email dispatched to {to}.")
         return True
     except Exception as e:
         error_msg = str(e)
-        print(f"[ERROR] SMTP CRITICAL FAILURE: {error_msg}")
+        print(f"[ERROR] SMTP CRITICAL FAILURE for {to}: {error_msg}")
         
         # Diagnostic help
         if "AuthenticationFailed" in error_msg or "535" in error_msg:
@@ -249,27 +238,31 @@ async def send_email_async(to: str, subject: str, body: str, html: str = None):
 
 def send_email(to: str, subject: str, body: str, html: str = None):
     """
-    Standard wrapper for sending emails from any thread.
+    Standard wrapper for sending emails synchronously or scheduling on a running loop.
     """
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If in a thread (AnyIO worker), schedule on the main loop
-            asyncio.run_coroutine_threadsafe(send_email_async(to, subject, body, html), loop)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            asyncio.create_task(send_email_async(to, subject, body, html))
         else:
             asyncio.run(send_email_async(to, subject, body, html))
-    except RuntimeError:
-        # No loop in this thread, try run (standard)
-        asyncio.run(send_email_async(to, subject, body, html))
     except Exception as e:
         print(f"[WARN] Email Dispatch Error: {e}")
 
     return True
 
-def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):
+async def send_welcome_email(to: str, user_name: str, verify_url: str, role: str = "user"):
     """Sends the branded welcome + email verification email."""
+    print(f"\n=======================================================")
+    print(f"[VERIFICATION MAIL] User: {user_name} <{to}>")
+    print(f"[VERIFICATION URL]  {verify_url}")
+    print(f"=======================================================\n")
     html = build_welcome_email(user_name, verify_url, role)
-    return send_email(
+    return await send_email_async(
         to=to,
         subject=f"Welcome to Dignova AI, {user_name}! Please verify your email",
         body=f"Welcome {user_name}! Verify your email: {verify_url}",
